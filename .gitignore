@@ -1,0 +1,68 @@
+# ── Large binary files ──────────────────────────────────────────
+# Word documents (binary, not diff-friendly)
+reports/*.docx
+reports/*.doc
+
+# Dataset files (never commit event camera data)
+*.h5
+*.dat
+*.npy
+*.7z
+*.zip
+*.tar
+*.tar.gz
+data/
+
+# Model checkpoints (can be hundreds of MB)
+*.ckpt
+*.pth
+*.pt
+checkpoints/
+
+# ── Python ──────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# Virtual environments / conda
+.venv/
+venv/
+env/
+.conda/
+
+# ── Jupyter ─────────────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb
+
+# ── LaTeX build artefacts ────────────────────────────────────────
+*.aux
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.bbl
+*.blg
+
+# ── IDE / OS ─────────────────────────────────────────────────────
+.DS_Store
+.vscode/
+.idea/
+Thumbs.db
+*.swp
+*.swo
+
+# ── Weights & Biases / experiment logs ──────────────────────────
+wandb/
+runs/
+logs/

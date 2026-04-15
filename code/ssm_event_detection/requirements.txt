@@ -1,0 +1,24 @@
+# Core
+torch>=2.1.0
+torchvision>=0.16.0
+numpy>=1.24.0
+scipy>=1.10.0
+
+# Config & logging
+pyyaml>=6.0
+tensorboard>=2.14.0
+tqdm>=4.65.0
+
+# Evaluation
+pycocotools>=2.0.7
+
+# Data processing
+h5py>=3.9.0
+hdf5plugin>=4.0.0      # For reading Prophesee Gen1 .h5 files
+
+# Visualization
+matplotlib>=3.7.0
+opencv-python>=4.8.0
+
+# Optional: for reading .dat files (Prophesee format)
+# pip install metavision-core  # Only on Linux, optional
