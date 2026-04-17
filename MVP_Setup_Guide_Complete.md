@@ -176,8 +176,10 @@ cd ssms_event_cameras
 
 ### 5.2 Install Project Dependencies
 
+The `requirements.txt` is inside the `RVT/` subdirectory, not at the repo root:
+
 ```bash
-pip install -r requirements.txt
+pip install -r RVT/requirements.txt
 ```
 
 This installs:
