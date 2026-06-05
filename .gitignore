@@ -70,3 +70,6 @@ logs/
 # ── Local Output & AI Assistants ────────────────────────────────
 *.pdf
 .claude/
+external/
+results/
+graphify-out/
