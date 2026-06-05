@@ -44,26 +44,30 @@ You are an expert research assistant supporting a final-year robotics engineerin
 
 # 📊 Current Project Status (Thesis Phase B)
 
-## 🏗️ MVP Codebase
-* **Location:** `~/Desktop/Thesis/code/ssm_event_detection/`
+## ✅ Baseline Reproduction (S5-RVT) — COMPLETE (2026-06-05)
+* Reproduced Zubic et al. (2024), *State Space Models for Event Cameras* (S5-ViT) on the Gen1 test set: **`test/AP` = 47.7 mAP** (COCO, IoU 0.50:0.95) — **exact match** to the paper. `AP_50` = 75.3.
+* Ran on the **RTX 5070 Ti (Blackwell)**. Required porting the repo's pinned `torch 2.2.1`/cu11.8 to **torch 2.11.0+cu128** (Blackwell `sm_120`), plus `torchdata==0.9.0` and `TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1`.
+* Reference repo: `external/ssms_event_cameras`. Env: conda `events_signals` (frozen in `requirements_5070ti_lock.txt`). Re-run: see `VALIDATION_QUICKSTART.md`; full setup: `MVP_Setup_Guide_Complete.md`.
+
+## 🏗️ MVP Codebase (own architectures — training pending)
+* **Location:** `code/ssm_event_detection/` (in this repo).
 * **Task:** Object detection (cars, pedestrians) on the Prophesee Gen1 dataset using a 10-bin voxel grid input `(10, 240, 304)`.
 * **Architectures:**
     1.  `EventSSMDetector` (CNN-SSM Hybrid): ResNet-18 backbone (stride-8, 256ch) + causal Mamba temporal stack.
     2.  `PureSSMDetector` (Pure SSM): 16x16 patch embedding + BiMamba spatial + causal Mamba temporal.
 * **Head:** Shared anchor-free detection/classification (FCOS-style, Focal Loss + GIoU).
-* **Status:** Pure PyTorch implementation (no custom CUDA kernels). Smoke-tested successfully on Mac M4 (MPS).
+* **Status:** Pure PyTorch implementation (no custom CUDA kernels). Smoke-tested on Mac M4 (MPS); not yet trained at scale.
 
 ## 💻 Hardware & Infrastructure
-* **Local:** Mac M4 (Apple Silicon, MPS backend).
+* **Local (primary):** RTX 5070 Ti workstation `GhostMachine` (Ubuntu 24.04, CUDA/Blackwell, cu128). This is the main dev/eval machine.
 * **Compute:** Katana HPC cluster (CUDA).
-* **Sensor:** Prophesee dual/stereo event camera (Gen3.1).
+* **Sensor:** Prophesee dual/stereo event camera (Gen3.1) — integration status unresolved (see direction notes).
 
 ## 📂 Next Immediate Steps
-1.  Optimize dataset transfer and `DataLoader` for Gen1 on the Katana cluster.
-2.  Deploy and execute full 50-epoch training runs for both architectures via SLURM.
-3.  Calculate and tabulate comparative `mAP@0.5` metrics.
-4.  Draft Methodology, Results, and Discussion chapters for the final document.
-5.  *(Stretch Goal)* Extend architecture to accept DSEC stereo format to align with physical hardware.
+1.  **Decide the thesis spine** (direction discussion in progress; assessment rewards real-system/robotics, Gen3.1 availability unsure). Proposed: SSMs for event-based perception under variable event rates, toward micro-UAV deployment.
+2.  Train the *own* architectures (`EventSSMDetector` vs `PureSSMDetector`) on Gen1 via SLURM; tabulate comparative `mAP@0.5`.
+3.  Temporal-generalisation study (train one event-rate, test across rates); extend data loading to DSEC stereo.
+4.  Draft Methodology, Results, and Discussion chapters.
 
 ## graphify
 
