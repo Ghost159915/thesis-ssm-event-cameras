@@ -66,3 +66,7 @@ Thumbs.db
 wandb/
 runs/
 logs/
+
+# ── Local Output & AI Assistants ────────────────────────────────
+*.pdf
+.claude/
