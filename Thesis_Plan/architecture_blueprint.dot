@@ -1,0 +1,61 @@
+// EventSSMDetector — architecture blueprint (Stage 1, rev.2: interleaved per-stage)
+// Thesis B | MMAN4952 | UNSW Sydney | Benas Vaiciulis
+// Render:  dot -Tpdf architecture_blueprint.dot -o architecture_blueprint.pdf
+//          dot -Tpng -Gdpi=200 architecture_blueprint.dot -o architecture_blueprint.png
+// GREEN = ImageNet-pretrained   RED = random/re-init   YELLOW = data/state marker
+digraph EventSSMDetector {
+    rankdir=TB; splines=polyline; nodesep=0.40; ranksep=0.50; bgcolor="white";
+    node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=11,
+          fillcolor="#eef2f7", color="#33425b", penwidth=1.2, margin="0.14,0.08"];
+    edge [fontname="Helvetica", fontsize=9, color="#33425b", arrowsize=0.8];
+
+    input [label="INPUT CLIP\n(L=5, B, 10, 256, 320)\nvoxel grid (240x304 padded ->256x320)", fillcolor="#fff8e1", color="#b8860b"];
+    stem  [label="STEM  conv1 7x7 s2 (10->64) + maxpool 3x3 s2\nre-init: avg-proj of ImageNet conv1", fillcolor="#fde4e1", color="#b3261e"];
+    input -> stem [label="fold L->batch (L·B,10,256,320)"];
+
+    // ---- interleaved backbone: each stage = ResNet conv (green) -> Mamba temporal (red) ----
+    subgraph cluster_backbone {
+        label="ResNet-18 + Mamba backbone   (4 stages; spatial conv -> temporal Mamba per stage; returns LstmStates)";
+        labeljust="l"; fontname="Helvetica-Bold"; fontsize=11; color="#9aa7b8"; style="rounded"; bgcolor="#f7f9fc";
+
+        r1 [label="Stage1  layer1 (s1)\n(L·B,64,64,80) /4",  fillcolor="#e3f4e6", color="#2e7d32"];
+        m1 [label="Mamba1 (time)\nd_model=64", fillcolor="#fde4e1", color="#b3261e"];
+        r2 [label="Stage2  layer2 (s2)\n(L·B,128,32,40) /8",  fillcolor="#e3f4e6", color="#2e7d32"];
+        m2 [label="Mamba2 (time)\nd_model=128", fillcolor="#fde4e1", color="#b3261e"];
+        r3 [label="Stage3  layer3 (s2)\n(L·B,256,16,20) /16", fillcolor="#e3f4e6", color="#2e7d32"];
+        m3 [label="Mamba3 (time)\nd_model=256", fillcolor="#fde4e1", color="#b3261e"];
+        r4 [label="Stage4  layer4 (s2)\n(L·B,512,8,10) /32",  fillcolor="#e3f4e6", color="#2e7d32"];
+        m4 [label="Mamba4 (time)\nd_model=512", fillcolor="#fde4e1", color="#b3261e"];
+
+        r1 -> m1 -> r2 -> m2 -> r3 -> m3 -> r4 -> m4;
+
+        state [label="STATE per stage, carried clip->clip (.detach())\nper location: SSM (B·HW, 2C, 16) + conv (B·HW, 2C, 3)\nLstmStates = list of 4",
+               shape=note, fillcolor="#fff8e1", color="#b8860b", fontsize=9];
+        m1 -> state [style=dotted, dir=both, color="#b8860b", constraint=false];
+        m2 -> state [style=dotted, dir=both, color="#b8860b", constraint=false];
+        m3 -> state [style=dotted, dir=both, color="#b8860b", constraint=false];
+        m4 -> state [style=dotted, dir=both, color="#b8860b", constraint=false];
+    }
+    stem -> r1 [label="(L·B,64,64,80)"];
+
+    // ---- PAFPN (reused) takes stages 2,3,4 ----
+    pafpn [label="YOLO-PAFPN  (reused unchanged)\ntop-down + bottom-up; pyramid widths preserved\nout: (128,32,40) (256,16,20) (512,8,10)", fillcolor="#eef2f7", color="#33425b"];
+    m2 -> pafpn [label="stage2 /8", style=dashed];
+    m3 -> pafpn [label="stage3 /16", style=dashed];
+    m4 -> pafpn [label="stage4 /32", style=dashed];
+
+    head [label="YOLOX head  (reused unchanged)\ndecoupled cls(2)/reg(4)/obj(1) per scale; SimOTA\nBCE + IoU(1-iou^2)x5", fillcolor="#eef2f7", color="#33425b"];
+    pafpn -> head [label="[p8, p16, p32]"];
+
+    output [label="1680 candidate boxes / window  ->  NMS  ->  5-50 detections", fillcolor="#fff8e1", color="#b8860b"];
+    head -> output;
+
+    subgraph cluster_legend {
+        label="Legend"; labeljust="l"; fontname="Helvetica-Bold"; fontsize=10; color="#9aa7b8"; style="rounded"; bgcolor="#ffffff";
+        lp [label="ImageNet-pretrained (ResNet conv)", fillcolor="#e3f4e6", color="#2e7d32", fontsize=9];
+        lr [label="random / re-init (conv1, Mamba)", fillcolor="#fde4e1", color="#b3261e", fontsize=9];
+        ls [label="data / state marker", shape=note, fillcolor="#fff8e1", color="#b8860b", fontsize=9];
+        lo [label="reused from baseline (PAFPN, head)", fillcolor="#eef2f7", color="#33425b", fontsize=9];
+        lp -> lr [style=invis]; lr -> ls [style=invis]; ls -> lo [style=invis];
+    }
+}

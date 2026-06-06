@@ -1,0 +1,37 @@
+// EventSSMDetector — conceptual overview (explainer figure, no tensor shapes), rev.2
+// Thesis B | MMAN4952 | UNSW Sydney | Benas Vaiciulis
+// Render:  dot -Tpdf architecture_concept.dot -o architecture_concept.pdf
+//          dot -Tpng -Gdpi=200 architecture_concept.dot -o architecture_concept.png
+
+digraph EventSSMConcept {
+    rankdir=TB; splines=polyline; nodesep=0.45; ranksep=0.60; bgcolor="white";
+    node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=13,
+          color="#33425b", penwidth=1.4, margin="0.22,0.14"];
+    edge [fontname="Helvetica-Oblique", fontsize=11, color="#33425b", arrowsize=0.9];
+
+    input [label="Event-camera clip\n(5 short time-windows)\n\"a little movie of brightness changes\"",
+           fillcolor="#fff8e1", color="#b8860b"];
+
+    backbone [label="1.  ResNet + Mamba backbone  (4 stages)\nEACH stage: look at the frame (ResNet conv)\nthen track change over time (causal Mamba)\n+ carries a per-pixel memory between clips",
+              fillcolor="#e3f4e6", color="#2e7d32"];
+
+    fpn [label="2.  Feature Pyramid (PAFPN)\ncombines fine / medium / coarse views\n→ sees small AND large objects",
+         fillcolor="#eef2f7", color="#33425b"];
+
+    head [label="3.  YOLOX head\npredicts class + box + confidence,\nthen removes duplicates (NMS)",
+          fillcolor="#fde4e1", color="#b3261e"];
+
+    output [label="Boxes around cars & pedestrians",
+            fillcolor="#fff8e1", color="#b8860b"];
+
+    input -> backbone; backbone -> fpn; fpn -> head; head -> output;
+
+    mem [label="per-pixel memory\ncarried clip → clip", shape=note, fontsize=10,
+         fillcolor="#fff8e1", color="#b8860b"];
+    backbone -> mem [style=dotted, dir=both, color="#b8860b", constraint=false];
+
+    note [label="Controlled comparison vs S5-RVT:\nidentical pipeline, identical per-stage TEMPORAL Mamba placement.\nOnly the per-stage SPATIAL op differs (ResNet conv  vs  MaxViT attention).",
+          shape=box, style="rounded,dashed,filled", fillcolor="#f7f9fc",
+          color="#9aa7b8", fontsize=10, fontname="Helvetica-Oblique"];
+    backbone -> note [style=invis]; { rank=same; backbone; note; }
+}

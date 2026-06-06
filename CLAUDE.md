@@ -49,14 +49,19 @@ You are an expert research assistant supporting a final-year robotics engineerin
 * Ran on the **RTX 5070 Ti (Blackwell)**. Required porting the repo's pinned `torch 2.2.1`/cu11.8 to **torch 2.11.0+cu128** (Blackwell `sm_120`), plus `torchdata==0.9.0` and `TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1`.
 * Reference repo: `external/ssms_event_cameras`. Env: conda `events_signals` (frozen in `requirements_5070ti_lock.txt`). Re-run: see `VALIDATION_QUICKSTART.md`; full setup: `MVP_Setup_Guide_Complete.md`.
 
-## 🏗️ MVP Codebase (own architectures — training pending)
-* **Location:** `code/ssm_event_detection/` (in this repo).
-* **Task:** Object detection (cars, pedestrians) on the Prophesee Gen1 dataset using a 10-bin voxel grid input `(10, 240, 304)`.
-* **Architectures:**
-    1.  `EventSSMDetector` (CNN-SSM Hybrid): ResNet-18 backbone (stride-8, 256ch) + causal Mamba temporal stack.
-    2.  `PureSSMDetector` (Pure SSM): 16x16 patch embedding + BiMamba spatial + causal Mamba temporal.
-* **Head:** Shared anchor-free detection/classification (FCOS-style, Focal Loss + GIoU).
-* **Status:** Pure PyTorch implementation (no custom CUDA kernels). Smoke-tested on Mac M4 (MPS); not yet trained at scale.
+## 🏗️ Thesis B — Core Contribution: EventSSMDetector & PureSSMDetector (post-MVP)
+> The S5-RVT reproduction above was the **Thesis A MVP** (reference baseline, complete). **This section is the actual Thesis B research** — the own architectures built *beyond* the MVP. The MVP is something we look back at for fair comparison, not what we are building now.
+
+* **Approach (decided Stage 2 audit, 2026-06-06):** built as a **drop-in recurrent backbone** for the verified S5-RVT/RVT baseline (`external/ssms_event_cameras/RVT`), reusing its **YOLO-PAFPN** neck, **YOLOX** head, losses, Gen1 data pipeline, Prophesee evaluation, and PyTorch-Lightning training **unmodified** (Hydra-config selectable). Only the backbone is new ⇒ any mAP delta vs S5-RVT is attributable solely to the spatial/temporal swap (controlled experiment). *Supersedes the earlier standalone pure-PyTorch sketch in `code/ssm_event_detection/`.*
+* **Task:** Object detection (cars, pedestrians) on Prophesee Gen1; 10-bin voxel grid input `(10, 240, 304)`, zero-padded by the pipeline to `(10, 256, 320)` → feature maps 32×40 / 16×20 / 8×10 (strides 8/16/32).
+* **Architectures** — temporal **Mamba interleaved per backbone stage** (sequence axis = **time**, per spatial location; **causal**; state carried across clips via the baseline `LstmStates` contract — mirrors `RNNDetectorStage`):
+    1.  `EventSSMDetector` (CNN–SSM hybrid): 4 ResNet-18 conv stages, each followed by a causal **Mamba** block (d_model = stage dim 64/128/256/512). ResNet conv1 adapted 3→10 ch (avg-projection init), ImageNet-pretrained.
+    2.  `PureSSMDetector` (pure SSM): same skeleton with **BiMamba spatial** replacing the ResNet conv at each stage. Second model; build after EventSSMDetector.
+* **Neck / Head / Loss (reused, unmodified):** YOLO-PAFPN → YOLOX decoupled head; **BCE (cls+obj) + IoU loss `1−iou²` (×5) + SimOTA** assignment. *(Not FCOS/Focal/GIoU — corrected after the Stage 2 code audit.)*
+* **Mamba kernels:** official **`mamba-ssm==2.3.2.post1` + `causal-conv1d==1.6.2.post1`**, built for Blackwell `sm_120`. Install **`--no-deps --no-build-isolation`** only (a plain `pip install` upgrades torch→2.12/CUDA→13 and breaks the cu128 stack). Forward + bf16 autocast + backward **verified 2026-06-06**.
+* **Status:** Stages 0–3 ✅. Stage 0 (design lock), 1 (blueprint + interfaces), 2 (codebase audit + Mamba/Blackwell env), and **Stage 3 — the `resnet_mamba` interleaved backbone is built & verified**: 12/12 unit tests pass, integration `ResNetMambaBackbone → RVT PAFPN → YOLOX head → (B,1680,7)`, per-unit visual proofs in `code/event_ssm/proofs/out/`. Code is the tracked package **`code/event_ssm/`** (built via the superpowers brainstorm→plan→subagent→review workflow; specs/plans in `docs/superpowers/`).
+* **Temporal scan is dual-path** (spike-validated, `temporal/_scan.py`): training = trainable per-clip parallel scan; eval/inference = stateful step loop (carries cross-clip memory). **Before Stage 6 training, resolve train/eval state parity** — implement the β custom differentiable scan (full TBPTT) or eval without state. See Stage-3 spec §9.
+* Other specs: `design_specification.md`, `architecture_blueprint.md`, `codebase_audit.md`, `yolox_head_interface.md`. **Next: Stage 5/6 — smoke test + short training.** Not yet trained.
 
 ## 💻 Hardware & Infrastructure
 * **Local (primary):** RTX 5070 Ti workstation `GhostMachine` (Ubuntu 24.04, CUDA/Blackwell, cu128). This is the main dev/eval machine.
