@@ -1,0 +1,15 @@
+# EventSSMDetector backbone selection (reference config; full Hydra wiring in Stage 6).
+# Mirrors RVT's gen1 model config but selects our interleaved ResNet+Mamba backbone.
+backbone:
+  name: ResNetMamba
+  input_channels: 10
+  pretrained: true
+  d_state: 16
+  num_layers_per_stage: 1
+fpn:
+  name: PAFPN
+  in_stages: [2, 3, 4]
+  depth: 0.33
+head:
+  name: YoloX
+  num_classes: 2
