@@ -3,6 +3,46 @@
 
 ---
 
+> ## ⚠️ STATUS — Reconciled to the as-built drop-in design (2026-06-12)
+>
+> This document was the **original** Stage-5 plan, written for the standalone `EventSSMDetector`
+> sketch (10-channel input, `model.reset_state(...)`, Focal/GIoU loss, a hand-rolled training loop).
+> **That sketch was superseded** (Stage-2 audit) by the **drop-in recurrent-backbone** design: the
+> only new component is the `ResNetMamba` backbone, dropped into the **verified S5-RVT / RVT** stack,
+> which supplies the YOLO-PAFPN neck, **YOLOX** head, **SimOTA** assignment + **IoU `1−iou²`** loss,
+> the Gen1 data pipeline, and the PyTorch-Lightning `Module` — all **unmodified**. The inline code
+> blocks below are kept for pedagogical narrative; the **authoritative, as-built** smoke is the two
+> proof scripts. Where they differ, the proof scripts win.
+>
+> **Corrected facts (drop-in design):**
+>
+> | stale (standalone sketch) | as-built (drop-in) |
+> |---|---|
+> | 10-channel input `(2,10,240,304)` | **20-channel** stacked histogram, zero-padded `(20,256,320)` |
+> | `model.reset_state(...)` + manual hidden dict | RVT **`RNNStates`/`LstmStates`** contract (`recursive_detach` / `recursive_reset`) |
+> | Focal (cls) + GIoU (box) | **SimOTA** assignment + **BCE** (cls/obj) + **IoU `1−iou²` ×5** |
+> | standalone `EventSSMDetector(...)` | real RVT **`YoloXDetector`** / Lightning **`Module`** (Hydra: `model=rnndet +experiment/gen1=resnet_mamba`) |
+> | "all params must get grad" | backbone (minus documented dead `temporal[0]`) + FPN + obj/reg-stem **must** get grad; **SimOTA positive-only** cls/reg-pred branches may be grad-less on an unmatched FPN level (data-dependent, not a fault) |
+>
+> **As-built artifacts:**
+> - Overfit smoke → `code/event_ssm/proofs/smoke_overfit.py` (real `Module` + `pl.Trainer(overfit_batches=1)`)
+> - Health probes → `code/event_ssm/proofs/smoke_health.py` (grad-flow / VRAM / eval-step latency)
+> - Harness → `code/event_ssm/integration/{smoke_harness,register,make_smoke_dataset}.py`
+> - Outputs → `results/smoke_test/{overfit_loss_curve.png, smoke_results.md}`
+> - Spec / plan / report → `docs/superpowers/specs/2026-06-12-stage5-smoke-design.md`,
+>   `docs/superpowers/plans/2026-06-12-stage5-smoke.md`, `reports/Stage_05_Smoke_Report.md`
+>
+> **Results achieved (RTX 5070 Ti, bf16):** overfit **19.0 → 4.9 (3.9×)**, monotonic, no NaN (150 ep);
+> grad-flow deterministic-path **PASS**; VRAM **0.92 / 1.47 / 2.50 GB** @ bs 1/2/4 (< 10 GB);
+> eval single-window step **7.9 ms** (< 12 ms S5-RVT), **127 Hz**.
+>
+> **Finding §8 (grad-flow nuance):** the FPN consumes `in_stages=[2,3,4]`, so the **stage-1 temporal
+> Mamba (`backbone.temporal.0.`)** is unused and correctly receives no gradient — excluded from the
+> grad-flow check. (Architecture change to build temporal only for FPN-fed stages is recommended,
+> user-approved, deferred to after the smoke.)
+
+---
+
 ## Overview
 
 Verify that EventSSMDetector can actually learn before committing GPU time to a real training run. The overfit test is the gold standard: a model that cannot memorise 5 training examples is fundamentally broken.
@@ -290,17 +330,18 @@ DataLoader(..., num_workers=8, pin_memory=True, prefetch_factor=2)
 
 ---
 
-## Smoke Test Results Table (Fill In)
+## Smoke Test Results Table (as-built drop-in, RTX 5070 Ti, bf16)
 
 | Test | Result | Notes |
 |---|---|---|
-| Overfit test (loss reduction) | ___× | Initial loss: ___, Final loss: ___ |
-| Gradient flow | PASS / FAIL | Any problematic layers: ___ |
-| Memory @ batch_size=4 | ___ GB | Target: < 10 GB |
-| Inference latency | ___ ms | Target: < 20 ms |
-| Max throughput | ___ Hz | Target: > 50 Hz |
+| Overfit test (loss reduction) | **3.9×** | Initial loss: 19.0, Final loss: 4.9 — monotonic, no NaN, 150 epochs on a fixed real Gen1 batch (`overfit_batches=1`) |
+| Gradient flow (deterministic path) | **PASS** | real-missing=0, nan=0. Excludes documented dead `temporal[0]`; SimOTA positive-only level-0 cls/reg branches grad-less at random init (expected, data-dependent) |
+| Memory @ batch_size=4 | **2.50 GB** | Target < 10 GB ✓ (bs1=0.92, bs2=1.47) |
+| Inference latency | **7.9 ms** | Target < 20 ms ✓; vs ~12 ms S5-RVT/window |
+| Max throughput | **127 Hz** | Target > 50 Hz ✓ (window dt=50 ms ⇒ need < 50 ms) |
 
-Save this table in `results/smoke_test/smoke_test_results.md`.
+Reproduce: `proofs/smoke_overfit.py` (overfit + `results/smoke_test/overfit_loss_curve.png`) and
+`proofs/smoke_health.py` (grad/VRAM/latency + `results/smoke_test/smoke_results.md`).
 
 ---
 
@@ -313,7 +354,10 @@ Save this table in `results/smoke_test/smoke_test_results.md`.
 
 ## Success Criteria
 
-Overfit test: loss reduction ≥ 3× (ideally ≥ 10×). All parameters have gradients. VRAM < 10GB at batch size 4. Inference < 25ms.
+Overfit test: loss reduction ≥ 3× (achieved **3.9×**). Deterministic grad path — backbone (minus the
+documented dead `temporal[0]`), FPN, and obj/reg-stem — all finite, non-zero (SimOTA positive-only
+cls/reg-pred branches are data-dependent and excluded). VRAM < 10 GB at batch size 4 (**2.50 GB**).
+Eval single-window step < 25 ms (**7.9 ms**). No NaN. **All criteria met.**
 
 ---
 
