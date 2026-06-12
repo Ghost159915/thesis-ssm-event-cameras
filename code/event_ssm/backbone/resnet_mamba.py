@@ -42,7 +42,7 @@ class ResNetMambaBackbone(nn.Module):
             seq = fmap.reshape(L, B, c, h, w)
             seq, dims = MambaTemporalBlock.fold(seq)        # (B*h*w, L, c)
             seq, st = self.temporal[i](seq, prev_states[i])
-            out = MambaTemporalBlock.unfold(seq, dims).reshape(L * B, c, h, w)
+            out = MambaTemporalBlock.unfold(seq, dims)      # (L, B, c, h, w) -- RVT indexes v[tidx]
             feats[stage] = out
             new_states.append(st)
         return feats, new_states
