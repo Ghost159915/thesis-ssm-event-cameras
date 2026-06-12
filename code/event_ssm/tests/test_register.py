@@ -32,3 +32,14 @@ def test_register_patches_detector_binding():
                             "pretrained": False, "num_layers_per_stage": 1})
     bb = det.build_recurrent_backbone(cfg)
     assert isinstance(bb, ResNetMambaBackbone)
+
+def test_resnet_mamba_config_present_and_valid():
+    """Canonical config is tracked in the thesis package (external/ is gitignored)."""
+    import pathlib
+    from omegaconf import OmegaConf
+    cfg_path = pathlib.Path(__file__).resolve().parents[1] / "configs/resnet_mamba_yolox/default.yaml"
+    cfg = OmegaConf.load(cfg_path)
+    assert cfg.model.backbone.name == "ResNetMamba"
+    assert cfg.model.backbone.input_channels == 20
+    assert list(cfg.model.fpn.in_stages) == [2, 3, 4]
+    assert cfg.model.head.name == "YoloX"
