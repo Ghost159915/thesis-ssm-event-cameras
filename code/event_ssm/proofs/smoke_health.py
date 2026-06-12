@@ -63,14 +63,21 @@ sel = {k: v[-1] for k, v in feats.items() if k in (2, 3, 4)}     # last window: 
 _, losses = model.forward_detect(backbone_features=sel, targets=tgt)
 _loss(losses).backward()
 real_missing, head_pos_missing, nan = [], [], []
+n_pos_only = 0
 for n_, p in model.named_parameters():
     if not p.requires_grad or n_.startswith(EXCLUDE):
         continue
+    if n_.startswith(HEAD_POS_ONLY):
+        n_pos_only += 1
     if p.grad is not None and not torch.isfinite(p.grad).all():
         nan.append(n_)
     if p.grad is None or p.grad.abs().max() == 0:
         (head_pos_missing if n_.startswith(HEAD_POS_ONLY) else real_missing).append(n_)
 grad_ok = not real_missing and not nan      # positive-only head branches may legitimately be empty
+# Robustness (not RNG-fragile): tolerate *some* positive-only branches being grad-less on an
+# unmatched FPN level, but require at least one to be alive -- if EVERY positive-only branch is
+# grad-less, the cls/box positive path is genuinely broken (no level ever matched), which IS a fault.
+pos_path_alive = len(head_pos_missing) < n_pos_only
 model.zero_grad(set_to_none=True)
 
 # ---------- VRAM sweep ----------
@@ -112,8 +119,8 @@ lines = [
     "| test | result | notes |", "|---|---|---|",
     f"| gradient flow (deterministic path) | {'PASS' if grad_ok else 'FAIL'} | "
     f"real-missing={len(real_missing)} nan={len(nan)} (excl. stage-1 temporal[0], unused by FPN) |",
-    f"| SimOTA pos-only head branches w/o grad | {len(head_pos_missing)} | "
-    f"expected (data-dependent per-level matching), not a fault |",
+    f"| SimOTA pos-only head branches w/o grad | {len(head_pos_missing)}/{n_pos_only} | "
+    f"expected (data-dependent per-level matching); >=1 alive ({'PASS' if pos_path_alive else 'FAIL'}) |",
     f"| VRAM @ bs1/bs2/bs4 | {vram[1]:.2f}/{vram[2]:.2f}/{vram[4]:.2f} GB | target <10GB @ bs4 |",
     f"| eval step latency | {mean:.2f} +/- {std:.2f} ms | S5-RVT ~12 ms/window |",
     f"| max throughput | {1000/mean:.0f} Hz | window dt=50ms -> need <50ms |",
@@ -125,4 +132,6 @@ if nan: lines.append(f"\nNAN GRAD ({len(nan)}): " + ", ".join(nan[:10]))
 (OUT / "smoke_results.md").write_text("\n".join(lines) + "\n")
 print("\n".join(lines)); print("wrote", OUT / "smoke_results.md")
 assert grad_ok, f"grad-flow FAIL (deterministic path): real_missing={real_missing[:5]} nan={nan[:5]}"
+assert pos_path_alive, (f"SimOTA positive path broken: all {n_pos_only} positive-only head branches "
+                        f"grad-less (no FPN level matched a positive)")
 assert vram[4] < 10.0, f"VRAM @ bs4 = {vram[4]:.2f}GB exceeds 10GB"

@@ -38,6 +38,7 @@ def register_backbone_builder():
 
 
 def register_config_modifier():
+    import os
     import sys
     import config.modifier as mod
 
@@ -52,6 +53,12 @@ def register_config_modifier():
         mdl = config.model
         if mdl.get("name") == "rnndet" and mdl.backbone.get("name") == "ResNetMamba":
             with open_dict(config):
+                # Mirror the stock modifier's SLURM bookkeeping (it sets this BEFORE the model
+                # dispatch, so our early-return branch must replicate it -- Stage-6 SLURM logging
+                # and checkpoint naming read config.slurm_job_id).
+                slurm_job_id = os.environ.get("SLURM_JOB_ID")
+                if slurm_job_id:
+                    config.slurm_job_id = int(slurm_job_id)
                 dataset_hw = get_dataloading_hw(dataset_config=config.dataset)
                 # ResNet-18 downsamples by 32 at the deepest stage -> H,W must be multiples of 32
                 # (Gen1 240x304 -> 256x320). Mirrors the stock MaxViTRNN in_res_hw logic.

@@ -43,3 +43,17 @@ def test_resnet_mamba_config_present_and_valid():
     assert cfg.model.backbone.input_channels == 20
     assert list(cfg.model.fpn.in_stages) == [2, 3, 4]
     assert cfg.model.head.name == "YoloX"
+
+
+def test_config_modifier_injects_hw_and_num_classes():
+    """The patched dynamically_modify_train_config must, for the ResNetMamba backbone on gen1, set
+    backbone.in_res_hw to the multiple-of-32 padded resolution (240x304 -> 256x320) and head.num_classes
+    to 2 -- the Stage-6 wiring seam the stock modifier (MaxViTRNN-only) would NotImplementedError on.
+    Composes the real RVT train config (CPU; no GPU/forward), so it exercises the full Hydra path."""
+    from event_ssm.integration.smoke_harness import compose_smoke_config
+    cfg = compose_smoke_config(max_epochs=1, batch_size=2)
+    assert cfg.model.name == "rnndet"
+    assert cfg.model.backbone.name == "ResNetMamba"
+    assert cfg.model.backbone.input_channels == 20
+    assert tuple(cfg.model.backbone.in_res_hw) == (256, 320)   # 240x304 padded up to /32
+    assert cfg.model.head.num_classes == 2                      # gen1 -> 2 (cars, pedestrians)

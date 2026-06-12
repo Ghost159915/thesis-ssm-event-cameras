@@ -32,9 +32,10 @@
 > - Spec / plan / report → `docs/superpowers/specs/2026-06-12-stage5-smoke-design.md`,
 >   `docs/superpowers/plans/2026-06-12-stage5-smoke.md`, `reports/Stage_05_Smoke_Report.md`
 >
-> **Results achieved (RTX 5070 Ti, bf16):** overfit **19.0 → 4.9 (3.9×)**, monotonic, no NaN (150 ep);
-> grad-flow deterministic-path **PASS**; VRAM **0.92 / 1.47 / 2.50 GB** @ bs 1/2/4 (< 10 GB);
-> eval single-window step **7.9 ms** (< 12 ms S5-RVT), **127 Hz**.
+> **Results achieved (RTX 5070 Ti, bf16):** overfit clears the ≥3× gate with margin — **≈4–5×
+> across runs** (stochastic init, no seed; e.g. 23.4 → 4.7 = 5.0×, and 19.0 → 4.9 = 3.9×), monotonic,
+> no NaN (150 ep); grad-flow deterministic-path **PASS**; VRAM **0.92 / 1.47 / 2.50 GB** @ bs 1/2/4
+> (< 10 GB); eval single-window step **≈8 ms** (< 12 ms S5-RVT), **≈125 Hz**.
 >
 > **Finding §8 (grad-flow nuance):** the FPN consumes `in_stages=[2,3,4]`, so the **stage-1 temporal
 > Mamba (`backbone.temporal.0.`)** is unused and correctly receives no gradient — excluded from the
@@ -334,11 +335,11 @@ DataLoader(..., num_workers=8, pin_memory=True, prefetch_factor=2)
 
 | Test | Result | Notes |
 |---|---|---|
-| Overfit test (loss reduction) | **3.9×** | Initial loss: 19.0, Final loss: 4.9 — monotonic, no NaN, 150 epochs on a fixed real Gen1 batch (`overfit_batches=1`) |
-| Gradient flow (deterministic path) | **PASS** | real-missing=0, nan=0. Excludes documented dead `temporal[0]`; SimOTA positive-only level-0 cls/reg branches grad-less at random init (expected, data-dependent) |
+| Overfit test (loss reduction) | **≈4–5×** | e.g. 23.4 → 4.7 (5.0×); 19.0 → 4.9 (3.9×) — monotonic, no NaN, 150 epochs on a fixed real Gen1 batch (`overfit_batches=1`). Varies with stochastic init; always ≥3× |
+| Gradient flow (deterministic path) | **PASS** | real-missing=0, nan=0. Excludes documented dead `temporal[0]`; SimOTA positive-only cls/reg branches grad-less on an unmatched FPN level (0–10 of 30 across runs, data-dependent; ≥1 alive enforced) |
 | Memory @ batch_size=4 | **2.50 GB** | Target < 10 GB ✓ (bs1=0.92, bs2=1.47) |
-| Inference latency | **7.9 ms** | Target < 20 ms ✓; vs ~12 ms S5-RVT/window |
-| Max throughput | **127 Hz** | Target > 50 Hz ✓ (window dt=50 ms ⇒ need < 50 ms) |
+| Inference latency | **≈8 ms** | Target < 20 ms ✓; vs ~12 ms S5-RVT/window |
+| Max throughput | **≈125 Hz** | Target > 50 Hz ✓ (window dt=50 ms ⇒ need < 50 ms) |
 
 Reproduce: `proofs/smoke_overfit.py` (overfit + `results/smoke_test/overfit_loss_curve.png`) and
 `proofs/smoke_health.py` (grad/VRAM/latency + `results/smoke_test/smoke_results.md`).
@@ -354,10 +355,10 @@ Reproduce: `proofs/smoke_overfit.py` (overfit + `results/smoke_test/overfit_loss
 
 ## Success Criteria
 
-Overfit test: loss reduction ≥ 3× (achieved **3.9×**). Deterministic grad path — backbone (minus the
-documented dead `temporal[0]`), FPN, and obj/reg-stem — all finite, non-zero (SimOTA positive-only
-cls/reg-pred branches are data-dependent and excluded). VRAM < 10 GB at batch size 4 (**2.50 GB**).
-Eval single-window step < 25 ms (**7.9 ms**). No NaN. **All criteria met.**
+Overfit test: loss reduction ≥ 3× (achieved **≈4–5×** across runs). Deterministic grad path — backbone
+(minus the documented dead `temporal[0]`), FPN, and obj/reg-stem — all finite, non-zero (SimOTA
+positive-only cls/reg-pred branches are data-dependent and excluded; ≥1 alive enforced). VRAM < 10 GB
+at batch size 4 (**2.50 GB**). Eval single-window step < 25 ms (**≈8 ms**). No NaN. **All criteria met.**
 
 ---
 

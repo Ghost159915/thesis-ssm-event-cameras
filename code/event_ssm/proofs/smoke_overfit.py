@@ -15,7 +15,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-MAX_EPOCHS = int(sys.argv[1]) if len(sys.argv) > 1 else 50
+MAX_EPOCHS = int(sys.argv[1]) if len(sys.argv) > 1 else 150   # 150 reliably reaches >=3x (see report)
 OUT = REPO / "results/smoke_test"; OUT.mkdir(parents=True, exist_ok=True)
 
 build_smoke_dataset()                                  # ensure the tiny dataset exists
@@ -69,3 +69,6 @@ plt.tight_layout(); plt.savefig(OUT / "overfit_loss_curve.png", dpi=120)
 print(f"initial={initial:.3f} final={final:.3f} reduction={reduction:.1f}x")
 print("wrote", OUT / "overfit_loss_curve.png")
 print("PASS" if reduction >= 3.0 else "MARGINAL (<3x) -- see report")
+# Gate (spec Unit 3 / plan): a smoke that cannot overfit a fixed real batch >=3x is a learning
+# regression -- fail loudly so automation/CI catches it (the curve + numbers are still written above).
+assert reduction >= 3.0, f"overfit reduction {reduction:.1f}x < 3x (no-learning regression)"
