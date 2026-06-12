@@ -62,7 +62,10 @@ bb_params = [p for p in model.backbone.parameters() if p.requires_grad]
 present = [p.grad is not None for p in bb_params]
 finite = [bool(torch.isfinite(p.grad).all()) for p in bb_params if p.grad is not None]
 cover = sum(present) / len(present)
-assert all(finite) and cover > 0.5, f"grad-flow unhealthy: cover={cover:.0%}, all-finite={all(finite)}"
+# Tight bound: only the documented stage-1 temporal side-branch (~9% of params) is legitimately
+# grad-less, so healthy coverage is ~0.91. A regression that disconnected any FPN-fed stage would
+# drop well below 0.85 -> caught. (A loose 0.5 would miss an entire-stage break.)
+assert all(finite) and cover > 0.85, f"grad-flow unhealthy: cover={cover:.0%}, all-finite={all(finite)}"
 
 # ---- EVAL step (carry + reset state, RVT-style) ----
 model.eval()

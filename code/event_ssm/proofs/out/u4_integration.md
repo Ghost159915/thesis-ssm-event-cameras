@@ -9,7 +9,7 @@ drop-in `ResNetMamba` backbone; one synthetic train step (+backward) and one eva
 | params total | 19.26 M |
 | params backbone / fpn / head | 13.51 / 3.86 / 1.89 M |
 | train feats[2] (L,B,c,h,w) | (5, 2, 128, 32, 40) |
-| train loss (finite) | 35.0125 |
+| train loss (finite) | 27.7334 |
 | backbone grad coverage | 91% (all finite; stage-1 temporal unused by FPN) |
 | eval output (B, anchors, 5+ncls) | (2, 1680, 7) |
 | train step | PASS |
