@@ -35,6 +35,23 @@ def test_state_shapes():
     assert ssm_state.shape == (8, layer.nheads, 64, 64)           # (N, nheads, headdim, d_state)
 
 
+def test_carry_through_short_chunks():
+    """Carry must be correct even for chunks shorter than d_conv-1 (e.g. L=1 streaming inference)."""
+    torch.manual_seed(0)
+    layer = Mamba2(d_model=128, d_state=64, d_conv=4, expand=2, headdim=64).cuda().float().eval()
+    N, L = 8, 12
+    x = torch.randn(N, L, 128, device="cuda")
+    with torch.no_grad():
+        y_full, _ = mamba2_scan_time(layer, x, None)
+        outs, st, i = [], None, 0
+        for size in (5, 1, 1, 5):                       # includes L=1 chunks (< d_conv-1=3)
+            y, st = mamba2_scan_time(layer, x[:, i:i + size], st)
+            outs.append(y)
+            i += size
+    y_split = torch.cat(outs, dim=1)
+    assert (y_full - y_split).abs().max().item() < 2e-3
+
+
 def test_gradient_flows():
     """The unified path must be trainable (the whole point of replacing the dual-path)."""
     layer = Mamba2(d_model=128, d_state=64, d_conv=4, expand=2, headdim=64).cuda().float().train()

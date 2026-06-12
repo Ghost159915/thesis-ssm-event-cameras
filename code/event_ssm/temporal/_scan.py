@@ -33,7 +33,6 @@ def mamba2_scan_time(layer: Mamba2, x: torch.Tensor, state=None):
         f"got d_ssm={layer.d_ssm} d_inner={layer.d_inner}")
     N, L, _ = x.shape
     d_ssm, d_state, d_conv = layer.d_ssm, layer.d_state, layer.d_conv
-    assert L >= d_conv - 1, f"L={L} < d_conv-1={d_conv - 1}; sub-sequence too short for conv-state carry"
     conv_dim = d_ssm + 2 * layer.ngroups * d_state
     prev_conv, prev_ssm = (None, None) if state is None else state
 
@@ -44,9 +43,11 @@ def mamba2_scan_time(layer: Mamba2, x: torch.Tensor, state=None):
     if prev_conv is None:
         prev_conv = xBC.new_zeros(N, d_conv - 1, conv_dim)           # zero left-pad == full-scan t=0 behaviour
     xBC_ext = torch.cat([prev_conv, xBC], dim=1)                     # (N, d_conv-1+L, conv_dim)
-    # detach: TBPTT boundary -- the carried context is a constant in the next window's graph,
-    # gradients within the current window still flow through xBC (matches RVT's RNNStates.detach).
-    new_conv = xBC[:, -(d_conv - 1):].detach()                      # carry last d_conv-1 input frames
+    # carry the last d_conv-1 frames of the FULL history (prev context + this window) so the carry is
+    # correct for any L>=1, incl. L=1 streaming. detach: TBPTT boundary -- the carried context is a
+    # constant in the next window's graph; gradients within this window still flow through xBC
+    # (matches RVT's RNNStates.detach).
+    new_conv = xBC_ext[:, -(d_conv - 1):].detach()
     xBC_t = rearrange(xBC_ext, "n l d -> n d l")
     if causal_conv1d_fn is not None:
         conv_out = causal_conv1d_fn(
