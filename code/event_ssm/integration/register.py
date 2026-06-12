@@ -27,3 +27,7 @@ def register_resnet_mamba():
 
     patched._resnet_mamba_registered = True
     rb.build_recurrent_backbone = patched
+    # YoloXDetector did `from ...recurrent_backbone import build_recurrent_backbone` (a local
+    # name bind), so patch that module's name too -- robust to import order.
+    import models.detection.yolox_extension.models.detector as det
+    det.build_recurrent_backbone = patched
