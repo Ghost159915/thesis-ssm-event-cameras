@@ -11,6 +11,13 @@ def setup_paths():
     for p in (REPO / "code", RVT):
         if str(p) not in sys.path:
             sys.path.insert(0, str(p))
+    # The Gen1 stacked-histogram H5 files are blosc-compressed; importing hdf5plugin registers the
+    # decompression plugin path (train.py does this at import). Without it h5py raises
+    # "can't open directory (/usr/local/lib/plugin)" on read.
+    try:
+        import hdf5plugin  # noqa: F401
+    except ImportError:
+        pass
 
 
 def register():
