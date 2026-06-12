@@ -35,3 +35,13 @@ def test_block_split_equals_full():
         y1, s1 = blk(x[:, :5], None)
         y2, _ = blk(x[:, 5:], s1)
     assert (y_full - torch.cat([y1, y2], 1)).abs().max().item() < 3e-3
+
+
+def test_block_bf16_autocast():
+    """The block must run under bf16 autocast (the Stage-6 training precision)."""
+    blk = MambaTemporalBlock(d_model=128, num_layers=1).cuda().float()
+    x = torch.randn(8, 6, 128, device="cuda")
+    with torch.autocast("cuda", dtype=torch.bfloat16):
+        y, state = blk(x, None)
+    assert y.shape == (8, 6, 128)
+    assert torch.isfinite(y.float()).all()
