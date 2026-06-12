@@ -33,3 +33,14 @@ def test_state_shapes():
         _, (conv_state, ssm_state) = mamba2_scan_time(layer, x, None)
     assert conv_state.shape == (8, 4 - 1, layer.d_ssm + 2 * 64)   # (N, d_conv-1, conv_dim)
     assert ssm_state.shape == (8, layer.nheads, 64, 64)           # (N, nheads, headdim, d_state)
+
+
+def test_gradient_flows():
+    """The unified path must be trainable (the whole point of replacing the dual-path)."""
+    layer = Mamba2(d_model=128, d_state=64, d_conv=4, expand=2, headdim=64).cuda().float().train()
+    x = torch.randn(4, 8, 128, device="cuda", requires_grad=True)
+    y, _ = mamba2_scan_time(layer, x, None)
+    y.sum().backward()
+    assert x.grad is not None and torch.isfinite(x.grad).all()
+    assert layer.in_proj.weight.grad is not None
+    assert layer.out_proj.weight.grad is not None

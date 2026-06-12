@@ -28,8 +28,12 @@ def mamba2_scan_time(layer: Mamba2, x: torch.Tensor, state=None):
     Carries (conv_state, ssm_state) across calls in BOTH train and eval.
     Returns (y:(N,L,C), (conv_state, ssm_state)); the returned state is detached (TBPTT boundary)."""
     assert layer.ngroups == 1, "mamba2_scan_time assumes ngroups=1"
+    assert layer.d_ssm == layer.d_inner, (
+        f"mamba2_scan_time assumes d_ssm==d_inner (no partial-SSM/gated-MLP split); "
+        f"got d_ssm={layer.d_ssm} d_inner={layer.d_inner}")
     N, L, _ = x.shape
     d_ssm, d_state, d_conv = layer.d_ssm, layer.d_state, layer.d_conv
+    assert L >= d_conv - 1, f"L={L} < d_conv-1={d_conv - 1}; sub-sequence too short for conv-state carry"
     conv_dim = d_ssm + 2 * layer.ngroups * d_state
     prev_conv, prev_ssm = (None, None) if state is None else state
 
@@ -40,6 +44,8 @@ def mamba2_scan_time(layer: Mamba2, x: torch.Tensor, state=None):
     if prev_conv is None:
         prev_conv = xBC.new_zeros(N, d_conv - 1, conv_dim)           # zero left-pad == full-scan t=0 behaviour
     xBC_ext = torch.cat([prev_conv, xBC], dim=1)                     # (N, d_conv-1+L, conv_dim)
+    # detach: TBPTT boundary -- the carried context is a constant in the next window's graph,
+    # gradients within the current window still flow through xBC (matches RVT's RNNStates.detach).
     new_conv = xBC[:, -(d_conv - 1):].detach()                      # carry last d_conv-1 input frames
     xBC_t = rearrange(xBC_ext, "n l d -> n d l")
     if causal_conv1d_fn is not None:
