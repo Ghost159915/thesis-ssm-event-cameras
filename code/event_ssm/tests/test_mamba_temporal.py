@@ -23,8 +23,10 @@ def test_block_forward_shape_and_state():
         y, state = blk(x, None)
     assert y.shape == (8, 6, 128)
     assert len(state) == 1                                   # one layer -> one (conv,ssm) tuple
+    layer0 = blk.layers[0]
     conv_state, ssm_state = state[0]
-    assert ssm_state.shape == (8, blk.layers[0].nheads, 64, 64)
+    assert ssm_state.shape == (8, layer0.nheads, layer0.headdim, layer0.d_state)
+    assert conv_state.shape == (8, layer0.d_conv - 1, layer0.d_ssm + 2 * layer0.d_state)
 
 
 def test_block_split_equals_full():
@@ -34,6 +36,7 @@ def test_block_split_equals_full():
         y_full, _ = blk(x, None)
         y1, s1 = blk(x[:, :5], None)
         y2, _ = blk(x[:, 5:], s1)
+    assert len(s1) == 2                                      # one (conv,ssm) state per layer
     assert (y_full - torch.cat([y1, y2], 1)).abs().max().item() < 3e-3
 
 

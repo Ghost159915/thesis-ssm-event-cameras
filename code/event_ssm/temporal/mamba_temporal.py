@@ -13,6 +13,8 @@ class MambaTemporalBlock(nn.Module):
     def __init__(self, d_model: int, d_state: int = 64, d_conv: int = 4,
                  expand: int = 2, headdim: int = 64, num_layers: int = 1):
         super().__init__()
+        assert (d_model * expand) % headdim == 0, (
+            f"d_model*expand ({d_model * expand}) must be divisible by headdim ({headdim})")
         self.layers = nn.ModuleList(
             Mamba2(d_model=d_model, d_state=d_state, d_conv=d_conv, expand=expand, headdim=headdim)
             for _ in range(num_layers)
@@ -21,6 +23,8 @@ class MambaTemporalBlock(nn.Module):
     def forward(self, x, state=None):
         if state is None:
             state = [None] * len(self.layers)
+        assert len(state) == len(self.layers), \
+            f"state length {len(state)} != num_layers {len(self.layers)}"
         new_state = []
         for layer, st in zip(self.layers, state):
             x, st2 = mamba2_scan_time(layer, x, st)
