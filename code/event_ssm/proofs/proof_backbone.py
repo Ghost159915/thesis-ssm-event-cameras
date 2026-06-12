@@ -1,4 +1,5 @@
-"""Visual proof for Unit 3: end-to-end shape trace + per-stage state presence."""
+"""Visual proof for Unit 3: end-to-end shape trace + per-stage state presence.
+Per-stage feature is (L, B, c, h, w) (RVT indexes v[tidx]); states are dim0=B, None-free."""
 import torch
 from event_ssm.backbone.resnet_mamba import ResNetMambaBackbone
 m = ResNetMambaBackbone(in_channels=20, pretrained=False).cuda().eval()

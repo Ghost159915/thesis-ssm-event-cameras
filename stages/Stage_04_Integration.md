@@ -1,9 +1,24 @@
 # Stage 4 — Integration: Drop-in Backbone into RVT
 **EventSSMDetector | Thesis B | MMAN4952 | UNSW Sydney**
 
-> **STATUS (2026-06-12):** Module-level integration **verified** — `ResNetMambaBackbone → RVT YOLO-PAFPN → YOLOX head
-> → (B, 1680, 7)` (`code/event_ssm/tests/test_resnet_mamba.py::test_integration_with_pafpn_head`). The remaining
-> Stage-4 work is the **Hydra/Lightning wiring** so the full RVT `YoloXDetector` builds and steps with our backbone.
+> **STATUS (2026-06-12): COMPLETE.** The unmodified RVT `YoloXDetector` (PAFPN + YOLOX head + SimOTA losses) assembles
+> with the drop-in `ResNetMamba` backbone and runs **one train step (+backward) and one eval step** (with RVT
+> `RNNStates.recursive_detach`/`recursive_reset`) on a synthetic `(L=5, B=2, 20, 256, 320)` clip — proof
+> `code/event_ssm/proofs/proof_integration.py` → `proofs/out/u4_integration.md` (params **19.26M**, train loss finite,
+> eval output `(2, 1680, 7)`). The backbone is now **RVT-contract-compatible**: features `(L, B, c, h, w)` (RVT indexes
+> `v[tidx]`) and `None`-free states with batch as **dim 0** (`recursive_detach`/`recursive_reset` safe). Selected via the
+> tracked Hydra config `code/event_ssm/configs/resnet_mamba_yolox/default.yaml` (symlinked into the RVT tree). Module-level
+> integration test `test_integration_with_pafpn_head` stays green; full suite 17/17. β (cross-clip *training* state) is
+> still deferred to **Stage 6** (train zero-inits per clip via a `(B,1)` placeholder).
+>
+> **Finding (records a divergence from RVT):** the spatial ResNet runs as one forward returning all 4 stage maps, and
+> each temporal Mamba is a **parallel side-branch** (`feats[stage] = temporal[i](spat[stage])`); the temporal output does
+> **not** feed the next spatial stage. Because the FPN's `in_stages=[2,3,4]` drops `feats[1]`, the **stage-1 temporal
+> Mamba (`temporal[0]`) receives no gradient** (~9% of backbone params, dead in the detection path). In RVT the stage-1
+> recurrent module feeds forward and is used. Options to revisit (Stage 5/6): (a) only build temporal blocks for
+> FPN-consumed stages, or (b) make interleaving sequential (temporal output → next stage's spatial input). Not changed
+> here to avoid disturbing verified Stage-3 code or the parameter contract.
+>
 > This document was reconciled to the **drop-in** approach (it previously described a standalone `EventSSMDetector`
 > class that built its own FPN/head/train-loop — superseded; that would duplicate verified baseline code and weaken
 > the controlled comparison).
@@ -44,8 +59,8 @@ RVT treats the backbone as a **stateful** module. `ResNetMambaBackbone` implemen
 ```
 forward(x, prev_states=None, token_mask=None, train_step=True)
     x         : (L, B, 20, H, W)   # L = time/windows, 20 = stacked-histogram channels
-    prev_states : list[per-stage state] or None
-    returns   : (features: {stage: (L*B, c, h, w)},  new_states: list[per-stage state])
+    prev_states : list[per-stage state] or None (dim0=B, None-free)
+    returns   : (features: {stage: (L, B, c, h, w)},  new_states: list[per-stage state])
 ```
 
 - **Input representation:** 20 channels (`stacked_histogram dt=50 nbins=10`, 2 polarities × 10 bins) — **must match the
@@ -99,7 +114,9 @@ YOLOXHead(num_classes=2, strides=(8,16,32), in_channels=(128,256,512))
 ```
 
 This proves the reused RVT neck + head accept our backbone's stage outputs. The **full-model** forward/backward through
-the real LightningModule (loss + SimOTA) is **Stage 5**.
+the assembled `YoloXDetector` (loss + SimOTA, +backward, + eval state detach/reset) is now done in Stage 4
+(`proof_integration.py`). What remains for **Stage 5** is the real **PyTorch-Lightning module** stepping on **real Gen1
+data** (tiny-batch overfit), not synthetic tensors.
 
 ---
 
