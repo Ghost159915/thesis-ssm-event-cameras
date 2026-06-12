@@ -2,7 +2,7 @@
 # Mirrors RVT's gen1 model config but selects our interleaved ResNet+Mamba backbone.
 backbone:
   name: ResNetMamba
-  input_channels: 10
+  input_channels: 20   # stacked_histogram: 2 polarities x 10 bins (matches baseline gen1.yaml)
   pretrained: true
   d_state: 16
   num_layers_per_stage: 1

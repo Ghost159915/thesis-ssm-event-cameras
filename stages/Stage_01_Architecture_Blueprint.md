@@ -3,6 +3,13 @@
 
 ---
 
+> **RECONCILED (2026-06-12)** to the as-built design + `PLAN_FIXES_FOR_CLAUDE.md`. Corrections that override the
+> illustrative shapes below: input is **20 channels** (not 10); the pipeline **zero-pads 240×304 → 256×320**, so the
+> backbone feature maps are **32×40 / 16×20 / 8×10** (strides 8/16/32) and total candidate boxes = **1680** (not 1505);
+> temporal **Mamba is interleaved per backbone stage and scans over time** (not per-FPN-scale over spatial tokens —
+> ISSUE-01); baseline backbone ≈ **18M MaxViT-style attention** (not "ViT-Base 86M"). See Stage 3c / Stage 4 for the
+> authoritative temporal/integration shapes.
+
 ## Overview
 
 Translate Stage 0's decisions into a precise, annotated data flow diagram with exact tensor shapes at every step. This is the engineering blueprint before construction begins. Every dimension mismatch that would take hours to debug in code is caught in 10 minutes on paper.
@@ -76,14 +83,14 @@ Layer4:        2× residual blocks, stride=2
 ### First Conv Layer Modification
 
 Standard ResNet-18: `Conv2d(in_channels=3, out_channels=64, kernel_size=7, stride=2, padding=3)`  
-Modified: `Conv2d(in_channels=10, out_channels=64, kernel_size=7, stride=2, padding=3)`
+Modified: `Conv2d(in_channels=20, out_channels=64, kernel_size=7, stride=2, padding=3)`
 
 **Weight initialisation strategy (Average Projection):**
 ```
 ImageNet pretrained first conv: shape (64, 3, 7, 7)
 Step 1: Average over channel dimension → (64, 1, 7, 7)
-Step 2: Repeat 10 times → (64, 10, 7, 7)
-Step 3: Scale by 3/10 to preserve activation magnitude
+Step 2: Repeat 20 times → (64, 20, 7, 7)
+Step 3: Scale by 3/20 to preserve activation magnitude
 ```
 
 This preserves the low-level edge detection features learned from ImageNet.
@@ -157,62 +164,33 @@ After top-down addition, each P-level passes through a 3×3 conv (same channels,
 
 ---
 
-## Component 3: Mamba Temporal Module
+## Component 3: Mamba Temporal Module (reconciled — see Stage 3c)
 
-### Input and Output Contract
+> The original per-FPN-scale, spatial-token design below was **superseded**. As built, one causal **Mamba-1 block is
+> interleaved after each ResNet backbone stage** (widths 64/128/256/512), **before** the FPN, and the scan runs over
+> the **time/window axis** per spatial location — *not* over flattened `H*W` spatial tokens (errata ISSUE-01).
 
-**Per FPN scale, independently:**
-- Input: `(B, 256, H_scale, W_scale)` + optional `hidden_state`
-- Output: `(B, 256, H_scale, W_scale)` + `new_hidden_state`
+### Input/Output contract (as built)
 
-### Spatial Linearisation
+Per backbone stage, the stage feature sequence `(L, B, C, H, W)` (L = time/windows) is folded to `(B·H·W, L, C)`,
+scanned over `L` by that stage's Mamba block, then unfolded back to `(L, B, C, H, W)`. `C` = stage width
+(64/128/256/512), **not** a fixed 256. Each spatial location is an independent temporal sequence.
 
-Mamba operates on 1D sequences. You must flatten the 2D spatial feature map to a sequence of tokens:
-
-```
-For P3 (B, 256, 30, 38):
-  Reshape: (B, 30×38, 256) = (B, 1140, 256)
-  ← 1140 spatial tokens, each with 256-dimensional embedding
-
-For P4 (B, 256, 15, 19):
-  Reshape: (B, 15×19, 256) = (B, 285, 256)
-
-For P5 (B, 256, 8, 10):
-  Reshape: (B, 8×10, 256) = (B, 80, 256)
-```
-
-After Mamba processing: reshape back to (B, 256, H, W).
-
-### Mamba Block Internal Shape
-
-Each Mamba block (`Gu_2023_Mamba_SelectiveStateSpaces_arXiv`):
-```
-Input: (B, L, d_model)   where L = H*W, d_model = 256
-Inner expansion: (B, L, d_model * expand) = (B, L, 512)
-Output: (B, L, d_model) = (B, L, 256)   ← same as input
-```
-
-The hidden state per layer:
-```
-(B, d_model * expand, d_state) = (B, 512, 16)
-```
-
-With 4 layers per scale and 3 scales, total hidden state: list of 12 tensors.
-
-### State Management Across Windows
-
-This is the most important interface in the entire model:
+### Mamba block internal shape (over time)
 
 ```
-Window t:   (x_t, h_{t-1}) → Mamba → (y_t, h_t)
-Window t+1: (x_{t+1}, h_t.detach()) → Mamba → (y_{t+1}, h_{t+1})
+Input:  (N, L, C)   where N = B·H·W, L = time/windows, C = stage width
+Inner:  (N, L, 2·C)                      (expand = 2)
+Output: (N, L, C)                        ← same as input
+SSM state per layer: (N, 2·C, d_state),  d_state = 16
 ```
 
-`.detach()` is mandatory between windows. It preserves the state values (temporal memory is maintained) but disconnects the gradient computation graph (prevents backpropagating through the entire sequence history, which would be memory-prohibitive). See Stage 4 for implementation details.
+### State across windows (TBPTT — see Stage 4)
 
-### Mamba Applied Separately per FPN Scale
-
-Three separate Mamba module instances: one for P3, one for P4, one for P5. This allows different temporal dynamics at different spatial scales — large nearby objects (P5) have different motion patterns than small distant objects (P3).
+`state_t = (conv_state, ssm_state)` per stage, carried across windows in **eval** and reset at recording boundaries.
+**Training** uses a parallel scan over the T-window clip (gradients flow through all T), truncating at the clip
+boundary — detach/truncation happens at subsequence boundaries, **not** after every window. The dual-path rationale
+and the open cross-clip "β" TBPTT caveat are documented in Stage 3c.
 
 ---
 
@@ -249,7 +227,8 @@ From P4 (15, 19): cls (B,2,15,19)  reg (B,4,15,19)  obj (B,1,15,19)
 From P5 ( 8, 10): cls (B,2, 8,10)  reg (B,4, 8,10)  obj (B,1, 8,10)
 ```
 
-Total predictions per window: (30×38 + 15×19 + 8×10) = 1140 + 285 + 80 = **1505 candidate boxes**.
+Total predictions per window (padded 256×320): (32×40 + 16×20 + 8×10) = 1280 + 320 + 80 = **1680 candidate boxes**.
+*(The 1505 figure used the unpadded 240×304 resolution; the pipeline pads to 256×320.)*
 
 After NMS (non-maximum suppression), typically 5–50 final detections per window.
 
@@ -297,11 +276,13 @@ OUTPUT: Bounding boxes + class scores per detection window
 |---|---|
 | ResNet-18 backbone (modified) | ~11.7M |
 | FPN lateral + output convs | ~0.5M |
-| Mamba module (4 blocks × 3 scales, d_model=256, d_state=16) | ~3–4M |
+| Mamba blocks (1 per backbone stage × 4 stages, widths 64/128/256/512) | ~3–6M |
 | YOLOX head (3 scales, 2 classes) | ~2–3M |
-| **Total estimate** | **~18–21M** |
+| **Total estimate** | **~20–25M** (assert 15–30M) |
 
-Compare: S5-RVT ViT-Base variant has ~18–22M parameters. You should land in the same ballpark — this makes the comparison fair.
+Compare: the S5-RVT / RVT-B baseline (MaxViT-style attention backbone) is ≈ 18M params total — same ballpark, so the
+comparison is fair. (The "ViT-Base 86M" figure sometimes quoted is an ImageNet ViT-B/16 number and does not apply
+here — errata ISSUE-03.)
 
 ---
 
@@ -316,14 +297,14 @@ Compare: S5-RVT ViT-Base variant has ~18–22M parameters. You should land in th
    - Mark in red: First conv (re-initialised), FPN lateral convs (random), Mamba module (random), YOLOX head (random)
 
 4. **Write the interface contracts** (one line each):
-   - `Backbone.forward(x:(B,10,240,304)) → {C2:(B,128,30,38), C3:(B,256,15,19), C4:(B,512,8,10)}`
-   - `FPN.forward({C2,C3,C4}) → {P3:(B,256,30,38), P4:(B,256,15,19), P5:(B,256,8,10)}`
-   - `MambaModule.forward(P3:(B,256,30,38), state) → (P3_out:(B,256,30,38), new_state)`
-   - `YOLOXHead.forward({P3,P4,P5}) → predictions`
+   - `Backbone.forward(x:(L,B,20,256,320), states) → stage2:(B,128,32,40), stage3:(B,256,16,20), stage4:(B,512,8,10)` (strides 8/16/32, padded res)
+   - `FPN.forward({stage2,stage3,stage4}) → {P3:(B,256,32,40), P4:(B,256,16,20), P5:(B,256,8,10)}`
+   - `MambaTemporalBlock.forward((B·H·W, L, C), state) → ((B·H·W, L, C), new_state)` (per backbone stage, over time)
+   - `YOLOXHead.forward({P3,P4,P5}) → predictions (B,1680,7)`
 
 5. **Verify the odd-dimension FPN issue**: Calculate 15/2 = 7.5 (not integer). Confirm your FPN uses size-matching interpolation, not ×2 scaling.
 
-6. **Count total candidate detections**: 30×38 + 15×19 + 8×10 = 1505. Note this.
+6. **Count total candidate detections (padded)**: 32×40 + 16×20 + 8×10 = 1680. Note this. (1505 was the unpadded count.)
 
 7. **Save the diagram** as `architecture_blueprint.png` or `.pdf` in your Thesis_Plan folder.
 

@@ -3,6 +3,12 @@
 
 ---
 
+> **RECONCILED (2026-06-12)** to the as-built design + `PLAN_FIXES_FOR_CLAUDE.md`. Key corrections below:
+> input = **20-channel** stacked histogram (not 10-ch voxel grid, ISSUE-06); baseline backbone = **MaxViT-style
+> attention, ≈18M total** (not "ViT-Base 86M", ISSUE-03); losses = **BCE + IoU `1−iou²` + SimOTA** (not Focal/GIoU,
+> Stage-2 audit); temporal Mamba = **interleaved per backbone stage, over time** (not per-FPN-scale over space,
+> ISSUE-01); metric = **COCO mAP (IoU 0.50:0.95)** (ISSUE-04). The as-built temporal design lives in Stage 3c / Stage 4.
+
 ## Overview
 
 Before writing a single line of code, every architectural decision must be committed to in writing. This stage has **no code output**. Its sole deliverable is a one-page written specification that resolves every open question in the architecture. The cost of changing an architectural decision mid-implementation is enormous — potentially a full rewrite. The cost of deciding now is zero.
@@ -29,10 +35,16 @@ It also aligns with your supervisor's expectation that you understand *why* you 
 
 ---
 
-## Decision 1: Input Representation — Voxel Grids
+## Decision 1: Input Representation — Stacked 2-Polarity Histogram (10 bins → 20 channels)
+
+> Reconciled: the locked representation matches the **baseline pipeline exactly** — a stacked histogram with
+> 10 temporal bins × 2 polarities = **20 channels** (`stacked_histogram_dt=50_nbins=10`), *not* a 10-channel voxel
+> grid. An identical representation to S5-RVT is required for the controlled comparison (errata ISSUE-06). Like a
+> voxel grid it preserves temporal ordering across the 10 bins, but it is the baseline's exact tensor.
 
 ### Decision
-Voxel grids with B=10 temporal bins. Shape per window: **(10, H, W)** = **(10, 240, 304)** for Gen1.
+Stacked 2-polarity histogram, B=10 temporal bins → **20 channels**. Raw sensor shape per window **(20, 240, 304)**
+for Gen1; the pipeline zero-pads to **(20, 256, 320)** before the backbone.
 
 ### Justification from Your Papers
 
@@ -61,13 +73,22 @@ B=10 is established in the S5-RVT baseline (`Zubic_2024_SSM_EventCameras_CVPR`) 
 ## Decision 2: Spatial Backbone — ResNet-18
 
 ### Decision
-Modified ResNet-18 with **10-channel input** (first conv adapted from 3→10 channels), **ImageNet pretrained** weights with average-projection initialisation for the first conv layer.
+Modified ResNet-18 with **20-channel input** (first conv adapted from 3→20 channels via average-projection init),
+**ImageNet pretrained** weights.
 
 ### Justification
 
-**Parameter efficiency:** ResNet-18 has ~11.7M parameters in the backbone. S5-RVT uses a ViT-Base with ~86M transformer parameters. You are 7× lighter on parameters in the backbone alone. This directly addresses the SWaP constraints of micro-UAVs established in `Floreano_2015_FutureSmallDrones_Nature` and the deployment feasibility established in `Niculescu_2022_NanoDroneDNN_Deployment_JETCAS`.
+**Parameter efficiency:** ResNet-18 backbone ≈ 11.7M params. The S5-RVT / RVT-B baseline uses a **MaxViT-style
+attention backbone**, and the *whole* baseline detector is ≈ **18M** params (errata ISSUE-03 — the "ViT-Base 86M"
+figure is an ImageNet ViT-B/16 number that does **not** apply here). EventSSMDetector at ~20–25M is therefore
+**comparable in parameters, not lighter**. The SWaP argument rests on removing quadratic attention and on the
+FLOPs/latency measured in Stage 10 — not on a raw parameter count. SWaP context: `Floreano_2015_FutureSmallDrones_Nature`,
+`Niculescu_2022_NanoDroneDNN_Deployment_JETCAS`.
 
-**Computational cost:** ResNet-18 runs at ~1.8 GFLOPs on a 224×224 input. ViT-Base runs at ~17.6 GFLOPs. The transformer's quadratic O(L²) attention complexity is incompatible with resource-constrained processors as established in `Vaswani_2017_AttentionIsAllYouNeed_NeurIPS`.
+**Computational cost (hypothesis to measure):** convolutions are O(L) in tokens whereas self-attention is O(L²) — the
+efficiency advantage of the conv backbone over the baseline's attention backbone is a **hypothesis measured on
+identical hardware in Stage 10** (FLOPs + latency), not an assumed constant. Quadratic-attention motivation:
+`Vaswani_2017_AttentionIsAllYouNeed_NeurIPS`.
 
 **Thesis scientific question:** By replacing the transformer backbone with CNN and keeping everything else equal (same temporal module type, same head, same dataset), you test whether spatial locality bias (convolutions) helps or hurts relative to global attention (transformers) for event-based detection. This is the controlled experiment.
 
@@ -81,15 +102,18 @@ Modified ResNet-18 with **10-channel input** (first conv adapted from 3→10 cha
 | ResNet-50 | ~25.6M | ~4.1G | Too large. Negates the efficiency motivation entirely. |
 | EfficientNet-B0 | ~5.3M | ~0.4G | Depthwise separable convolutions are harder to optimise on micro-UAV hardware (irregular memory access). ResNet-18 is more hardware-friendly. |
 | MobileNetV2 | ~3.4M | ~0.3G | Better SWaP but lower feature quality. Risk of mAP too low to be scientifically interesting. |
-| Vision Transformer (ViT) | ~86M | ~17.6G | This is what you are *replacing*. S5-RVT uses this. |
+| Attention backbone (MaxViT-style, S5-RVT/RVT-B) | ~18M (whole detector) | measure (Stage 10) | What you are *replacing* — quadratic O(L²) attention. (Not ImageNet ViT-B/16's 86M/17.6G.) |
 | VMamba (`Liu_2024_VMamba`) | ~31M | ~8.4G | Pure SSM spatial — this is your *second model* (PureSSMDetector). Do not conflate. |
 
 ---
 
 ## Decision 3: Temporal Module — Causal Mamba
 
-### Decision
-Stack of **4 causal (unidirectional) Mamba blocks** per FPN scale. Hidden state maintained across consecutive windows.
+### Decision (reconciled — see Stage 3c for the as-built design)
+One causal (unidirectional) **Mamba-1 block interleaved after each ResNet backbone stage** (at the stage's native
+width 64/128/256/512), scanning over the **time/window axis** per spatial location. Hidden state carried across
+windows. *(The earlier "4 blocks per FPN scale at d_model=256" placement was superseded; the recurrence runs over
+time, not over flattened spatial tokens — errata ISSUE-01.)*
 
 ### Justification
 
@@ -119,12 +143,12 @@ For streaming event camera data, the model must produce predictions using only p
 
 | Parameter | Value | Reasoning |
 |---|---|---|
-| d_model | 256 | Matches FPN output channel count |
+| d_model | per stage: 64/128/256/512 | Mamba runs at each backbone stage's native width |
 | d_state | 16 | Mamba default. Higher = more capacity but slower. |
 | d_conv | 4 | Mamba default local conv width |
-| expand | 2 | Inner dimension = d_model × expand = 512 |
-| num_blocks | 4 | Matches S5-RVT's 4 transformer stages |
-| Application | Per FPN scale, separate modules | Different scales = different temporal dynamics |
+| expand | 2 | Inner dimension = 2 × d_model |
+| blocks per stage | 1 (default) | One Mamba block interleaved per ResNet stage (4 stages) |
+| Application | Interleaved per backbone stage, over time | Mirrors RVT's RNNDetectorStage; temporal axis, per pixel |
 
 ---
 
@@ -149,12 +173,18 @@ Using the same detection head as S5-RVT also makes your comparison cleaner — a
 
 ## Decision 5: Loss Functions
 
+> Reconciled: corrected after the Stage-2 code audit — the baseline does **not** use Focal/GIoU.
+
 ### Decision
-**Focal Loss** (classification) + **GIoU Loss** (bounding box regression). Both reused from existing codebase.
+Reuse the baseline YOLOX losses **unmodified**: **BCE** for classification *and* objectness, **IoU loss `1 − iou²`
+(weight ×5)** for box regression, with **SimOTA** dynamic label assignment.
 
-**Focal Loss:** Addresses class imbalance. In a 30×38 detection grid, roughly 1120 cells are background and ~20 contain objects. Without Focal Loss, easy negatives dominate the loss and the model learns "predict background everywhere." Focal Loss down-weights easy examples by (1-p_t)^γ, γ=2.
+**BCE (cls + obj):** YOLOX applies binary cross-entropy on the decoupled classification and objectness branches.
+Class imbalance is handled primarily by **SimOTA**, which selects a small, high-quality positive set per ground-truth
+box — so the foreground/background ratio the loss sees is balanced by *assignment*, not by a focal term.
 
-**GIoU:** Directly optimises box overlap. Unlike L1 loss on coordinates, GIoU works for non-overlapping boxes and is a better proxy for the evaluation metric (IoU@0.5).
+**IoU loss `1 − iou²` (×5):** directly optimises box overlap (works for non-overlapping boxes) — the standard YOLOX
+regression objective. Evaluation uses **COCO mAP (IoU 0.50:0.95)**, not IoU@0.5 only (errata ISSUE-04).
 
 ---
 
@@ -185,12 +215,12 @@ Match S5-RVT exactly. No deviations.
 
 | Component | Decision | Key Paper |
 |---|---|---|
-| Input | Voxel grid, B=10, (10, 240, 304) | `Zhu_2019`, `Gehrig_2019` |
-| Backbone | ResNet-18, 10-channel modified, ImageNet pretrained | `Floreano_2015`, `Niculescu_2022` |
+| Input | Stacked 2-pol histogram, 10 bins → 20ch, (20,240,304)→pad (20,256,320) | baseline `stacked_histogram_dt=50_nbins=10` |
+| Backbone | ResNet-18, 20-channel modified, ImageNet pretrained | `Floreano_2015`, `Niculescu_2022` |
 | FPN | 3-scale (P3, P4, P5), 256 channels | Standard; `Gehrig_2023_RVT` |
-| Temporal module | 4× causal Mamba per scale, separate modules | `Gu_2023_Mamba`, `Yang_2025_SMamba` |
+| Temporal module | Causal Mamba interleaved per backbone stage, over time | `Gu_2023_Mamba`, `Yang_2025_SMamba` |
 | Detection head | YOLOX (reused from baseline) | `Gehrig_2023_RVT` |
-| Loss functions | Focal + GIoU (reused) | Existing codebase |
+| Loss functions | BCE (cls+obj) + IoU `1−iou²` ×5 + SimOTA (reused) | Existing codebase |
 | Epochs | 100 | Match `Zubic_2024` |
 | Optimiser | AdamW, LR=2e-4, cosine decay | Match `Zubic_2024` |
 | Hardware | Linux PC, RTX 5070 Ti | Local |

@@ -6,14 +6,14 @@ from event_ssm.temporal.mamba_temporal import MambaTemporalBlock
 
 class ResNetMambaBackbone(nn.Module):
     """Interleaved ResNet-18 conv (spatial) + Mamba-1 (temporal) per stage.
-    forward(x:(L,B,10,H,W), prev_states) -> (features dict{1..N}, states list[N]).
+    forward(x:(L,B,20,H,W), prev_states) -> (features dict{1..N}, states list[N]).
     Mirrors RVT's recurrent-backbone contract so PAFPN+head+training are reused.
 
     `token_mask` and `train_step` are accepted only for signature-compatibility with
     RVT's backbone contract; they are unused here. The train/eval scan path is selected
     by `self.training` (see temporal/_scan.py), not by `train_step`."""
 
-    def __init__(self, in_channels: int = 10, pretrained: bool = True,
+    def __init__(self, in_channels: int = 20, pretrained: bool = True,
                  d_state: int = 16, num_layers_per_stage: int = 1):
         super().__init__()
         self.spatial = ResNetSpatialStages(in_channels, pretrained)  # single source of truth for dims/strides

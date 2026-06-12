@@ -13,12 +13,13 @@ def _avg_projection_conv1(pretrained_conv1: nn.Conv2d, in_ch: int) -> nn.Conv2d:
 
 
 class ResNetSpatialStages(nn.Module):
-    """ResNet-18 stem + 4 stages, 10-channel input. Returns per-stage feature maps.
+    """ResNet-18 stem + 4 stages, 20-channel input (stacked histogram: 2 pol x 10 bins,
+    matches baseline gen1 pipeline). Returns per-stage feature maps.
     Temporal Mamba is interleaved by ResNetMambaBackbone (Unit 3), not here."""
     stage_dims = (64, 128, 256, 512)
     strides = (4, 8, 16, 32)
 
-    def __init__(self, in_channels: int = 10, pretrained: bool = True):
+    def __init__(self, in_channels: int = 20, pretrained: bool = True):
         super().__init__()
         net = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1 if pretrained else None)
         net.conv1 = (_avg_projection_conv1(net.conv1, in_channels) if pretrained

@@ -29,3 +29,18 @@ def test_bf16_autocast(device):
     with torch.autocast("cuda", dtype=torch.bfloat16):
         y, _ = blk(x, state=None)
     assert y.shape == x.shape
+
+def test_step_parallel_equivalence(device):
+    """Errata ISSUE-01 correctness criterion (the real recurrent check):
+    from a zero initial state, the eval step-loop path (inference kernels) must compute the
+    same selective-SSM function as the training parallel-scan path, to ~1e-3 in fp32.
+    A passing state-influence test alone does not prove the two scan paths agree."""
+    torch.manual_seed(0)
+    blk = MambaTemporalBlock(d_model=64).to(device).float()
+    x = torch.randn(16, 5, 64, device=device)            # (B*H*W, L=time, C)
+    blk.train()
+    y_parallel, _ = blk(x, state=None)                   # parallel scan (training path)
+    blk.eval()
+    y_step, _ = blk(x, state=None)                       # step loop from zero state (eval path)
+    max_abs = (y_parallel - y_step).abs().max().item()
+    assert max_abs < 2e-3, f"step vs parallel scan diverge: max|Δ|={max_abs:.2e}"

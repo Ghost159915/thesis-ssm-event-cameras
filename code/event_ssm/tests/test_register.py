@@ -4,7 +4,7 @@ def test_register_and_build():
     register_resnet_mamba()
     import models.detection.recurrent_backbone as rb
     from event_ssm.backbone.resnet_mamba import ResNetMambaBackbone
-    cfg = OmegaConf.create({"name": "ResNetMamba", "input_channels": 10,
+    cfg = OmegaConf.create({"name": "ResNetMamba", "input_channels": 20,
                             "pretrained": False, "num_layers_per_stage": 1})
     bb = rb.build_recurrent_backbone(cfg)
     assert isinstance(bb, ResNetMambaBackbone)

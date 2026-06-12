@@ -40,7 +40,11 @@ ResNet-18 is designed to extract spatial features from image data by applying le
 
 **`Zheng_2023_DeepLearningEventVision_Survey_arXiv`** reviews transfer learning for event cameras and confirms that ImageNet pretraining helps for event-based tasks. Low-level features (edge, gradient, corner detectors) learned from RGB images transfer to event data because the underlying visual structure is similar — both represent edges and contrast changes.
 
-**The scientific argument:** By replacing the Vision Transformer (ViT-Base, ~86M params, O(L²) complexity) with ResNet-18 (11.7M params, O(L) complexity) while keeping the temporal module and detection head identical, any mAP difference is attributable entirely to the choice of spatial feature extractor. This is the controlled experiment at the heart of your thesis.
+**The scientific argument:** By replacing the baseline's **attention backbone** (MaxViT-style, O(L²) attention; the
+whole S5-RVT/RVT-B detector is ≈18M params — *not* an 86M ViT-Base) with ResNet-18 (~11.7M params, O(L) convolutions)
+while keeping the temporal module and detection head identical, any mAP difference is attributable entirely to the
+choice of spatial feature extractor. This is the controlled experiment at the heart of your thesis. *(Param counts are
+comparable; the efficiency claim is FLOPs/latency, measured in Stage 10 — errata ISSUE-03.)*
 
 ---
 
