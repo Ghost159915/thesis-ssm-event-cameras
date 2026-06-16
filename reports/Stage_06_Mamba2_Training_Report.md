@@ -127,13 +127,16 @@ Full test suite: **29 passed** (`pytest tests/ -q`, 24 s).
 
 ## 7. What went wrong (and how it was handled)
 
-The three launcher-wiring bugs (caught via dry-run, fixed, and recorded in `scripts/STAGE6_RUN.md`):
+Five launcher/run-wiring bugs (caught via `--cfg job` dry-run + first launch, fixed, and recorded in
+`scripts/STAGE6_RUN.md`):
 
 | # | Symptom | Root cause | Fix |
 |---|---|---|---|
 | 1 | `MissingConfigException: Primary config module 'config' not found` | `import train; train.main()` makes Hydra use **module/package** config search; `RVT/config` is a YAML dir, not a package. | Run `train.py` **as `__main__`** via `runpy.run_path(..., run_name="__main__")` after registering → Hydra file-based search → `RVT/config`. train.py stays unmodified. |
 | 2 | `ConfigCompositionException: You must specify 'dataset'` | `+experiment/gen1=resnet_mamba` does not select the `dataset` group. | Add `dataset=gen1` to the command. |
 | 3 | `ConfigAttributeError: Key 'mode' is not in struct` | RVT's wandb config is struct-locked, no `mode` key. | `export WANDB_MODE=offline` (env var), not a `wandb.mode=` override. |
+| 4 | `cuda-nvcc_activate.sh: NVCC_PREPEND_FLAGS: unbound variable` | `set -u` runs before `conda activate`; conda's cuda-nvcc activate.d references an unbound var. | Wrap the conda activation in `set +u` … `set -u`. |
+| 5 | `MissingMandatoryValue: wandb.group_name` (`train.py:38`) | RVT marks `wandb.group_name` as `???` (user-supplied); the smoke never ran train.py's mandatory-value check. | Pass `wandb.group_name=stage6_short_mamba2`. |
 
 Other points handled:
 - **Standalone proof `ModuleNotFoundError: event_ssm`.** `proof_equivalence.py` run directly lacked the

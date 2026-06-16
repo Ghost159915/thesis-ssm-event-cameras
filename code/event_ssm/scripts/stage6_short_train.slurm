@@ -30,4 +30,5 @@ srun python "$REPO/code/event_ssm/scripts/stage6_train.py" \
   training.max_steps="$MAX_STEPS" training.max_epochs=1 \
   batch_size.train="$BATCH" batch_size.eval="$BATCH" \
   validation.val_check_interval="$MAX_STEPS" validation.check_val_every_n_epoch=null \
-  hardware.gpus=0
+  hardware.gpus=0 \
+  wandb.group_name=stage6_short_mamba2
