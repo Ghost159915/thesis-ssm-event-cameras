@@ -9,6 +9,7 @@ set +u                                               # conda's activate.d (cuda-
 source /home/ghost/miniforge3/etc/profile.d/conda.sh && conda activate events_signals
 set -u
 export WANDB_MODE=offline                            # RVT wandb cfg has no 'mode' key -> use the env var
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True   # reduce fragmentation (real seq_len=21 is VRAM-heavy)
 REPO=/home/ghost/Desktop/thesis-ssm-event-cameras
 export PYTHONPATH="$REPO/code:$REPO/external/ssms_event_cameras/RVT:${PYTHONPATH:-}"
 cd "$REPO/external/ssms_event_cameras/RVT"          # hydra config_path="config" is relative to train.py
@@ -16,7 +17,7 @@ cd "$REPO/external/ssms_event_cameras/RVT"          # hydra config_path="config"
 # ---------------- short-run knobs (edit freely) ----------------
 DATASET="$REPO/data/gen1_subset10"   # build first: python -m event_ssm.integration.make_train_subset
 MAX_STEPS=2000                       # short prelim; raise for a longer run
-BATCH=8                              # lower to 4/2 if VRAM-bound (d_state=64)
+BATCH=4                              # bs8 OOMs at seq_len=21 on 16GB; 4 fits. Drop to 2 if still tight.
 PRECISION="bf16-mixed"               # ISSUE-09; fp32 fallback: PRECISION=32
 # ---------------------------------------------------------------
 

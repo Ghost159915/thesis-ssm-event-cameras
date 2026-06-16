@@ -55,6 +55,7 @@ modifier, then fails fast on the missing dataset). Three non-obvious wiring bugs
 | 3 | `ConfigAttributeError: Key 'mode' is not in struct` (`Could not override 'wandb.mode'`) | RVT's wandb config is struct-locked with no `mode` key. | Use `export WANDB_MODE=offline` (env var), **not** a `wandb.mode=` Hydra override. |
 | 4 | `cuda-nvcc_activate.sh: line 41: NVCC_PREPEND_FLAGS: unbound variable` at launch | `set -u` (from `set -euo pipefail`) runs before `conda activate`; conda's cuda-nvcc `activate.d` script references an unbound var. | Wrap the conda activation in `set +u` … `set -u` (both run scripts updated). |
 | 5 | `MissingMandatoryValue: wandb.group_name` (at `train.py:38`, `to_container(throw_on_missing=True)`) | RVT marks `wandb.group_name` as `???` (user-supplied per run); the smoke never ran train.py's mandatory-value validation. | Pass `wandb.group_name=<label>` (run scripts use `stage6_short_mamba2`). |
+| 6 | `torch.OutOfMemoryError` in the Mamba-2 backward at the first step (bs8) | Real training uses `sequence_length=21` (the health probe used only L=5 → ~4× more BPTT activations); bs8 × seq21 × d_state64 exceeds the 16 GB card. | `BATCH=4` + `export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`. Further levers: `BATCH=2`, lower `d_state`/`sequence_length`, or grad-accumulation / bigger GPU (Katana) for the final run. |
 
 Proof the patched path is live end-to-end: the bogus-path run printed
 `[resnet_mamba] set in_res_hw=(256, 320), num_classes=2` (our modifier — the stock one

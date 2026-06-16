@@ -137,6 +137,7 @@ Five launcher/run-wiring bugs (caught via `--cfg job` dry-run + first launch, fi
 | 3 | `ConfigAttributeError: Key 'mode' is not in struct` | RVT's wandb config is struct-locked, no `mode` key. | `export WANDB_MODE=offline` (env var), not a `wandb.mode=` override. |
 | 4 | `cuda-nvcc_activate.sh: NVCC_PREPEND_FLAGS: unbound variable` | `set -u` runs before `conda activate`; conda's cuda-nvcc activate.d references an unbound var. | Wrap the conda activation in `set +u` … `set -u`. |
 | 5 | `MissingMandatoryValue: wandb.group_name` (`train.py:38`) | RVT marks `wandb.group_name` as `???` (user-supplied); the smoke never ran train.py's mandatory-value check. | Pass `wandb.group_name=stage6_short_mamba2`. |
+| 6 | `torch.OutOfMemoryError` in Mamba-2 backward (first step, bs8) | Real training uses `sequence_length=21`; the health probe measured VRAM at only L=5 (~4× under-estimate). bs8×seq21×d_state64 > 16 GB. | `BATCH=4` + `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` (trains at ~2.8 it/s). Final run: grad-accumulation or larger GPU to restore effective bs8. |
 
 Other points handled:
 - **Standalone proof `ModuleNotFoundError: event_ssm`.** `proof_equivalence.py` run directly lacked the
