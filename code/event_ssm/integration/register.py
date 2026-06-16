@@ -21,11 +21,16 @@ def register_backbone_builder():
 
     def patched(backbone_cfg):
         if backbone_cfg.name == "ResNetMamba":
+            # Build temporal blocks ONLY on the FPN-consumed stages (Finding §8). The config
+            # mirrors fpn.in_stages onto the backbone block; fall back to (2,3,4) if absent.
+            in_stages = backbone_cfg.get("in_stages", None)
+            temporal_stages = tuple(in_stages) if in_stages is not None else (2, 3, 4)
             return ResNetMambaBackbone(
                 in_channels=backbone_cfg.input_channels,
                 pretrained=backbone_cfg.get("pretrained", True),
-                d_state=backbone_cfg.get("d_state", 16),
+                d_state=backbone_cfg.get("d_state", 64),   # Mamba-2 default (was 16 for Mamba-1)
                 num_layers_per_stage=backbone_cfg.get("num_layers_per_stage", 1),
+                temporal_stages=temporal_stages,
             )
         return orig(backbone_cfg)
 

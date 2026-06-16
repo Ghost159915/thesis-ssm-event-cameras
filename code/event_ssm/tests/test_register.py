@@ -45,6 +45,22 @@ def test_resnet_mamba_config_present_and_valid():
     assert cfg.model.head.name == "YoloX"
 
 
+def test_builder_temporal_stages_from_fpn():
+    """The builder must thread `in_stages` (the FPN's consumed stages) into the backbone so
+    temporal blocks are built ONLY there (Finding §8). Uses [3, 4] -- NOT the default (2,3,4) --
+    so the test fails unless the builder actually reads `in_stages` rather than relying on the
+    backbone default. Also asserts the Mamba-2 d_state default is now 64 (was 16 for Mamba-1)."""
+    from omegaconf import OmegaConf
+    from event_ssm.integration.register import register_backbone_builder
+    import models.detection.recurrent_backbone as rb
+    register_backbone_builder()
+    cfg = OmegaConf.create({"name": "ResNetMamba", "input_channels": 20, "pretrained": False,
+                            "num_layers_per_stage": 1, "in_stages": [3, 4]})
+    bb = rb.build_recurrent_backbone(cfg)
+    assert set(bb.temporal.keys()) == {"3", "4"}                # threaded, not the (2,3,4) default
+    assert bb.temporal["3"].layers[0].d_state == 64            # Mamba-2 default d_state (was 16)
+
+
 def test_config_modifier_injects_hw_and_num_classes():
     """The patched dynamically_modify_train_config must, for the ResNetMamba backbone on gen1, set
     backbone.in_res_hw to the multiple-of-32 padded resolution (240x304 -> 256x320) and head.num_classes
