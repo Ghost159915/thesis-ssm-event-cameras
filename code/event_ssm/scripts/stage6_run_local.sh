@@ -5,7 +5,9 @@
 # tqdm bar with loss / it-s / ETA. bf16 autocast, no GradScaler (ISSUE-09). wandb offline.
 set -euo pipefail
 
+set +u                                               # conda's activate.d (cuda-nvcc) references unbound vars
 source /home/ghost/miniforge3/etc/profile.d/conda.sh && conda activate events_signals
+set -u
 export WANDB_MODE=offline                            # RVT wandb cfg has no 'mode' key -> use the env var
 REPO=/home/ghost/Desktop/thesis-ssm-event-cameras
 export PYTHONPATH="$REPO/code:$REPO/external/ssms_event_cameras/RVT:${PYTHONPATH:-}"

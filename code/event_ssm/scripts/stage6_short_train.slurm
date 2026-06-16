@@ -10,7 +10,9 @@
 set -euo pipefail
 
 # module load cuda/12.8                          # <-- set to Katana's CUDA >=12.8 (Blackwell/cu128 stack)
+set +u                                             # conda's activate.d (cuda-nvcc) references unbound vars
 source ~/miniforge3/etc/profile.d/conda.sh && conda activate events_signals   # <-- adjust conda path
+set -u
 export WANDB_MODE=offline                          # RVT wandb cfg has no 'mode' key -> use the env var
 
 REPO="$SLURM_SUBMIT_DIR"                          # submit from the repo root

@@ -53,6 +53,7 @@ modifier, then fails fast on the missing dataset). Three non-obvious wiring bugs
 | 1 | `MissingConfigException: Primary config module 'config' not found` | `import train; train.main()` makes Hydra use **module/package** config search; `RVT/config` is a YAML dir, not a Python package. | Launcher runs train.py **as `__main__`** via `runpy.run_path(..., run_name="__main__")` (after registering) → Hydra uses **file-based** search → `RVT/config`. train.py stays unmodified. |
 | 2 | `ConfigCompositionException: You must specify 'dataset'` | `+experiment/gen1=resnet_mamba` does not select the `dataset` group. | Add `dataset=gen1` to the command (all run scripts updated). |
 | 3 | `ConfigAttributeError: Key 'mode' is not in struct` (`Could not override 'wandb.mode'`) | RVT's wandb config is struct-locked with no `mode` key. | Use `export WANDB_MODE=offline` (env var), **not** a `wandb.mode=` Hydra override. |
+| 4 | `cuda-nvcc_activate.sh: line 41: NVCC_PREPEND_FLAGS: unbound variable` at launch | `set -u` (from `set -euo pipefail`) runs before `conda activate`; conda's cuda-nvcc `activate.d` script references an unbound var. | Wrap the conda activation in `set +u` … `set -u` (both run scripts updated). |
 
 Proof the patched path is live end-to-end: the bogus-path run printed
 `[resnet_mamba] set in_res_hw=(256, 320), num_classes=2` (our modifier — the stock one
