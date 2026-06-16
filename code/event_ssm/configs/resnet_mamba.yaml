@@ -1,11 +1,15 @@
-# EventSSMDetector backbone selection (reference config; full Hydra wiring in Stage 6).
+# EventSSMDetector backbone selection — REFERENCE SKELETON ONLY, NOT LOADED BY HYDRA.
+# The config actually composed at train time is `configs/resnet_mamba_yolox/default.yaml` (symlinked
+# into the RVT tree). This file is a human-readable mirror referenced by the Stage 3/4 design docs;
+# keep its backbone block in sync with the real config, or read the real config instead.
 # Mirrors RVT's gen1 model config but selects our interleaved ResNet+Mamba backbone.
 backbone:
   name: ResNetMamba
   input_channels: 20   # stacked_histogram: 2 polarities x 10 bins (matches baseline gen1.yaml)
   pretrained: true
-  d_state: 16
+  d_state: 64          # Mamba-2 (was 16 for Mamba-1); VRAM lever -- lower to 32/16 if bs/seq grows
   num_layers_per_stage: 1
+  in_stages: [2, 3, 4] # mirror of fpn.in_stages -> temporal blocks built ONLY here (Finding §8)
 fpn:
   name: PAFPN
   in_stages: [2, 3, 4]

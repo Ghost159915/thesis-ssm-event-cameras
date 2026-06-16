@@ -5,12 +5,11 @@ Only the Gen1 `test/` split is present locally; overfitting test data is fine fo
 Usage: python -m event_ssm.integration.make_smoke_dataset   (run from code/)
 """
 import argparse, pathlib, shutil
+from event_ssm.integration.gen1_paths import LEAF_REPR, LEAF_LABELS   # shared single source of truth
 
 REPO = pathlib.Path(__file__).resolve().parents[3]
 DEFAULT_SRC = REPO / "data/gen1_raw/gen1/test"
 DEFAULT_DEST = REPO / "data/gen1_smoke"
-LEAF_REPR = "event_representations_v2/stacked_histogram_dt=50_nbins=10/event_representations.h5"
-LEAF_LABELS = "labels_v2/labels.npz"
 
 
 def build_smoke_dataset(src: pathlib.Path = DEFAULT_SRC,
