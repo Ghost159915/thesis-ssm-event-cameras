@@ -4,8 +4,9 @@ backbone:
   name: ResNetMamba
   input_channels: 20   # stacked_histogram: 2 polarities x 10 bins (matches baseline gen1.yaml)
   pretrained: true
-  d_state: 16
+  d_state: 64          # Mamba-2 (was 16 for Mamba-1); VRAM lever -- lower to 32/16 if bs/seq grows
   num_layers_per_stage: 1
+  in_stages: [2, 3, 4] # mirror of fpn.in_stages -> temporal blocks built ONLY here (Finding §8)
 fpn:
   name: PAFPN
   in_stages: [2, 3, 4]

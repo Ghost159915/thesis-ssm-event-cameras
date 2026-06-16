@@ -41,6 +41,8 @@ def test_resnet_mamba_config_present_and_valid():
     cfg = OmegaConf.load(cfg_path)
     assert cfg.model.backbone.name == "ResNetMamba"
     assert cfg.model.backbone.input_channels == 20
+    assert cfg.model.backbone.d_state == 64                     # Mamba-2 default (was 16)
+    assert list(cfg.model.backbone.in_stages) == [2, 3, 4]      # mirror of fpn.in_stages (Finding §8)
     assert list(cfg.model.fpn.in_stages) == [2, 3, 4]
     assert cfg.model.head.name == "YoloX"
 
