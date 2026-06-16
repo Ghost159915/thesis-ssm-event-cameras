@@ -1,7 +1,7 @@
 # Stage 6 — Mamba-2 Unified TBPTT + Short-Training Artifacts — Stage Report
 
 **Date:** 2026-06-16 · **Branch:** `stage6-mamba2-tbptt` (not yet merged to `main`) · **Status:**
-✅ Phase A COMPLETE (29/29 tests green) · 📦 Phase B artifacts ready · ▶ short training handed to user.
+✅ Phase A COMPLETE (29/29 tests green) · ✅ Phase B short run COMPLETE (**val/AP = 0.125**) · ⧖ code review + merge pending.
 
 > One-line summary: the temporal block was migrated **Mamba-1 → Mamba-2** and the Stage-3 *dual-path*
 > scan was replaced by a **single unified stateful chunk-scan** that carries detached state across
@@ -198,15 +198,44 @@ wheel; Mamba-2 is also the newer 2024 SSD architecture). `d_state` raised 16 →
 | `b83858b` | feat(stage6): fixed-seed 10%-recording train-subset builder (ISSUE-10) |
 | `24ac768` | feat(stage6): short-training launcher + run scripts + monitoring/fixes doc |
 
-## 11. Phase B — handed to user (to be filled after the training run)
+## 11. Phase B — short training run (COMPLETE, 2026-06-16)
 
-Prerequisites (data ready): full Gen1 extracted at `data/gen1_raw/gen1/{train,val,test}` =
-1458 / 429 / 470 recordings. Build the 10% subset
-(`python -m event_ssm.integration.make_train_subset` → `data/gen1_subset10`), then launch
-`bash code/event_ssm/scripts/stage6_run_local.sh` (or the SLURM script). Progress bar is ON.
+Ran on the fixed-seed 10% Gen1 train subset (146/1458 recordings) for **2000 steps**, batch 4, bf16,
+`sequence_length=21`, full OneCycle LR schedule, then validation on the **full 429-recording val split**
+(Prophesee COCO eval). Throughput ≈ 4.5 it/s (~15 min). VRAM fit after dropping bs8→4 + expandable
+segments (§7 fix 6). Curves recovered from the offline wandb datastore via
+`proofs/plot_training_curves.py` → `results/stage6/training_curves.png` (the run completed
+training+val+checkpoint, then crashed only in post-hoc wandb artifact logging — §7 fix 7).
 
-_To be completed after the run:_ loss / LR / grad-norm curves, VRAM + throughput, rough val-mAP
-(COCO, IoU 0.50:0.95), and any divergence notes — per the `STAGE6_RUN.md` monitoring checklist.
+**Training dynamics** (steps 500→2000; `log_every_n_steps=500` ⇒ 4 points — set lower next run):
+
+| signal | first | last | trend |
+|---|---|---|---|
+| total loss | 6.34 | 4.61 | ↓ monotonic |
+| conf (objectness) loss | 2.86 | 1.77 | ↓ 38% |
+| iou loss | 2.83 | 2.25 | ↓ |
+| cls loss | 0.65 | 0.59 | ↓ |
+| LR (OneCycle) | 1.5e-4 | 2e-8 | full decay |
+
+No NaN/divergence; every loss component decreases (`l1_loss=0` — YOLOX leaves L1 off here).
+
+**Validation** (full val split, COCO mAP):
+
+| metric | value |
+|---|---|
+| **val/AP (COCO, IoU 0.50:0.95)** | **0.125** |
+| val/AP_50 | 0.287 |
+| val/AP_75 | 0.093 |
+| val/AP_S / AP_M / AP_L | 0.092 / 0.152 / 0.052 |
+
+Checkpoint: `.../RVT/xj49ukqe/checkpoints/epoch=000-step=2000-val_AP=0.12.ckpt`.
+
+**Interpretation:** 2000 steps on 10% data is ≈0.05% of the baseline's training budget, so **0.125 is a
+learning-curve checkpoint, not a comparison number** (S5-RVT baseline = 47.7). `AP_50 ≈ 0.29 ≫ AP ≈ 0.125
+≫ AP_75 ≈ 0.09` is the signature of a model that already *finds* cars/pedestrians but localizes loosely
+— expected this early. The takeaway: the Mamba-2 unified-TBPTT detector **trains correctly end-to-end on
+real Gen1** with healthy, decreasing losses — the de-risking goal of Stage 6 is met. The real comparable
+mAP comes from the Stage-7 full run (100% data, full schedule, baseline-matched batch via grad-accum).
 
 ## 12. Next
 
