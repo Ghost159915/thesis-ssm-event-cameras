@@ -22,6 +22,19 @@ from event_ssm.integration.smoke_harness import setup_paths, register, RVT
 setup_paths()        # code + RVT on sys.path; register hdf5plugin (blosc-compressed Gen1 H5)
 register()           # patch build_recurrent_backbone + dynamically_modify_train_config FIRST
 
+# Offline/disabled wandb cannot log checkpoint *artifacts*: RVT's WandbLogger._get_public_run() reads
+# experiment._entity, which only exists for online runs -> AttributeError at checkpoint save / finalize.
+# The checkpoint is still written to disk; only the wandb cloud upload fails. Disable it when offline.
+import os
+if os.environ.get("WANDB_MODE", "").lower() in ("offline", "disabled"):
+    import loggers.utils as _lu
+    _orig_get_wandb_logger = _lu.get_wandb_logger
+    def _offline_wandb_logger(cfg):
+        lg = _orig_get_wandb_logger(cfg)
+        lg._log_model = False     # skip checkpoint-artifact logging (requires an online run)
+        return lg
+    _lu.get_wandb_logger = _offline_wandb_logger
+
 if __name__ == "__main__":
     train_py = str(RVT / "train.py")
     sys.argv[0] = train_py                       # make it indistinguishable from `python train.py ...`
