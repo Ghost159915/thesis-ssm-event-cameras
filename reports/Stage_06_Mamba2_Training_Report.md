@@ -1,7 +1,7 @@
 # Stage 6 — Mamba-2 Unified TBPTT + Short-Training Artifacts — Stage Report
 
 **Date:** 2026-06-16 · **Branch:** `stage6-mamba2-tbptt` (not yet merged to `main`) · **Status:**
-✅ Phase A COMPLETE (29/29 tests green) · ✅ Phase B short run COMPLETE (**val/AP = 0.125**) · ⧖ code review + merge pending.
+✅ Phase A COMPLETE (29/29 tests green) · ✅ Phase B short run COMPLETE (**val/AP = 0.125**) · ✅ code-reviewed (no bugs) + merged to `main`.
 
 > One-line summary: the temporal block was migrated **Mamba-1 → Mamba-2** and the Stage-3 *dual-path*
 > scan was replaced by a **single unified stateful chunk-scan** that carries detached state across
@@ -168,14 +168,28 @@ Chosen over a custom Mamba-1 differentiable β-scan because Mamba-2's stock kern
 initial-state + final-state on the fast trainable path natively (same `mamba-ssm==2.3.2` Blackwell
 wheel; Mamba-2 is also the newer 2024 SSD architecture). `d_state` raised 16 → 64 accordingly.
 
-## 9. Deferred / open items
+## 9. Code review outcome (2026-06-16)
 
-- **Phase B — the short training run itself** (handed to user; §11). Produces loss/LR/grad curves +
-  a rough val-mAP.
+Reviewed via the `code-review` skill at high effort — 4 independent finder agents (core temporal/backbone
+correctness at opus, integration/scripts correctness, cleanup, altitude+conventions) + verification.
+**No correctness bugs, no CLAUDE.md violations.** The Mamba-2 forward replication in `_scan.py` was
+verified line-by-line against the installed `mamba_ssm` 2.x source, including that the bf16 cross-window
+state carry is numerically safe (`mamba_chunk_scan_combined` returns/consumes `final_states` in fp32).
+The `(B,1)` placeholder state was confirmed harmless (PAFPN reads only stages {2,3,4}).
+
+Five low-severity maintainability findings were raised and **all fixed before merge** (commit below):
+1. `configs/resnet_mamba.yaml` is a not-loaded reference skeleton → added an explicit "NOT LOADED" header.
+2. `LEAF_REPR`/`LEAF_LABELS` duplicated → factored into `integration/gen1_paths.py` (shared).
+3. Run-script Hydra overrides duplicated/drifted → extracted `scripts/stage6_overrides.sh` (single source).
+4. Offline-wandb monkeypatch lacked an idempotency guard → added one (mirrors `register.py`).
+5. `plot_training_curves.py` `next(glob)` `StopIteration` → friendly error.
+
+## 9.1 Deferred / open items
+
 - **Final-run precision (ISSUE-09).** The short run uses bf16 for speed/VRAM; the *final* comparison
   runs must verify and match the S5-RVT baseline precision exactly (flagged in `STAGE6_RUN.md`).
-- **Merge to `main`.** This branch (14 commits) is unmerged pending the short-run sanity check.
-- **Code review.** Not yet run for Stage 6 (Stage 5 used the requesting-code-review subagent).
+- **Stage 7 — full training run** (100% Gen1, full schedule, effective batch 8 via grad-accumulation or
+  Katana, baseline-matched precision) → the real comparable mAP vs S5-RVT 47.7.
 
 ## 10. Commits (this stage)
 

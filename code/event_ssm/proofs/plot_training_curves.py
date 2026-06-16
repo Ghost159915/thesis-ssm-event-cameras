@@ -14,7 +14,10 @@ from wandb.sdk.internal import datastore
 from wandb.proto import wandb_internal_pb2 as pb
 
 run_dir = Path(sys.argv[1])
-wfile = next(run_dir.glob("*.wandb"))
+wfiles = sorted(run_dir.glob("*.wandb"))
+if not wfiles:
+    sys.exit(f"no .wandb datastore found in {run_dir} (pass an offline-run-* directory)")
+wfile = wfiles[0]
 ds = datastore.DataStore()
 ds.open_for_scan(str(wfile))
 

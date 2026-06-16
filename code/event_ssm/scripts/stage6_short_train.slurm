@@ -21,14 +21,8 @@ cd "$REPO/external/ssms_event_cameras/RVT"
 
 DATASET="$REPO/data/gen1_subset10"
 MAX_STEPS=2000
-BATCH=8
+BATCH=8                                            # Katana GPU (>16GB) fits bs8; drop if needed
+PRECISION="bf16-mixed"
 
-srun python "$REPO/code/event_ssm/scripts/stage6_train.py" \
-  dataset=gen1 model=rnndet +experiment/gen1=resnet_mamba \
-  dataset.path="$DATASET" \
-  training.precision=bf16-mixed \
-  training.max_steps="$MAX_STEPS" training.max_epochs=1 \
-  batch_size.train="$BATCH" batch_size.eval="$BATCH" \
-  validation.val_check_interval="$MAX_STEPS" validation.check_val_every_n_epoch=null \
-  hardware.gpus=0 \
-  wandb.group_name=stage6_short_mamba2
+source "$REPO/code/event_ssm/scripts/stage6_overrides.sh"   # shared override list (same as the local run)
+srun python "$REPO/code/event_ssm/scripts/stage6_train.py" "${STAGE6_OVERRIDES[@]}"

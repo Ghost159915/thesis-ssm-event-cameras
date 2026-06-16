@@ -11,12 +11,11 @@ uniformly at random with a fixed seed and log the recording list.
 Usage: python -m event_ssm.integration.make_train_subset --gen1-root data/gen1_raw/gen1
 """
 import argparse, pathlib, random, shutil
+from event_ssm.integration.gen1_paths import LEAF_REPR, LEAF_LABELS   # shared (also re-exported here)
 
 REPO = pathlib.Path(__file__).resolve().parents[3]
 DEFAULT_ROOT = REPO / "data/gen1_raw/gen1"
 DEFAULT_DEST = REPO / "data/gen1_subset10"
-LEAF_REPR = "event_representations_v2/stacked_histogram_dt=50_nbins=10/event_representations.h5"
-LEAF_LABELS = "labels_v2/labels.npz"
 
 
 def select_recordings(train_dir, frac: float = 0.10, seed: int = 1234):

@@ -28,12 +28,14 @@ register()           # patch build_recurrent_backbone + dynamically_modify_train
 import os
 if os.environ.get("WANDB_MODE", "").lower() in ("offline", "disabled"):
     import loggers.utils as _lu
-    _orig_get_wandb_logger = _lu.get_wandb_logger
-    def _offline_wandb_logger(cfg):
-        lg = _orig_get_wandb_logger(cfg)
-        lg._log_model = False     # skip checkpoint-artifact logging (requires an online run)
-        return lg
-    _lu.get_wandb_logger = _offline_wandb_logger
+    if not getattr(_lu.get_wandb_logger, "_offline_patched", False):   # idempotent (mirrors register.py)
+        _orig_get_wandb_logger = _lu.get_wandb_logger
+        def _offline_wandb_logger(cfg):
+            lg = _orig_get_wandb_logger(cfg)
+            lg._log_model = False     # skip checkpoint-artifact logging (requires an online run)
+            return lg
+        _offline_wandb_logger._offline_patched = True
+        _lu.get_wandb_logger = _offline_wandb_logger
 
 if __name__ == "__main__":
     train_py = str(RVT / "train.py")
