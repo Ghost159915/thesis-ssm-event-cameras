@@ -1,6 +1,7 @@
-"""Stage-5 health probes on the assembled YoloXDetector (drop-in ResNetMamba backbone):
-gradient flow, VRAM at batch sizes {1,2,4}, and eval single-window step latency. Uses synthetic
-real-shaped clips (no data module needed). Run (events_signals, CUDA): python proofs/smoke_health.py
+"""Stage-6 health probes on the assembled YoloXDetector (drop-in Mamba-2 ResNetMamba backbone):
+parameter-count breakdown, gradient flow, VRAM at batch sizes {1,2,4}, and eval single-window step
+latency. Uses synthetic real-shaped clips (no data module needed).
+Run (events_signals, CUDA): python proofs/smoke_health.py
 """
 import sys, pathlib, time, torch
 HERE = pathlib.Path(__file__).resolve()
@@ -11,16 +12,44 @@ from omegaconf import OmegaConf
 from models.detection.yolox_extension.models.detector import YoloXDetector
 
 OUT = REPO / "results/smoke_test"; OUT.mkdir(parents=True, exist_ok=True)
-# Mirrors the Stage-4 integration proof config (the as-built drop-in contract).
+RES = REPO / "results/stage6"; RES.mkdir(parents=True, exist_ok=True)
+# Mirrors the Stage-4 integration proof config (the as-built drop-in contract), now Mamba-2:
+# d_state=64, temporal only on FPN stages 2/3/4 (Finding S8 dropped the dead stage-1 block).
 mcfg = OmegaConf.create({
     "backbone": {"name": "ResNetMamba", "input_channels": 20, "pretrained": False,
-                 "d_state": 16, "num_layers_per_stage": 1, "compile": {"enable": False}},
+                 "d_state": 64, "num_layers_per_stage": 1, "in_stages": [2, 3, 4],
+                 "compile": {"enable": False}},
     "fpn": {"name": "PAFPN", "depth": 0.67, "in_stages": [2, 3, 4],
             "depthwise": False, "act": "silu", "compile": {"enable": False}},
     "head": {"name": "YoloX", "num_classes": 2, "depthwise": False, "act": "silu",
              "compile": {"enable": False}},
 })
 model = YoloXDetector(mcfg).cuda()
+
+# ---------- parameter-count breakdown ----------
+# Mamba-1 (d_state=16, with a dead stage-1 temporal block) -> Mamba-2 (d_state=64, temporal on FPN
+# stages 2/3/4 only). Bucket params by submodule; write results/stage6/params.md (Stage-6 delta vs
+# the Stage-5 ~19.26M).
+from collections import OrderedDict
+pbuckets = OrderedDict()
+for _n, _p in model.named_parameters():
+    _top = _n.split(".")[0]
+    if _top == "backbone":
+        _sub = ("backbone.spatial" if ".spatial." in _n else
+                "backbone.temporal" if ".temporal." in _n else "backbone.other")
+    else:
+        _sub = _top
+    pbuckets[_sub] = pbuckets.get(_sub, 0) + _p.numel()
+ptotal = sum(pbuckets.values())
+plines = ["# Stage 6 - parameter counts (Mamba-2 backbone, d_state=64)", "",
+          "Temporal blocks on FPN stages 2/3/4 only (Finding S8). Compare to Stage-5 (Mamba-1,",
+          "d_state=16, *with* the now-removed dead stage-1 temporal block): ~19.26M total.", "",
+          "| component | params | % of total |", "|---|---|---|"]
+for _k, _v in pbuckets.items():
+    plines.append(f"| {_k} | {_v/1e6:.3f}M | {100*_v/ptotal:.1f}% |")
+plines.append(f"| **total** | **{ptotal/1e6:.3f}M** | 100% |")
+(RES / "params.md").write_text("\n".join(plines) + "\n")
+print("\n".join(plines)); print("wrote", RES / "params.md", "\n")
 
 
 def _loss(losses):
@@ -47,11 +76,11 @@ def make_targets(B):
 
 
 torch.manual_seed(0)                      # reproducible SimOTA assignment / random init
-EXCLUDE = "backbone.temporal.0."          # stage-1 temporal Mamba: unused by FPN (Finding S8, documented)
 # SimOTA optimises cls + box only on POSITIVE (matched) anchors, so these three head branches can be
 # grad-less on any FPN level that happens to get no positive match -- expected & data-dependent, NOT a
-# wiring fault. The deterministic path that MUST always receive grad: the whole backbone (minus the
-# documented dead temporal[0]), the FPN, and the obj/reg-stem (objectness BCE covers every anchor).
+# wiring fault. The deterministic path that MUST always receive grad: the WHOLE backbone (temporal now
+# built only on FPN stages 2/3/4 -- Finding S8 removed the dead stage-1 block, so there is nothing to
+# exclude), the FPN, and the obj/reg-stem (objectness BCE covers every anchor).
 HEAD_POS_ONLY = ("yolox_head.cls_convs.", "yolox_head.cls_preds.", "yolox_head.reg_preds.")
 
 # ---------- grad-flow ----------
@@ -65,7 +94,7 @@ _loss(losses).backward()
 real_missing, head_pos_missing, nan = [], [], []
 n_pos_only = 0
 for n_, p in model.named_parameters():
-    if not p.requires_grad or n_.startswith(EXCLUDE):
+    if not p.requires_grad:
         continue
     if n_.startswith(HEAD_POS_ONLY):
         n_pos_only += 1
@@ -112,16 +141,16 @@ mean = sum(ts) / len(ts)
 std = (sum((t - mean) ** 2 for t in ts) / len(ts)) ** 0.5
 
 lines = [
-    "# Stage 5 - smoke health probes", "",
+    "# Stage 6 - smoke health probes (Mamba-2 backbone, d_state=64)", "",
     "Synthetic real-shaped clips through the assembled `YoloXDetector` (drop-in `ResNetMamba` +",
-    "PAFPN + YOLOX head). Grad-flow excludes the stage-1 temporal Mamba (`backbone.temporal.0.`),",
-    "which the FPN's `in_stages=[2,3,4]` legitimately leaves unused (Finding S8 - documented).", "",
+    "PAFPN + YOLOX head). Temporal blocks are built ONLY on FPN stages 2/3/4 (Finding S8 removed the",
+    "dead stage-1 block), so the deterministic grad-flow path spans the WHOLE backbone -- no exclusion.", "",
     "| test | result | notes |", "|---|---|---|",
     f"| gradient flow (deterministic path) | {'PASS' if grad_ok else 'FAIL'} | "
-    f"real-missing={len(real_missing)} nan={len(nan)} (excl. stage-1 temporal[0], unused by FPN) |",
+    f"real-missing={len(real_missing)} nan={len(nan)} (whole backbone, incl. temporal 2/3/4) |",
     f"| SimOTA pos-only head branches w/o grad | {len(head_pos_missing)}/{n_pos_only} | "
     f"expected (data-dependent per-level matching); >=1 alive ({'PASS' if pos_path_alive else 'FAIL'}) |",
-    f"| VRAM @ bs1/bs2/bs4 | {vram[1]:.2f}/{vram[2]:.2f}/{vram[4]:.2f} GB | target <10GB @ bs4 |",
+    f"| VRAM @ bs1/bs2/bs4 | {vram[1]:.2f}/{vram[2]:.2f}/{vram[4]:.2f} GB | target <10GB @ bs4 (d_state=64 > S5) |",
     f"| eval step latency | {mean:.2f} +/- {std:.2f} ms | S5-RVT ~12 ms/window |",
     f"| max throughput | {1000/mean:.0f} Hz | window dt=50ms -> need <50ms |",
 ]
