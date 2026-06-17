@@ -22,8 +22,9 @@ cd "$REPO/external/ssms_event_cameras/RVT"           # hydra config_path="config
 DATASET="$REPO/data/gen1_raw/gen1"   # FULL train (1458 rec) + full val/test
 MAX_STEPS=100000                     # 25% of baseline; OneCycle completes overnight even at ~2.8 it/s
 MAX_EPOCHS=10000                     # steps bind -> never a silent 1-epoch truncation
-VAL_EVERY=10000                      # val + checkpoint every 10k steps (10 mAP points, resume granularity)
-VAL_FRAC=0.25                        # rough mAP fast (full val = 429 recordings, slow)
+VAL_EVERY=20000                      # FULL val + checkpoint every 20k steps (5 mAP points; ~38 min total val overhead)
+VAL_FRAC=1.0                         # full val (clean mAP). Gen1 val is an IterableDataset -> limit_val_batches
+                                     # MUST be 1.0 or an INT (num batches); a FRACTION (e.g. 0.25) is rejected by Lightning
 BATCH=4                              # VRAM-safe at seq_len=21 on 16 GB
 PRECISION="bf16-mixed"               # ISSUE-09; fp32 fallback: PRECISION=32
 GROUP_NAME="stage7_midrun_mamba2"    # offline wandb label

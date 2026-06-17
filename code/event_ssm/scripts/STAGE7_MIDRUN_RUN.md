@@ -4,16 +4,17 @@ Overnight full-Gen1 training of the Mamba-2 `ResNetMamba` detector for a trustwo
 "is this architecture competitive?" signal. RVT's `train.py` is reused **unmodified**; only the
 backbone is ours (`stage6_train.py` registers it first). **Per the terminal policy, the user runs this.**
 
-This is a **rough signal**, not a clean S5-RVT comparison: bf16 + 25%-capped validation are
-deliberate speed choices (the ISSUE-09 precision confound + full-val belong to the final Katana run).
+This is a **rough signal**, not a clean S5-RVT comparison: bf16 is a deliberate speed/VRAM choice
+(the ISSUE-09 precision confound + the full final protocol belong to the Katana run). Validation is
+**full** (the whole 429-recording val split) — see the launch fix below for why it can't be a fraction.
 
 ## Why these settings (the one thing that matters)
 
 RVT uses a **OneCycle** LR schedule over `total_steps = max_steps`. A run that **completes** its
 schedule (LR fully annealed) gives a higher, more representative mAP than a longer run cut off
 mid-anneal. So `MAX_STEPS=100000` is sized to *finish overnight even at the pessimistic ~2.8 it/s*
-(~10.3 h incl. validation; ~6.4 h at the observed 4.5 it/s). 100k steps = **25% of the 400k baseline
-budget**, on full data.
+(~10.5 h incl. 5 full validations; ~6.8 h at the observed 4.5 it/s). 100k steps = **25% of the 400k
+baseline budget**, on full data.
 
 ## Prerequisites
 
@@ -47,10 +48,19 @@ validation at step 10000.)
 | knob | default | note |
 |---|---|---|
 | `MAX_STEPS` | 100000 | sized to complete overnight; pushing past ~120k risks overrun at 2.8 it/s |
-| `VAL_EVERY` | 10000 | val + checkpoint cadence; halve to 5000 for finer resume granularity (2× val overhead) |
-| `VAL_FRAC` | 0.25 | fraction of the 429-recording val set per pass (rough mAP) |
+| `VAL_EVERY` | 20000 | FULL val + checkpoint cadence (5 points); lower it for finer resume / more points (more val overhead) |
+| `VAL_FRAC` | 1.0 | full val (clean mAP). Must be `1.0` or an **int** (num batches) — Gen1 val is an `IterableDataset`, so a fraction is rejected |
 | `BATCH` | 4 | bs8 OOMs at seq_len=21 on 16 GB; drop to 2 if tight |
 | `PRECISION` | bf16-mixed | fp32 fallback: `PRECISION=32` |
+
+## Launch fixes — bugs found running the launcher (2026-06-17)
+
+The Hydra `--cfg job` dry-run composes the config and **exits before `trainer.fit`**, so it cannot
+catch trainer-/dataloader-time errors. The first real launch surfaced one; recorded so we don't re-hit it.
+
+| # | Symptom | Root cause | Fix |
+|---|---|---|---|
+| 1 | `MisconfigurationException: When using an IterableDataset, Trainer(limit_val_batches) must be 1.0 or an int` — crash at the pre-train **val sanity check** (before step 0). | The Gen1 val loader is a streaming **`IterableDataset`**; Lightning forbids a *fractional* `limit_val_batches`. The mid-run shipped with `VAL_FRAC=0.25` (a fraction). | Use **full val** `VAL_FRAC=1.0` (the Stage-6-proven setting — it validated cleanly at `val/AP=0.125`) and cut overhead via frequency instead: `VAL_EVERY=20000` (5 full-val points). For a faster *rough* val, set `VAL_FRAC` to an **int** = number of val batches — never a fraction. |
 
 ## Monitoring checklist — paste back after (or during) the run
 
@@ -60,8 +70,8 @@ validation at step 10000.)
 - [ ] **Grad-norm** (`GradFlowLogCallback`) — finite, not exploding/vanishing.
 - [ ] **VRAM** peak (compare to ~6.45 GB @ bs4 bf16 from the health probe).
 - [ ] **Throughput** (it·s⁻¹ from the progress bar) — sanity-check vs the 2.8–4.5 it/s envelope.
-- [ ] **Rough val-mAP curve** — the ~10 points (COCO mAP, IoU 0.50:0.95; Prophesee evaluator).
-      Label "rough / mid-run / 25% val", not a final number.
+- [ ] **Val-mAP curve** — the ~5 full-val points (COCO mAP, IoU 0.50:0.95; Prophesee evaluator).
+      Label "mid-run / short schedule", not a final S5-RVT-comparable number.
 - [ ] Any warnings/errors worth noting.
 
 Paste these and I'll produce the loss / LR / grad / mAP-trajectory curves and write the mid-run

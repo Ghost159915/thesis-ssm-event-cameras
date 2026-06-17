@@ -132,6 +132,16 @@ from where it stopped.
 - **RVT reused unmodified** → any mAP delta vs S5-RVT remains attributable solely to the backbone swap.
 - **Terminal policy:** the user launches training; Claude does not.
 
+## 9. Errata — found at first launch (2026-06-17)
+
+- **Fractional `limit_val_batches` is invalid for the streaming val `IterableDataset`.** The capped-val
+  plan (`VAL_FRAC=0.25`; §3.3, §4, §5.1) crashed at the pre-train val sanity check
+  (`MisconfigurationException: limit_val_batches must be 1.0 or an int`). Replaced with **full val**
+  (`VAL_FRAC=1.0`, Stage-6-proven) at lower frequency (`VAL_EVERY=20000` → 5 points) — cleaner mAP and a
+  valid config. All "25% / capped / rough val" wording above is **superseded** by this. The `--cfg job`
+  dry-run cannot catch it (it exits before `trainer.fit`). Tracked in
+  `code/event_ssm/scripts/STAGE7_MIDRUN_RUN.md` (Launch fixes table).
+
 ## 7. Katana prep — deferred (tracked)
 Recorded so it is not lost. Before a Katana plan can be written, the user needs (from supervisor):
 account/SSH access, the target **GPU architecture/partition** (V100 `sm_70` / A100 `sm_80` /
