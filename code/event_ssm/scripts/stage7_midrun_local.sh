@@ -28,7 +28,8 @@ VAL_FRAC=1.0                         # full val (clean mAP). Gen1 val is an Iter
 BATCH=4                              # VRAM-safe at seq_len=21 on 16 GB
 PRECISION="bf16-mixed"               # ISSUE-09; fp32 fallback: PRECISION=32
 GROUP_NAME="stage7_midrun_mamba2"    # offline wandb label
-RUNDIR="$REPO/results/stage7_midrun" # checkpoints + logs land here; resume reads last...ckpt from here
+RUNDIR="$REPO/results/stage7_midrun" # Hydra .hydra/ + train.log ONLY (hydra chdir=False in 1.3) --
+                                     # CHECKPOINTS go to external/.../RVT/RVT/<runid>/checkpoints/ (logger-relative to cwd)
 # -------------------------------------------------------------
 
 # Knobs are visible to the sourced builder because it runs in this same shell.

@@ -141,6 +141,10 @@ from where it stopped.
   valid config. All "25% / capped / rough val" wording above is **superseded** by this. The `--cfg job`
   dry-run cannot catch it (it exits before `trainer.fit`). Tracked in
   `code/event_ssm/scripts/STAGE7_MIDRUN_RUN.md` (Launch fixes table).
+- **`hydra.run.dir` does not relocate checkpoints (§5.1).** Hydra 1.3 defaults `hydra.job.chdir=False`,
+  so `hydra.run.dir=results/stage7_midrun` only captures Hydra's `.hydra/` + `train.log`; the
+  WandbLogger / `ModelCheckpoint` write relative to cwd → `external/.../RVT/RVT/<runid>/checkpoints/`.
+  Resume globs that real path (newest `last_epoch=*.ckpt`). The pin is kept for the clean `train.log`.
 
 ## 7. Katana prep — deferred (tracked)
 Recorded so it is not lost. Before a Katana plan can be written, the user needs (from supervisor):

@@ -27,8 +27,10 @@ No subset build needed — the mid-run points straight at the full splits.
 bash code/event_ssm/scripts/stage7_midrun_local.sh
 ```
 
-Lightning's per-step tqdm progress bar is ON (loss / it·s⁻¹ / ETA). Artifacts land under
-`results/stage7_midrun/` (pinned via `hydra.run.dir`).
+Lightning's per-step tqdm progress bar is ON (loss / it·s⁻¹ / ETA). Outputs land in **two** places
+(Hydra 1.3 keeps `chdir=False`, so the logger writes relative to `…/RVT`, *not* the Hydra run dir):
+- **Hydra config + `train.log`** → `results/stage7_midrun/` (pinned via `hydra.run.dir`)
+- **Checkpoints** → `external/ssms_event_cameras/RVT/RVT/<runid>/checkpoints/` — `last_epoch=…-step=….ckpt` (resume) + best `…-val_AP=….ckpt`
 
 ## Resume (stop anytime)
 
@@ -37,11 +39,16 @@ Validation runs every `VAL_EVERY` steps and triggers the checkpoint callback, wh
 state (optimizer + scheduler + global step → the OneCycle schedule continues):
 
 ```bash
-STAGE7_RESUME="$(ls -t results/stage7_midrun/**/last_epoch=*-step=*.ckpt | head -1)" \
+# newest 'last' checkpoint across runs (each launch gets a fresh <runid> dir):
+STAGE7_RESUME="$(ls -t external/ssms_event_cameras/RVT/RVT/*/checkpoints/last_epoch=*.ckpt | head -1)" \
   bash code/event_ssm/scripts/stage7_midrun_local.sh
 ```
-(Confirm the exact checkpoint path from Lightning's `saving checkpoint to …` log line on the first
-validation at step 10000.)
+(Confirm the exact path from Lightning's `saving checkpoint to …` log line at the first validation,
+step 20000.)
+
+> ⚠️ Only resume **after** the first mid-run checkpoint exists (step 20000). Older `…-step=2000.ckpt`
+> dirs are leftover Stage-6 *short-run* checkpoints — before step 20k, `ls -t` would pick one of those
+> and resume the wrong run. If it dies before step 20k, just relaunch fresh.
 
 ## Knobs (top of `stage7_midrun_local.sh`)
 
@@ -61,6 +68,7 @@ catch trainer-/dataloader-time errors. The first real launch surfaced one; recor
 | # | Symptom | Root cause | Fix |
 |---|---|---|---|
 | 1 | `MisconfigurationException: When using an IterableDataset, Trainer(limit_val_batches) must be 1.0 or an int` — crash at the pre-train **val sanity check** (before step 0). | The Gen1 val loader is a streaming **`IterableDataset`**; Lightning forbids a *fractional* `limit_val_batches`. The mid-run shipped with `VAL_FRAC=0.25` (a fraction). | Use **full val** `VAL_FRAC=1.0` (the Stage-6-proven setting — it validated cleanly at `val/AP=0.125`) and cut overhead via frequency instead: `VAL_EVERY=20000` (5 full-val points). For a faster *rough* val, set `VAL_FRAC` to an **int** = number of val batches — never a fraction. |
+| 2 | Documented resume glob (`results/stage7_midrun/**/…ckpt`) finds **nothing** — checkpoints aren't there. | Hydra 1.3 defaults `hydra.job.chdir=False`, so `hydra.run.dir` only relocates Hydra's `.hydra/` + `train.log`; the WandbLogger / `ModelCheckpoint` still write **relative to cwd** (`…/RVT`) → `…/RVT/RVT/<runid>/checkpoints/`. | Resume globs the real path: `external/…/RVT/RVT/*/checkpoints/last_epoch=*.ckpt` (newest). `hydra.run.dir` is **kept** — it gives a clean `train.log` for monitoring. Checkpoints living under the (gitignored) vendored RVT tree is harmless. |
 
 ## Monitoring checklist — paste back after (or during) the run
 
