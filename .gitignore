@@ -19,6 +19,11 @@ data/
 *.pt
 checkpoints/
 
+# Rendered event videos (large; keep only the small montage PNGs)
+*.mp4
+*.avi
+*.mov
+
 # ── Python ──────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
