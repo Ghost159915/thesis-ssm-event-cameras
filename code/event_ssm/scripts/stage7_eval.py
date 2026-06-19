@@ -20,6 +20,9 @@ from event_ssm.integration.smoke_harness import setup_paths, register, RVT
 setup_paths()        # code + RVT on sys.path; register hdf5plugin (blosc-compressed Gen1 H5)
 register()           # patch build_recurrent_backbone + dynamically_modify_train_config FIRST
 
+import perclass_patch  # same scripts/ dir (auto on sys.path[0] when run as a script)
+perclass_patch.apply() # ADDITIVE car/pedestrian AP to stderr; the 6 aggregate metrics are unchanged
+
 if __name__ == "__main__":
     val_py = str(RVT / "validation.py")
     sys.argv[0] = val_py                          # make it indistinguishable from `python validation.py ...`

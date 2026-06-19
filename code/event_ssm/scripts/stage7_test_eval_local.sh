@@ -25,7 +25,7 @@ cd "$REPO/external/ssms_event_cameras/RVT"          # hydra config_path="config"
 
 # ---------------- knobs ----------------
 DATASET="${DATASET:-$REPO/data/gen1_raw/gen1}"      # dir CONTAINING test/ (NOT test/ itself) -> else mAP=0/NaN
-DEFAULT_CKPT="$REPO/external/ssms_event_cameras/RVT/RVT/3spxvoux/checkpoints/epoch=001-step=100000-val_AP=0.44.ckpt"
+DEFAULT_CKPT="$REPO/external/ssms_event_cameras/RVT/RVT/8zotrwjw/checkpoints/epoch=003-step=320000-val_AP=0.46.ckpt"  # 400k best (Stage-8 headline)
 CKPT="${1:-${CKPT:-$DEFAULT_CKPT}}"                 # positional arg > $CKPT env > mid-run best
 # A leading flag (e.g. --cfg) is NOT a checkpoint path: fall back to the default and let it pass through.
 [[ "$CKPT" == -* ]] && CKPT="$DEFAULT_CKPT"
