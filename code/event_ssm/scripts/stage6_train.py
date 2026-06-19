@@ -37,6 +37,28 @@ if os.environ.get("WANDB_MODE", "").lower() in ("offline", "disabled"):
         _offline_wandb_logger._offline_patched = True
         _lu.get_wandb_logger = _offline_wandb_logger
 
+    # Offline RESUME: RVT's get_ckpt_path -> WandbLogger.get_checkpoint() calls experiment.use_artifact()
+    # UNCONDITIONALLY -- even when an explicit local checkpoint file is supplied -- which wandb forbids
+    # offline ("Cannot use artifact when in offline mode"). Offline, resolve the ckpt straight from
+    # wandb.artifact_local_file (skip the artifact API). Full-state resume is preserved: train.py passes
+    # this path to trainer.fit(ckpt_path=...), restoring optimizer/scheduler/global-step (resume continues
+    # the OneCycle schedule). Only active when artifact_name is set (i.e. a resume was requested).
+    if not getattr(_lu.get_ckpt_path, "_offline_patched", False):
+        from pathlib import Path as _Path
+        def _offline_get_ckpt_path(logger, wandb_config):
+            local = wandb_config.artifact_local_file
+            assert local is not None, (
+                "Offline resume requires wandb.artifact_local_file=/abs/path/to/<ckpt> "
+                "(use_artifact is unavailable when WANDB_MODE=offline/disabled)."
+            )
+            p = _Path(local)
+            assert p.exists(), f"resume checkpoint not found: {p}"
+            assert p.suffix == ".ckpt", p.suffix
+            print(f"[stage6_train] offline resume: loading checkpoint directly from {p}")
+            return p
+        _offline_get_ckpt_path._offline_patched = True
+        _lu.get_ckpt_path = _offline_get_ckpt_path
+
 if __name__ == "__main__":
     train_py = str(RVT / "train.py")
     sys.argv[0] = train_py                       # make it indistinguishable from `python train.py ...`
