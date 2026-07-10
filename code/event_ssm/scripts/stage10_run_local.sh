@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Stage-10 efficiency benchmark launcher. REFUSES to run unless the GPU is idle — benchmark numbers
+# measured on a contended GPU are garbage (spec §6). Usage:
+#   bash code/event_ssm/scripts/stage10_run_local.sh --smoke     # <2 min wiring check
+#   bash code/event_ssm/scripts/stage10_run_local.sh             # the real ~20-30 min run
+set -euo pipefail
+
+REPO=/home/ghost/Desktop/thesis-ssm-event-cameras
+NVSMI="${NVSMI:-nvidia-smi}"   # override with a stub for guard tests
+
+read -r UTIL MEM <<<"$($NVSMI --query-gpu=utilization.gpu,memory.used --format=csv,noheader,nounits | head -1 | tr -d ',')"
+if (( UTIL >= 10 )) || (( MEM >= 1500 )); then
+  echo "[stage10] ABORT: GPU not idle (util=${UTIL}%, mem=${MEM} MiB; need <10% and <1500 MiB)." >&2
+  echo "[stage10] Wait for Stage-9 sweeps/renders to finish, then re-run." >&2
+  exit 1
+fi
+echo "[stage10] GPU idle (util=${UTIL}%, mem=${MEM} MiB) — proceeding."
+
+set +u; source /home/ghost/miniforge3/etc/profile.d/conda.sh && conda activate events_signals; set -u
+export TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1
+export PYTHONUNBUFFERED=1
+export PYTHONPATH="$REPO/code:$REPO/external/ssms_event_cameras/RVT:${PYTHONPATH:-}"
+
+OUT="$REPO/results/stage10"; mkdir -p "$OUT"
+LOG="$OUT/console_$(date +%Y%m%d_%H%M%S).log"
+echo "[stage10] log -> $LOG"
+python "$REPO/code/event_ssm/scripts/stage10_benchmark.py" "$@" 2>&1 | tee "$LOG"
+echo "[stage10] next: python $REPO/code/event_ssm/scripts/stage10_report.py"
