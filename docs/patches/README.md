@@ -68,6 +68,17 @@ threaded through the backbone.
   `align_t_ms=100` + `searchsorted(side="left")`). It is **dt-invariant** (identical across all windows),
   so it must not be mistaken for temporal degradation when comparing rebuilt vs canonical numbers.
 
+## Stage 12 (2026-07-11): PureSSM Hydra config symlinks
+
+After any re-clone of external/, re-create the Stage-12 Hydra config symlinks:
+```bash
+mkdir -p external/ssms_event_cameras/RVT/config/model/puressm_yolox
+ln -s ../../../../../../code/event_ssm/configs/puressm_yolox/default.yaml \
+      external/ssms_event_cameras/RVT/config/model/puressm_yolox/default.yaml
+ln -s ../../../../../../code/event_ssm/configs/experiment/gen1/puressm.yaml \
+      external/ssms_event_cameras/RVT/config/experiment/gen1/puressm.yaml
+```
+
 ## Deferred (low-priority, from the Stage-9 code review)
 - Single-source-of-truth: derive `ts_step_frame_ms` from `get_base_delta_ts_for_labels_us` (or assert they
   agree) instead of the second hardcode. Touches validated code → fold in next time that file is edited.

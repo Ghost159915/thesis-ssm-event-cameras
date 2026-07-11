@@ -25,7 +25,8 @@ def register():
     register_resnet_mamba()
 
 
-def compose_smoke_config(dataset_path=None, max_epochs=50, batch_size=2, extra_overrides=None):
+def compose_smoke_config(dataset_path=None, max_epochs=50, batch_size=2, extra_overrides=None,
+                         experiment="resnet_mamba"):
     setup_paths()
     register()
     os.environ.setdefault("WANDB_MODE", "disabled")
@@ -37,7 +38,7 @@ def compose_smoke_config(dataset_path=None, max_epochs=50, batch_size=2, extra_o
     overrides = [
         "dataset=gen1",
         "model=rnndet",                       # provides model.name=rnndet (modifier dispatches on it)
-        "+experiment/gen1=resnet_mamba",      # pulls in /model/resnet_mamba_yolox + train/dataset blocks
+        f"+experiment/gen1={experiment}",      # resnet_mamba (Stage 5) | puressm (Stage 12)
         f"dataset.path={dataset_path}",
         "dataset.train.sampling=random",
         f"batch_size.train={batch_size}",

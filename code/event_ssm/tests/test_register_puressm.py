@@ -56,3 +56,13 @@ def test_puressm_backbone_forward_contract(device):
     feats, states = bb(x, None)
     assert feats[2].shape == (2, 1, 128, 32, 40)
     assert len(states) == 4 and states[0].shape == (1, 1)
+
+
+def test_compose_selects_puressm_and_sets_hw(device):
+    from event_ssm.integration.smoke_harness import compose_smoke_config
+    cfg = compose_smoke_config(experiment="puressm")
+    assert cfg.model.backbone.name == "PureSSM"
+    assert tuple(cfg.model.backbone.in_res_hw) == (256, 320)   # modifier ran (multiple-of-32 pad)
+    assert cfg.model.head.num_classes == 2
+    assert cfg.model.backbone.spatial_d_state == 16
+    assert list(cfg.model.backbone.depths) == [2, 2, 8, 2]

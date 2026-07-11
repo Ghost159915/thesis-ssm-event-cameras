@@ -1,0 +1,44 @@
+# @package _global_
+# Canonical (tracked) Hydra model config for the fully-pure PureSSM backbone (Stage 12).
+# Symlinked into the (gitignored) RVT config tree at
+# external/ssms_event_cameras/RVT/config/model/puressm_yolox/default.yaml.
+# Mirrors resnet_mamba_yolox/default.yaml; ONLY the backbone block differs (controlled experiment).
+defaults:
+  - override /model: rnndet
+
+model:
+  backbone:
+    name: PureSSM
+    compile:
+      enable: False
+      args:
+        mode: reduce-overhead
+    input_channels: 20         # stacked_histogram: 2 pol x 10 bins (matches baseline gen1.yaml)
+    d_state: 64                # TEMPORAL Mamba-2 blocks (identical to ResNetMamba — never a confound)
+    num_layers_per_stage: 1
+    in_stages: [2, 3, 4]       # temporal blocks ONLY on FPN-consumed stages (Finding §8)
+    depths: [2, 2, 8, 2]       # SPATIAL BiMamba pyramid depths (spec §4.3)
+    spatial_d_state: 16        # spatial scans need small state (VMamba evidence, spec §4.2)
+    drop_path_rate: 0.1
+    checkpoint_blocks: False   # local-16GB training fallback; cloud RTX 5090 32GB leaves False
+  fpn:
+    name: PAFPN
+    compile:
+      enable: False
+      args:
+        mode: reduce-overhead
+    depth: 0.67                # round(depth * 3) == num bottleneck blocks
+    in_stages: [2, 3, 4]
+    depthwise: False
+    act: "silu"
+  head:
+    name: YoloX
+    compile:
+      enable: False
+      args:
+        mode: reduce-overhead
+    depthwise: False
+    act: "silu"
+  postprocess:
+    confidence_threshold: 0.1
+    nms_threshold: 0.45
