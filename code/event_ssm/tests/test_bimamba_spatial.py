@@ -165,3 +165,25 @@ def test_checkpoint_flag_inert_in_eval(device):
         m.checkpoint_blocks = True
         y1 = m(x)[3]
     assert torch.equal(y0, y1)
+
+
+def test_checkpoint_kwarg_engages_recompute(device):
+    """Constructor kwarg is wired AND checkpointing genuinely engages (call-count spy)."""
+    from unittest import mock
+    from event_ssm.spatial import BiMambaSpatialStages
+    torch.manual_seed(0)
+    x = torch.randn(1, 20, 256, 320, device=device)
+
+    # With checkpoint_blocks=True, spy on torch.utils.checkpoint.checkpoint calls
+    m = BiMambaSpatialStages(checkpoint_blocks=True, drop_path_rate=0.0).to(device).train()
+    with mock.patch("torch.utils.checkpoint.checkpoint", wraps=torch.utils.checkpoint.checkpoint) as spy:
+        m(x)
+    assert spy.call_count == sum(m.depths), \
+        f"checkpoint engaged {spy.call_count} times, expected {sum(m.depths)}"
+
+    # Without checkpoint_blocks, checkpoint should never be called
+    m2 = BiMambaSpatialStages(drop_path_rate=0.0).to(device).train()
+    with mock.patch("torch.utils.checkpoint.checkpoint", wraps=torch.utils.checkpoint.checkpoint) as spy2:
+        m2(x)
+    assert spy2.call_count == 0, \
+        f"checkpoint called {spy2.call_count} times without flag, expected 0"

@@ -33,7 +33,7 @@ OUT = REPO / "code" / "event_ssm" / "proofs" / "out"
 NECK_HEAD_MS = 7.2           # Stage-10 measured (bench_results.json neck_head p50)
 EVENTSSM_BACKBONE_MS = 5.83  # Stage-10 reference line (ResNet-18+Mamba backbone, eager)
 GATE_HZ, GATE_GB = 51.0, 16.0
-GATE_LATENCY_MS = 1000.0 / GATE_HZ - NECK_HEAD_MS  # ~12.5 ms, for the plot's gate line
+GATE_LATENCY_MS = 1000.0 / GATE_HZ - NECK_HEAD_MS  # = 12.41 ms (display/plot only; gate decision uses pipeline_hz >= GATE_HZ)
 OURS, BASELINE = "#2a78d6", "#1baf7a"
 
 
@@ -144,7 +144,8 @@ def section_c(bb, x1, backbone_ms, warmup, iters):
     """SECONDARY, NON-GATING datapoint. Ladder: torch.compile -> manual CUDAGraph -> record
     failure strings (a legitimate result per the plan amendment)."""
     result = {"compiled_mechanism": None, "compiled_p50_ms": None, "compiled_hz": None,
-              "compile_error": None, "cudagraph_error": None}
+              "compile_error": None, "cudagraph_error": None,
+              "cudagraph_state_semantics": "fixed"}
     try:
         compiled_ms, err = _try_torch_compile(bb, x1, backbone_ms, iters)
     except Exception as e:  # noqa: BLE001 — graph-break/backend failures are expected data
