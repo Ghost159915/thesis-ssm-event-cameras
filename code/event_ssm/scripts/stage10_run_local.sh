@@ -9,6 +9,10 @@ REPO=/home/ghost/Desktop/thesis-ssm-event-cameras
 NVSMI="${NVSMI:-nvidia-smi}"   # override with a stub for guard tests
 
 read -r UTIL MEM <<<"$($NVSMI --query-gpu=utilization.gpu,memory.used --format=csv,noheader,nounits | head -1 | tr -d ',')"
+if ! [[ "${UTIL:-}" =~ ^[0-9]+$ ]] || ! [[ "${MEM:-}" =~ ^[0-9]+$ ]]; then
+  echo "[stage10] ABORT: could not parse GPU state from nvidia-smi (util='${UTIL:-}' mem='${MEM:-}'). Driver hiccup? Fail-closed." >&2
+  exit 1
+fi
 if (( UTIL >= 10 )) || (( MEM >= 1500 )); then
   echo "[stage10] ABORT: GPU not idle (util=${UTIL}%, mem=${MEM} MiB; need <10% and <1500 MiB)." >&2
   echo "[stage10] Wait for Stage-9 sweeps/renders to finish, then re-run." >&2
