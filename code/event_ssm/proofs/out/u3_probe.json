@@ -1,0 +1,18 @@
+{
+  "backbone_p50_ms": 18.094,
+  "spatial_only_p50_ms": 15.247,
+  "neck_head_ms_ref": 7.2,
+  "projected_pipeline_hz": 39.53,
+  "train_peak_vram_gb": 8.55,
+  "train_peak_vram_label": "local_fallback",
+  "cloud_note": "main training on RTX 5090 32GB (roadmap 2026-07-11); no-checkpoint fwd was measured OOM>15.4GB on 2026-07-11",
+  "gate_51hz": false,
+  "gate_16gb": true,
+  "compiled_mechanism": "manual_cudagraph",
+  "compiled_p50_ms": 3.773,
+  "compiled_hz": 265.03,
+  "compile_error": "RuntimeError: Error: accessing tensor output of CUDAGraphs that has been overwritten by a subsequent run. Stack trace: File \"/home/ghost/Desktop/thesis-ssm-event-cameras/code/event_ssm/temporal/_scan.py\", line 62, in mamba2_scan_time\n    new_conv = xBC_ext[:, -(d_conv - 1):].detach(). To prevent overwriting, clone the tensor outside of torch.compile() or call torch.compiler.cudagraph_mark_step_begin() before each model invocation.",
+  "cudagraph_error": null,
+  "device": "NVIDIA GeForce RTX 5070 Ti",
+  "cudagraph_state_semantics": "fixed"
+}
