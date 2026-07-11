@@ -11,7 +11,7 @@
 - **`bimamba_spatial.py` — `BiMambaSpatialStages`:** conv stem (stride 4) + 3 conv downsamplers, depths **[2,2,8,2]**, dims 64/128/256/512, strides 4/8/16/32, **8.38 M params** (gate 8–16 M). `checkpoint_blocks` flag = local-16 GB training fallback (engagement spy-tested: 14 calls on, 0 off).
 - **`backbone/resnet_mamba.py`:** additive `spatial=` injection kwarg (default path byte-identical; forward/state helpers untouched).
 - Scripts: `stage11_probe.py` (definitive U3 gate probe incl. CUDA-graph datapoint + `--smoke`), `stage11_erf.py` (ERF mechanism figure), `stage11_u1_proof.py`, `stage11_u2_proof.py`.
-- Tests: **~29 new** (scan equivalence/flip/liveness/gradients/bf16, block axis semantics, pyramid contract/param-gate/statelessness, injection + state contract, checkpoint engagement); full suite green throughout (87 + 1 gpu-marked at close).
+- Tests: **27 new** (scan equivalence/flip/liveness/gradients/bf16, block axis semantics, pyramid contract/param-gate/statelessness, injection + state contract, checkpoint engagement); full suite green throughout (87 + 1 gpu-marked at close).
 
 ## Official probe results (user-run, RTX 5070 Ti idle, commit `3e8cf30`)
 

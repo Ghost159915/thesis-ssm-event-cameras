@@ -144,8 +144,7 @@ def section_c(bb, x1, backbone_ms, warmup, iters):
     """SECONDARY, NON-GATING datapoint. Ladder: torch.compile -> manual CUDAGraph -> record
     failure strings (a legitimate result per the plan amendment)."""
     result = {"compiled_mechanism": None, "compiled_p50_ms": None, "compiled_hz": None,
-              "compile_error": None, "cudagraph_error": None,
-              "cudagraph_state_semantics": "fixed"}
+              "compile_error": None, "cudagraph_error": None}
     try:
         compiled_ms, err = _try_torch_compile(bb, x1, backbone_ms, iters)
     except Exception as e:  # noqa: BLE001 — graph-break/backend failures are expected data
@@ -161,7 +160,8 @@ def section_c(bb, x1, backbone_ms, warmup, iters):
         cg_ms = _try_manual_cudagraph(bb, x1, warmup, iters)
         result.update(compiled_mechanism="manual_cudagraph",
                        compiled_p50_ms=round(cg_ms, 3),
-                       compiled_hz=round(1000.0 / cg_ms, 2))
+                       compiled_hz=round(1000.0 / cg_ms, 2),
+                       cudagraph_state_semantics="fixed")
     except Exception as e:  # noqa: BLE001 — capture failures are expected data
         result["cudagraph_error"] = f"{type(e).__name__}: {e}"
     return result
@@ -261,6 +261,8 @@ def main():
         print("=== SMOKE OK: ran end-to-end without crashing (gate pass/fail above is not "
               "meaningful under smoke iters/warmup) ===")
 
+    if args.smoke:
+        sys.exit(0)
     sys.exit(0 if (g1 and g2) else 1)
 
 

@@ -69,6 +69,8 @@ def test_kernel_matches_reference(device, s):
     from mamba_ssm.ops.triton.ssd_combined import (mamba_chunk_scan_combined,
                                                    ssd_chunk_scan_combined_ref)
     import triton
+    prev_matmul_tf32 = torch.backends.cuda.matmul.allow_tf32
+    prev_cudnn_tf32 = torch.backends.cudnn.allow_tf32
     torch.backends.cuda.matmul.allow_tf32 = False  # belt-and-suspenders; does NOT reach Triton's tl.dot
     torch.backends.cudnn.allow_tf32 = False
     prev_fp32_default = _force_ieee_fp32_matmul_in_mamba_triton_kernels()
@@ -128,6 +130,8 @@ def test_kernel_matches_reference(device, s):
         # back to its original (unset) default. Writing back the resolved value
         # sidesteps that env-var pollution entirely.
         triton.knobs.language.fp32_default = prev_fp32_default
+        torch.backends.cuda.matmul.allow_tf32 = prev_matmul_tf32
+        torch.backends.cudnn.allow_tf32 = prev_cudnn_tf32
 
 
 def test_flip_equivariance_with_mirrored_params(device):

@@ -1,7 +1,6 @@
 """BiMamba 2D block (Stage 11, spec §4.2): zero-init DWConv3x3 local mix + pre-norm
 bidirectional scan along ONE axis (row- or column-major flatten; the pyramid alternates
 axes across blocks — Mamba-ND finding). timm is absent from this env: DropPath is vendored."""
-import torch
 import torch.nn as nn
 from einops import rearrange
 
@@ -47,7 +46,7 @@ class BiMamba2DBlock(nn.Module):
 
     def forward(self, x):                                  # (N, C, H, W)
         x = x + self.dwconv(x)
-        n, c, h, w = x.shape
+        _, c, h, w = x.shape
         t = self.norm(rearrange(x, "n c h w -> n h w c"))
         if self.axis == "row":
             y = self.scan(rearrange(t, "n h w c -> n (h w) c"))

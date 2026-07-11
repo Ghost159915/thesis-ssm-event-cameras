@@ -1,3 +1,5 @@
+from typing import Optional
+
 import torch
 import torch.nn as nn
 from event_ssm.backbone.resnet_spatial import ResNetSpatialStages
@@ -39,7 +41,7 @@ class ResNetMambaBackbone(nn.Module):
 
     def __init__(self, in_channels: int = 20, pretrained: bool = True, d_state: int = 64,
                  num_layers_per_stage: int = 1, temporal_stages=(2, 3, 4),
-                 spatial: nn.Module = None):
+                 spatial: Optional[nn.Module] = None):
         super().__init__()
         # Stage 11: optional spatial-module injection (duck type of ResNetSpatialStages:
         # stage_dims/strides attrs + forward (N,C,H,W)->dict{1..4}). Default unchanged.
