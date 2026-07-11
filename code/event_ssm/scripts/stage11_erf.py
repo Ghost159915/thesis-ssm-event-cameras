@@ -19,14 +19,19 @@ OUT = REPO / "code" / "event_ssm" / "proofs" / "out"
 OUT.mkdir(parents=True, exist_ok=True)
 
 
-def erf(module, stage: int) -> torch.Tensor:
+def erf(module, stage: int, n_samples: int = 8) -> torch.Tensor:
     module = module.cuda().eval()
-    x = torch.zeros(1, 20, 256, 320, device="cuda", requires_grad=True)
-    f = module(x)[stage]
-    h, w = f.shape[-2:]
-    f[0, :, h // 2, w // 2].abs().sum().backward()
-    g = x.grad.abs().sum(dim=1)[0]
-    return (g / g.max().clamp(min=1e-12)).cpu()
+    acc = None
+    for i in range(n_samples):
+        torch.manual_seed(1000 + i)                      # reproducible probe set
+        x = torch.randn(1, 20, 256, 320, device="cuda", requires_grad=True)
+        f = module(x)[stage]
+        h, w = f.shape[-2:]
+        f[0, :, h // 2, w // 2].abs().sum().backward()
+        g = x.grad.abs().sum(dim=1)[0]
+        acc = g if acc is None else acc + g
+    acc = acc / n_samples
+    return (acc / acc.max().clamp(min=1e-12)).cpu()
 
 
 torch.manual_seed(0)
@@ -40,7 +45,7 @@ for r, (name, m) in enumerate(models.items()):
         ax.imshow(torch.log1p(100 * erf(m, s)), cmap="magma")
         ax.set_title(f"{name} — stage {s}", fontsize=9)
         ax.set_xticks([]), ax.set_yticks([])
-fig.suptitle("Effective receptive field at the frame centre (untrained, log scale)", fontsize=11)
+fig.suptitle("Effective receptive field at the frame centre (untrained, log scale, avg over 8 random inputs)", fontsize=11)
 fig.tight_layout()
 fig.savefig(OUT / "u5_erf_resnet_vs_bimamba.png", dpi=160)
 print(f"wrote {OUT / 'u5_erf_resnet_vs_bimamba.png'}")
