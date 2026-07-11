@@ -95,3 +95,43 @@ def test_no_batchnorm_anywhere(device):
     m = _stages(device)
     assert not any(isinstance(mod, torch.nn.modules.batchnorm._BatchNorm)
                    for mod in m.modules())
+
+
+def test_backbone_accepts_injected_spatial(device):
+    from event_ssm.backbone.resnet_mamba import ResNetMambaBackbone
+    from event_ssm.spatial import BiMambaSpatialStages
+    torch.manual_seed(0)
+    bb = ResNetMambaBackbone(spatial=BiMambaSpatialStages()).to(device)
+    x = torch.randn(2, 1, 20, 256, 320, device=device)     # (L=2, B=1)
+    feats, states = bb(x, None)
+    assert set(feats.keys()) == {1, 2, 3, 4}
+    assert feats[2].shape == (2, 1, 128, 32, 40)            # (L,B,c,h,w) layout kept
+    assert feats[4].shape == (2, 1, 512, 8, 10)
+    # state contract unchanged (spec §3): list len 4; stage-1 placeholder (B,1);
+    # temporal stages dim0=B, no Nones anywhere
+    assert len(states) == 4
+    assert states[0].shape == (1, 1)
+    for st in states[1:]:
+        for conv_b, ssm_b in st:
+            assert conv_b.shape[0] == 1 and ssm_b.shape[0] == 1
+            assert not conv_b.requires_grad and not ssm_b.requires_grad
+
+
+def test_backbone_state_carry_streaming(device):
+    from event_ssm.backbone.resnet_mamba import ResNetMambaBackbone
+    from event_ssm.spatial import BiMambaSpatialStages
+    torch.manual_seed(0)
+    bb = ResNetMambaBackbone(spatial=BiMambaSpatialStages()).to(device).eval()
+    x = torch.randn(1, 1, 20, 256, 320, device=device)
+    with torch.no_grad():
+        _, s1 = bb(x, None)
+        _, s2 = bb(x, s1)                                   # streaming step with carried state
+    assert not torch.allclose(s1[1][0][1], s2[1][0][1]), "temporal state did not evolve"
+
+
+def test_default_backbone_unchanged(device):
+    # regression guard: default construction still builds ResNetSpatialStages
+    from event_ssm.backbone.resnet_mamba import ResNetMambaBackbone
+    from event_ssm.backbone.resnet_spatial import ResNetSpatialStages
+    bb = ResNetMambaBackbone(pretrained=False)
+    assert isinstance(bb.spatial, ResNetSpatialStages)

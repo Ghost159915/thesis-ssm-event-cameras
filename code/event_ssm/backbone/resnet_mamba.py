@@ -38,9 +38,12 @@ class ResNetMambaBackbone(nn.Module):
     `token_mask`/`train_step` are accepted only for RVT signature-compatibility (unused)."""
 
     def __init__(self, in_channels: int = 20, pretrained: bool = True, d_state: int = 64,
-                 num_layers_per_stage: int = 1, temporal_stages=(2, 3, 4)):
+                 num_layers_per_stage: int = 1, temporal_stages=(2, 3, 4),
+                 spatial: nn.Module = None):
         super().__init__()
-        self.spatial = ResNetSpatialStages(in_channels, pretrained)
+        # Stage 11: optional spatial-module injection (duck type of ResNetSpatialStages:
+        # stage_dims/strides attrs + forward (N,C,H,W)->dict{1..4}). Default unchanged.
+        self.spatial = spatial if spatial is not None else ResNetSpatialStages(in_channels, pretrained)
         self.temporal_stages = tuple(temporal_stages)
         # ModuleDict keyed by str(stage) — only FPN-consumed stages get a temporal block
         self.temporal = nn.ModuleDict({
