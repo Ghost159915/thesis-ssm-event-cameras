@@ -172,3 +172,30 @@ def test_bf16_autocast_no_nan(device):
     with torch.autocast("cuda", dtype=torch.bfloat16):
         y = m(x)
     assert torch.isfinite(y.float()).all()
+
+
+def test_batched_path_matches_reference_directions(device):
+    # the batched single-kernel forward must equal the two-call reference path
+    from event_ssm.spatial import BiMamba1DScan
+    for d_model, s in ((64, 5120), (128, 1280), (256, 320), (512, 80)):
+        torch.manual_seed(0)
+        m = BiMamba1DScan(d_model=d_model).to(device)
+        x = torch.randn(2, s, d_model, device=device)
+        z, xBC, dt = torch.split(m.in_proj(x), [m.d_inner, m.conv_dim, m.nheads], dim=-1)
+        y_ref = m._direction(xBC, dt, m.conv1d_fwd, m.A_log_fwd, m.dt_bias_fwd, m.D_fwd) \
+              + m._direction(xBC.flip(1), dt.flip(1), m.conv1d_bwd, m.A_log_bwd,
+                             m.dt_bias_bwd, m.D_bwd).flip(1)
+        y_ref = m.out_proj(m.norm(y_ref, z))
+        y_new = m(x)
+        assert torch.allclose(y_new, y_ref, atol=2e-3, rtol=2e-3), \
+            f"d={d_model} s={s}: max err {(y_new - y_ref).abs().max().item():.2e}"
+
+
+def test_batched_path_gradients_both_directions(device):
+    from event_ssm.spatial import BiMamba1DScan
+    m = BiMamba1DScan(64).to(device)
+    m(torch.randn(2, 96, 64, device=device)).square().mean().backward()
+    for tag in ("fwd", "bwd"):
+        for name in (f"A_log_{tag}", f"dt_bias_{tag}", f"D_{tag}"):
+            g = getattr(m, name).grad
+            assert g is not None and g.abs().sum() > 0, f"no grad into {name} via batched path"
