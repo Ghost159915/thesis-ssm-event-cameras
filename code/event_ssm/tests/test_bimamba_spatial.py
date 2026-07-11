@@ -29,14 +29,18 @@ def test_dwconv_zero_init_starts_as_identity_mix(device):
 
 def test_col_axis_mixes_along_columns(device):
     # a col-axis block must propagate a point perturbation within its column
-    # far more than a row-axis block does at init
+    # far more than a row-axis block does at init.
+    # NOTE: the perturbation must NOT be uniform across channels — the block is
+    # pre-norm, and a uniform all-channel shift is in LayerNorm's null space
+    # (the scan would see identical input and off-site effects would be exactly 0).
     from event_ssm.spatial import BiMamba2DBlock
     torch.manual_seed(0)
     blk = BiMamba2DBlock(64, axis="col").to(device).eval()
     x = torch.randn(1, 64, 16, 20, device=device)
     x2 = x.clone()
-    x2[..., 2, 7] += 5.0                       # perturb (h=2, w=7)
+    x2[0, 3, 2, 7] += 5.0                       # single-channel bump at (h=2, w=7)
     d = (blk(x2) - blk(x)).abs().sum(dim=1)[0]  # (H, W)
     col_effect = d[:, 7].sum() - d[2, 7]
     row_effect = d[2, :].sum() - d[2, 7]
+    assert col_effect > 0, "no off-site propagation at all — scan branch dead"
     assert col_effect > row_effect, "col-axis block did not mix along its column"
