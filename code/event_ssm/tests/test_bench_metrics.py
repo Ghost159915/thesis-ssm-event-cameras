@@ -20,6 +20,20 @@ def test_power_sampler_with_injected_reader():
     assert abs(ps.mean_w - 42.0) < 1e-6
 
 
+def test_power_sampler_drops_sample_on_reader_timeout():
+    # Important-3: read_gpu_power_w propagates subprocess.TimeoutExpired on a hung nvidia-smi
+    # call (timeout=2); the sampler loop must swallow it per-sample rather than dying/hanging.
+    import subprocess as sp
+
+    def _flaky():
+        raise sp.TimeoutExpired(cmd="nvidia-smi", timeout=2)
+
+    with PowerSampler(interval_s=0.05, _read=_flaky) as ps:
+        time.sleep(0.3)
+    assert ps.samples == []            # every sample dropped
+    assert ps.mean_w != ps.mean_w       # nan (no samples) -- thread never died mid-loop
+
+
 def test_state_bytes_recursive():
     t1 = torch.zeros(2, 3, dtype=torch.float32)      # 24 B
     t2 = torch.zeros(4, dtype=torch.float16)         # 8 B

@@ -43,7 +43,11 @@ All gates must pass before final validation:
    - Baseline: ≈ 18M params
 
 2. **FLOPs capture quality (NEW):**
-   - `flops.source == "torch.profiler"` (or `"fvcore"` if fallback triggered)
+   - fvcore is attempted FIRST; its jit.trace cannot survive either model's custom scan kernel
+     on this hardware (Triton chunk-scan for EventSSM, complex-tensor associative scan for the
+     baseline S5), so it fails/undercounts and torch.profiler is the working runtime FALLBACK.
+   - `flops.source == "torch.profiler"` is therefore the *expected* value on this hardware —
+     `"fvcore"` would only appear if fvcore's trace unexpectedly succeeded.
    - `counted_incomplete == false` for both models
    - Expected counted GFLOPs: ≈ 12.5 (EventSSMDetector) / 10.0 (baseline)
 

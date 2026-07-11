@@ -4,6 +4,7 @@ guard). --smoke shrinks every loop for a <2-min end-to-end wiring check."""
 import argparse
 import datetime
 import json
+import os
 import pathlib
 import subprocess
 import sys
@@ -43,16 +44,55 @@ def _nvsmi(query: str) -> str:
         return "unavailable"
 
 
+def _num(s: str):
+    """Best-effort float parse of one nvidia-smi CSV field; None if not parseable (e.g. the
+    "unavailable" sentinel _nvsmi returns on driver failure) -- Minor-5 numeric clocks/temp."""
+    try:
+        return float(s.strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def _clocks_temp() -> dict:
+    """SM clock (MHz) + GPU temperature (C) as numbers where parseable (Minor-5). Called once in
+    gather_meta (pre-run) and again in main() after all models finish (meta["clocks_after"]) so
+    thermal throttling / clock drift over the run is visible in the JSON."""
+    raw = _nvsmi("clocks.sm,temperature.gpu")
+    parts = raw.split(",") if raw != "unavailable" else []
+    return {"clocks_sm_mhz": _num(parts[0]) if len(parts) > 0 else None,
+            "temperature_gpu_c": _num(parts[1]) if len(parts) > 1 else None,
+            "raw": raw}
+
+
+def _git_dirty() -> bool:
+    """True if the working tree has uncommitted changes. Guarded like _nvsmi: any failure (git
+    missing, not a repo, etc.) must not abort the benchmark -- falls back to False."""
+    try:
+        out = subprocess.run(["git", "-C", str(REPO), "status", "--porcelain"],
+                             capture_output=True, text=True, check=True).stdout
+        return bool(out.strip())
+    except Exception:
+        return False
+
+
 def gather_meta(clip_src: str) -> dict:
     sha = subprocess.run(["git", "-C", str(REPO), "rev-parse", "--short", "HEAD"],
                          capture_output=True, text=True).stdout.strip()
-    return {"date": datetime.datetime.now().isoformat(timespec="seconds"),
+    meta = {"date": datetime.datetime.now().isoformat(timespec="seconds"),
             "torch": torch.__version__, "cuda": torch.version.cuda,
             "gpu": _nvsmi("name"), "driver": _nvsmi("driver_version"),
-            "clocks_sm_mhz": _nvsmi("clocks.sm"), "git_sha": sha, "clip_src": clip_src,
+            "git_sha": sha, "clip_src": clip_src,
             "ckpts": {},  # filled by main()
             "test_ap": TEST_AP,
+            # Contamination guard (Important-2): the Stage-9 Delta_t hooks read these ONLY at
+            # model construction (docs/patches/README.md) -- recorded here so a leftover export
+            # from an earlier shell shows up in the JSON instead of silently rescaling the model.
+            "step_scale_env": {"MAMBA_STEP_SCALE": os.environ.get("MAMBA_STEP_SCALE"),
+                               "S5_STEP_SCALE": os.environ.get("S5_STEP_SCALE")},
+            "git_dirty": _git_dirty(),
             "weights": "plain mdl.* (non-EMA); compute metrics weight-independent"}
+    meta.update(_clocks_temp())
+    return meta
 
 
 def measure_model(kind: str, device, clip, smoke: bool) -> dict:
@@ -102,10 +142,19 @@ def measure_model(kind: str, device, clip, smoke: bool) -> dict:
             # flops (never raise) while the surrounding matmul/conv ops (projections, ResNet/
             # MaxViT spatial stages) still get counted; the scan itself stays priced by the
             # analytic add-on below regardless of which path counted the rest.
-            prof_counted = bm.profiler_network_flops(lambda: net_only(frames[0:1]), device=device)
-            if prof_counted["counted_gflops"] > 0.0:
-                counted = {**counted, "counted_gflops": prof_counted["counted_gflops"]}
-                source = prof_counted["source"]
+            try:
+                prof_counted = bm.profiler_network_flops(lambda: net_only(frames[0:1]), device=device)
+                if prof_counted["counted_gflops"] > 0.0:
+                    counted = {**counted, "counted_gflops": prof_counted["counted_gflops"]}
+                    source = prof_counted["source"]
+            except Exception as e:          # Triage-9: the fallback itself must never abort the
+                # run -- mirrors the fvcore except above. counted_gflops stays 0.0 (so
+                # counted_incomplete becomes True below) and source records that neither counter
+                # produced a number.
+                counted = {**counted, "counted_gflops": 0.0,
+                          "unsupported_ops": {**counted.get("unsupported_ops", {}),
+                                              "profiler_trace_failed": 1, "profiler_err": str(e)[:200]}}
+                source = "none"
     finally:
         model.autocast_bf16 = prev_ac
         for p in model.detector.parameters():
@@ -174,7 +223,7 @@ def measure_model(kind: str, device, clip, smoke: bool) -> dict:
 
     # ---- energy (bf16 streaming; spec §5.5) ----
     idle_s, load_s = (2, 5) if smoke else (10, 60)
-    with bm.PowerSampler() as ps_idle:
+    with bm.PowerSampler() as ps_idle_pre:
         time.sleep(idle_s)
     st = {"s": None}; count = {"n": 0}
     with bm.PowerSampler() as ps_load:
@@ -184,8 +233,18 @@ def measure_model(kind: str, device, clip, smoke: bool) -> dict:
             _, st["s"] = model.full_step(frames[i:i + 1], st["s"]); count["n"] += 1
         torch.cuda.synchronize(device)
         elapsed = time.perf_counter() - t0
-    delta_w = ps_load.mean_w - ps_idle.mean_w
-    out["energy"] = {"idle_w": ps_idle.mean_w, "load_w": ps_load.mean_w,
+    # Important-4: a second idle window AFTER the load window (same duration as idle_s) -- a
+    # drifting idle baseline (thermal soak, another process waking up) would otherwise silently
+    # bias delta_w/j_per_frame when only sampled once before load. j_per_frame is still computed
+    # against the PRE window below (unchanged number for continuity); idle_drift_exceeded flags
+    # when pre/post disagree by >10% so a drifting run can be caught rather than silently trusted.
+    with bm.PowerSampler() as ps_idle_post:
+        time.sleep(idle_s)
+    idle_pre_w, idle_post_w = ps_idle_pre.mean_w, ps_idle_post.mean_w
+    delta_w = ps_load.mean_w - idle_pre_w
+    drift_exceeded = abs(idle_post_w - idle_pre_w) / idle_pre_w > 0.10 if idle_pre_w > 0 else False
+    out["energy"] = {"idle_w": idle_pre_w, "idle_pre_w": idle_pre_w, "idle_post_w": idle_post_w,
+                     "idle_drift_exceeded": drift_exceeded, "load_w": ps_load.mean_w,
                      "j_per_frame": delta_w * elapsed / max(count["n"], 1),
                      "frames": count["n"], "seconds": elapsed}
 
@@ -208,16 +267,23 @@ def main():
     blob = torch.load(DEFAULT_CACHE, weights_only=False)
 
     from event_ssm.benchmark.bench_models import CKPTS
+    outdir = pathlib.Path(args.out); outdir.mkdir(parents=True, exist_ok=True)
+    outfile = outdir / ("bench_results_smoke.json" if args.smoke else "bench_results.json")
+
     results = {"schema": 1, "meta": gather_meta(blob["src"]), "models": {}}
     results["meta"]["ckpts"] = {k: str(v) for k, v in CKPTS.items()}
     kinds = ["eventssm", "baseline"] if args.models == "both" else [args.models]
     for kind in kinds:
         print(f"[stage10] measuring {kind} ({'smoke' if args.smoke else 'full'}) ...")
         results["models"][kind] = measure_model(kind, device, clip, args.smoke)
+        # Run protection: dump after EVERY model so a crash on model 2 doesn't lose model 1's
+        # ~15 min of measurement -- this JSON is overwritten again (complete) at the end.
+        outfile.write_text(json.dumps(results, indent=2))
+        print(f"[stage10] incremental dump ({kind} done) -> {outfile}")
+
+    results["meta"]["clocks_after"] = _clocks_temp()   # Minor-5: clock/thermal drift over the run
 
     problems = validate_results(results)
-    outdir = pathlib.Path(args.out); outdir.mkdir(parents=True, exist_ok=True)
-    outfile = outdir / ("bench_results_smoke.json" if args.smoke else "bench_results.json")
     outfile.write_text(json.dumps(results, indent=2))
     print(f"[stage10] wrote {outfile}")
     if problems:

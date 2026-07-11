@@ -21,6 +21,11 @@ fi
 echo "[stage10] GPU idle (util=${UTIL}%, mem=${MEM} MiB) — proceeding."
 
 set +u; source /home/ghost/miniforge3/etc/profile.d/conda.sh && conda activate events_signals; set -u
+# Contamination guard (Important-2): the Stage-9 Delta_t hooks (MambaTemporalBlock.step_scale /
+# baseline S5Block.step_scale, docs/patches/README.md) read MAMBA_STEP_SCALE / S5_STEP_SCALE ONCE
+# at model construction. A leftover export from a Stage-9 sweep shell sourced into this one would
+# silently construct a Delta_t-rescaled model here and Stage-10 would benchmark the wrong thing.
+unset MAMBA_STEP_SCALE S5_STEP_SCALE
 export TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1
 export PYTHONUNBUFFERED=1
 export PYTHONPATH="$REPO/code:$REPO/external/ssms_event_cameras/RVT:${PYTHONPATH:-}"

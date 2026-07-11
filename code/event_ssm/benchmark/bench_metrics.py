@@ -51,7 +51,12 @@ def measure_peak_vram(fn, *, device, n_calls: int = 20) -> float:
 
 
 def read_gpu_power_w() -> float:
-    """Instantaneous board power in watts: pynvml if available, else nvidia-smi (spec §5.5 fallback)."""
+    """Instantaneous board power in watts: pynvml if available, else nvidia-smi (spec §5.5 fallback).
+    timeout=2 on the nvidia-smi call: a hung/unresponsive driver query must not stall the sampler
+    thread forever. subprocess.TimeoutExpired (like any other exception raised here) propagates out
+    of this function uncaught -- PowerSampler._loop() below already wraps every self._read() call in
+    its own per-sample try/except Exception: pass, so a timed-out sample is simply dropped rather
+    than killing the benchmark (Important-3)."""
     try:
         import pynvml
         pynvml.nvmlInit()
@@ -63,7 +68,7 @@ def read_gpu_power_w() -> float:
     except Exception:
         out = subprocess.run(
             ["nvidia-smi", "--query-gpu=power.draw", "--format=csv,noheader,nounits"],
-            capture_output=True, text=True, check=True,
+            capture_output=True, text=True, check=True, timeout=2,
         ).stdout.strip().splitlines()[0]
         return float(out)
 
@@ -83,7 +88,10 @@ class PowerSampler:
             try:
                 self.samples.append(self._read())
             except Exception:
-                pass  # a dropped sample must not kill the benchmark
+                # a dropped sample must not kill the benchmark -- this is also what makes
+                # read_gpu_power_w's timeout=2 safe: a subprocess.TimeoutExpired (or any other
+                # exception) from a hung nvidia-smi call lands here and just costs one sample.
+                pass
             self._stop.wait(self.interval_s)
 
     def __enter__(self):

@@ -12,6 +12,34 @@ LABEL = {"eventssm": "EventSSM (ours, Mamba)", "baseline": "S5-RVT (baseline)"}
 INK, INK2, MUTED, GRID = "#0b0b0b", "#52514e", "#898781", "#e1e0d9"
 
 
+def _add_baseline_ratios(rows: list) -> None:
+    """Ours-vs-baseline ratio column (Important-1). Convention: >1 always favours 'ours'
+    (eventssm) -- baseline/ours for latency and J/frame (lower-is-better metrics, so ratio>1
+    means ours is faster/leaner), ours/baseline for Hz (higher-is-better, so ratio>1 means ours
+    has more throughput). Populated on the 'ours' row only; every row gets the key (None if no
+    baseline to compare against) so the CSV DictWriter sees a consistent field set."""
+    by_model = {r["model"]: r for r in rows}
+    for r in rows:
+        r["vs_baseline"] = None
+    ours, base = by_model.get("eventssm"), by_model.get("baseline")
+    if not (ours and base):
+        return
+
+    def _ratio(num, den):
+        try:
+            return num / den if den else None
+        except (TypeError, ZeroDivisionError):
+            return None
+
+    lat_r = _ratio(base["lat_full_p50_ms"], ours["lat_full_p50_ms"])
+    hz_r = _ratio(ours["hz_full"], base["hz_full"])
+    j_r = _ratio(base["j_per_frame"], ours["j_per_frame"])
+    parts = [f"{v:.2f}× {label}" for v, label in
+             ((lat_r, "lat"), (hz_r, "Hz"), (j_r, "J/frame")) if v is not None]
+    if parts:
+        ours["vs_baseline"] = " / ".join(parts)
+
+
 def _rows(d: dict) -> list:
     rows = []
     for kind, m in d["models"].items():
@@ -25,6 +53,7 @@ def _rows(d: dict) -> list:
             "gflops_counted": m["flops"]["counted_gflops"],
             "gflops_analytic": m["flops"]["analytic_gflops"],
             "flops_incomplete": bool(m["flops"]["counted_incomplete"]),
+            "flops_source": m["flops"].get("source", "unknown"),
             "lat_full_p50_ms": bf["full"]["p50_ms"], "lat_full_p95_ms": bf["full"]["p95_ms"],
             "lat_network_p50_ms": bf["network"]["p50_ms"],
             "hz_full": bf["full"]["hz"],
@@ -34,6 +63,7 @@ def _rows(d: dict) -> list:
             "j_per_frame": m["energy"]["j_per_frame"], "load_w": m["energy"]["load_w"],
             "map_per_gflop": (ap / gflops) if (ap and gflops) else None,
         })
+    _add_baseline_ratios(rows)
     return rows
 
 
@@ -45,9 +75,9 @@ def _table_md(rows: list) -> str:
             ("fps@B4", "fps_b4"), ("fps@B8", "fps_b8"),
             ("VRAM inf (MB)", "vram_inf_mb"), ("VRAM train (MB)", "vram_train_mb"),
             ("State (KB/stream)", "state_kb"), ("J/frame", "j_per_frame"), ("Load (W)", "load_w"),
-            ("mAP/GFLOP", "map_per_gflop")]
-    # These two cells are undercounted when fvcore tracing failed (flops.counted_incomplete) --
-    # dagger them per-row and add one shared footnote rather than silently presenting a partial
+            ("mAP/GFLOP", "map_per_gflop"), ("vs Baseline (lat/Hz/J)", "vs_baseline")]
+    # These two cells are undercounted when FLOP counting failed for a model (flops.counted_incomplete)
+    # -- dagger them per-row and add one shared footnote rather than silently presenting a partial
     # GFLOPs figure as if it were complete.
     dagger_cols = {"gflops_total", "map_per_gflop"}
     fmt = lambda v: (f"{v:.3f}" if isinstance(v, float) else ("—" if v is None else str(v)))
@@ -62,13 +92,26 @@ def _table_md(rows: list) -> str:
             cells.append(v)
         lines.append("| " + " | ".join(cells) + " |")
     lines.append("")
+
+    # Provenance (Important-1): render the ACTUAL per-model FLOP-counting source(s) instead of
+    # hardcoding "fvcore-counted" -- fvcore is attempted first but its jit.trace cannot survive
+    # either model's custom scan kernel on this hardware, so torch.profiler is normally what
+    # produced the counted GFLOPs. If every model shares one source, name it once; if they
+    # differ, spell out which model used which.
+    sources = {r["model"]: r.get("flops_source", "unknown") for r in rows}
+    unique_sources = sorted(set(sources.values()))
+    src_str = unique_sources[0] if len(unique_sources) == 1 else \
+        ", ".join(f"{k}: {v}" for k, v in sources.items())
+
     lines.append("*Latency = bf16 streaming (B=1, L=1, state carried), full pipeline incl. postprocess/NMS "
-                 "(headline) and network-only. Energy = differential J/frame vs idle, desktop-GPU proxy. "
-                 "FLOPs = fvcore-counted + analytic SSM-kernel add-on (split shown).*")
+                 "(headline) and network-only. fps@B4/B8 are network-only throughput (postprocess "
+                 "excluded); headline Hz is full-pipeline. Energy = differential J/frame vs idle, "
+                 f"desktop-GPU proxy. FLOPs = counted ({src_str}) + analytic SSM-kernel add-on "
+                 "(split shown).*")
     if any(r.get("flops_incomplete") for r in rows):
         lines.append("")
-        lines.append("† fvcore trace incomplete — GFLOPs reflects the analytic SSM-kernel component only; "
-                     "mAP/GFLOP not citable until re-measured.")
+        lines.append("† FLOP counting incomplete — value reflects the analytic SSM-kernel component "
+                     "only; not citable until re-measured.")
     return "\n".join(lines)
 
 
