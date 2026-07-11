@@ -20,7 +20,12 @@ build_smoke_dataset()                                  # ensure the tiny dataset
 cfg = compose_smoke_config(max_epochs=MAX_EPOCHS, batch_size=2, experiment="puressm",
                            extra_overrides=["training.lr_scheduler.use=False",
                                             "training.learning_rate=1e-3",
-                                            "model.backbone.checkpoint_blocks=True"])
+                                            "model.backbone.checkpoint_blocks=True",
+                                            # DropPath OFF for the overfit gate: stochastic depth
+                                            # actively fights single-batch memorization and the 3x
+                                            # threshold was calibrated on the DropPath-free ResNet
+                                            # smoke. Training keeps 0.1 (this is smoke-only).
+                                            "model.backbone.drop_path_rate=0.0"])
 
 from modules.utils.fetch import fetch_data_module, fetch_model_module
 dm = fetch_data_module(cfg)
