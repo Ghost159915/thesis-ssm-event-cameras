@@ -49,6 +49,9 @@ def _force_ieee_fp32_matmul_in_mamba_triton_kernels():
     from mamba_ssm.ops.triton import ssd_chunk_scan, ssd_chunk_state, ssd_state_passing, ssd_bmm
     prev = triton.knobs.language.fp32_default
     triton.knobs.language.fp32_default = "ieee"
+    # Reaches into triton.runtime.autotuner.Autotuner/JITFunction internals (cache,
+    # fn.device_caches) that aren't part of triton's public API -- verified against
+    # triton 3.6.0's actual attribute layout; re-check this block if triton is upgraded.
     for mod in (ssd_chunk_scan, ssd_chunk_state, ssd_state_passing, ssd_bmm):
         for attr in dir(mod):
             obj = getattr(mod, attr)
@@ -58,8 +61,11 @@ def _force_ieee_fp32_matmul_in_mamba_triton_kernels():
     return prev
 
 
-def test_kernel_matches_reference(device):
+@pytest.mark.parametrize("s", [512, 320, 80])
+def test_kernel_matches_reference(device, s):
     # fwd-direction chunk-scan kernel vs pure-PyTorch reference (spec §6 U1, gate ~1e-3 fp32)
+    # s=512 is a clean 2*chunk_size multiple; s=320 and s=80 are NOT multiples of
+    # chunk_size=256, exercising the ragged/padded final-chunk code path in the kernel.
     from mamba_ssm.ops.triton.ssd_combined import (mamba_chunk_scan_combined,
                                                    ssd_chunk_scan_combined_ref)
     import triton
@@ -68,7 +74,7 @@ def test_kernel_matches_reference(device):
     prev_fp32_default = _force_ieee_fp32_matmul_in_mamba_triton_kernels()
     try:
         torch.manual_seed(1)
-        n, s, h, p, dstate, chunk = 2, 512, 2, 64, 16, 256  # s=2*chunk to avoid ragged chunking
+        n, h, p, dstate, chunk = 2, 2, 64, 16, 256
         x = torch.randn(n, s, h, p, device=device)
         dt = torch.nn.functional.softplus(torch.randn(n, s, h, device=device))
         A = -torch.exp(torch.randn(h, device=device))
@@ -81,16 +87,46 @@ def test_kernel_matches_reference(device):
         # the fp64 recurrence to ~1e-7 and each other to ~6e-8 there -- the
         # scan math itself is identical; only long-chunk fp32-matmul rounding
         # differs.)
+        # Kernel called with the raw (possibly ragged) seqlen -- this is what actually
+        # exercises the Triton kernel's internal masked/padded final-chunk handling.
         y_kernel = mamba_chunk_scan_combined(x, dt, A, B, C, chunk_size=chunk, D=None,
                                              dt_softplus=False)
-        # reference expects unpacked format (batch, seqlen, h) and internally chunks
-        y_ref = ssd_chunk_scan_combined_ref(x, dt, A, B, C, chunk_size=chunk, D=None)
-        # Measured max error with IEEE fp32 matmuls forced: 2.90e-4, reproducible
-        # across 3 repeated runs and stable across D=None/D-given variants (see
-        # task-2-report.md). 1e-3 (the spec §6 U1 target) gives a ~3.4x margin.
+        # ssd_chunk_scan_combined_ref does NOT support ragged seqlen on its own: it
+        # pads `dt` internally but forwards the caller's x/B/C at their original
+        # length straight into chunk_scan_ref, which hard-asserts
+        # `seqlen == nchunks * chunk_size`. So for s not a multiple of chunk_size we
+        # zero-pad x/dt/B/C to the next chunk boundary ourselves and slice the ref's
+        # output back down to s. This is valid because the scan is causal: zero
+        # padding appended after position s-1 cannot influence outputs at
+        # positions < s, so the sliced reference output is exactly what a
+        # ragged-aware reference would have produced (confirmed numerically below).
+        pad = -s % chunk
+        if pad:
+            xp = torch.nn.functional.pad(x, (0, 0, 0, 0, 0, pad))
+            dtp = torch.nn.functional.pad(dt, (0, 0, 0, pad))
+            Bp = torch.nn.functional.pad(B, (0, 0, 0, 0, 0, pad))
+            Cp = torch.nn.functional.pad(C, (0, 0, 0, 0, 0, pad))
+        else:
+            xp, dtp, Bp, Cp = x, dt, B, C
+        y_ref = ssd_chunk_scan_combined_ref(xp, dtp, A, Bp, Cp, chunk_size=chunk, D=None)[:, :s]
+        # Measured max error with IEEE fp32 matmuls forced: s=512 (clean multiple)
+        # 2.90e-4; s=320 (ragged, pad=192) 2.40e-4; s=80 (ragged, pad=176) 5.72e-5
+        # (see task-2-report.md). 1e-3 (the spec §6 U1 target) gives >=2.7x margin
+        # at every length -- ragged padding does not degrade accuracy.
         max_err = (y_kernel - y_ref).abs().max().item()
-        assert torch.allclose(y_kernel, y_ref, atol=1e-3, rtol=1e-3), f"max err {max_err:.2e}"
+        print(f"[s={s}] kernel-vs-reference max err {max_err:.4e}")
+        assert torch.allclose(y_kernel, y_ref, atol=1e-3, rtol=1e-3), f"s={s} max err {max_err:.2e}"
     finally:
+        # Restore via explicit write-back of the resolved pre-test value, NOT
+        # `del triton.knobs.language.fp32_default`: verified (triton 3.6.0) that
+        # `del` does not raise, but it also does not restore prior behavior --
+        # `env_base.__set__` (triton/knobs.py) has the side effect of writing
+        # TRITON_F32_DEFAULT into os.environ when the knob is assigned a string,
+        # and `del` only clears the instance-dict override, falling back to
+        # `get()` which re-reads that (now-mutated) env var. So after `del`, the
+        # knob would resolve to "ieee" for the rest of the process instead of
+        # back to its original (unset) default. Writing back the resolved value
+        # sidesteps that env-var pollution entirely.
         triton.knobs.language.fp32_default = prev_fp32_default
 
 

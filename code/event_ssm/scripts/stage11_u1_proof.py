@@ -1,7 +1,16 @@
 #!/usr/bin/env python
 """U1 proof: kernel-vs-reference error histogram + per-direction output-norm bars."""
+import os
 import pathlib
 import sys
+
+# Triton's tl.dot resolves its own fp32 matmul precision via this knob (default
+# "tf32" on tensor-core GPUs), independent of torch's TF32 flags. Must be set
+# before mamba_ssm/triton are imported (this script is a fresh process, so no
+# warm-kernel-cache workaround is needed here, unlike the test suite's helper
+# in test_spatial_scan2d.py). Without this, the kernel-vs-reference error shown
+# below is a ~1.3e-1 TF32-vs-fp32 precision-mode artifact, not a real mismatch.
+os.environ["TRITON_F32_DEFAULT"] = "ieee"
 
 import matplotlib
 matplotlib.use("Agg")
