@@ -13,6 +13,7 @@ N = B*H*W rows. Mamba-2's public forward does NOT expose initial_states, so we r
 relevant forward internals (in_proj -> causal conv -> chunk scan -> RMSNormGated -> out_proj).
 """
 import torch
+import torch.nn.functional as F
 from einops import rearrange
 from mamba_ssm import Mamba2
 from mamba_ssm.ops.triton.ssd_combined import mamba_chunk_scan_combined
@@ -23,9 +24,20 @@ except ImportError:  # pure-PyTorch fallback (slower, used only if the kernel is
     causal_conv1d_fn = None
 
 
-def mamba2_scan_time(layer: Mamba2, x: torch.Tensor, state=None):
+def _scaled_dt(layer: Mamba2, dt: torch.Tensor, step_scale: float) -> torch.Tensor:
+    """Stage-9 temporal generalisation: `step_scale * softplus(dt_raw + dt_bias)` — the exact
+    Mamba-2 analog of S5's inference-time `step = step_scale * exp(log_step)` (Zubic 2024 §4.3.3;
+    see docs/patches/README.md). The rescale is applied POST-softplus: softplus is nonlinear, so
+    scaling its *argument* would warp the learned Delta distribution instead of uniformly rescaling
+    time. Computed in fp32 (the kernel's internal softplus precision), cast back to dt's dtype."""
+    return (step_scale * F.softplus(dt.float() + layer.dt_bias.float())).to(dt.dtype)
+
+
+def mamba2_scan_time(layer: Mamba2, x: torch.Tensor, state=None, step_scale: float = 1.0):
     """Scan one Mamba-2 `layer` over L=TIME for N rows. x:(N, L, C).
     Carries (conv_state, ssm_state) across calls in BOTH train and eval.
+    `step_scale` (default 1.0 = fused kernel path, byte-identical to upstream) rescales the
+    selective-scan Delta_t at inference for event-rate compensation (see _scaled_dt).
     Returns (y:(N,L,C), (conv_state, ssm_state)); the returned state is detached (TBPTT boundary)."""
     assert layer.ngroups == 1, "mamba2_scan_time assumes ngroups=1"
     assert layer.d_ssm == layer.d_inner, (
@@ -60,13 +72,20 @@ def mamba2_scan_time(layer: Mamba2, x: torch.Tensor, state=None):
 
     x_ssm, B, C = torch.split(xBC, [d_ssm, d_state, d_state], dim=-1)
     A = -torch.exp(layer.A_log.float())                              # (nheads,)
+    if step_scale != 1.0:
+        # compensated path: pre-compute the scaled post-softplus Delta outside the kernel and
+        # disable the kernel's fused bias+softplus so it is not applied twice
+        dt = _scaled_dt(layer, dt, step_scale)
+        dt_bias_arg, dt_softplus_arg = None, False
+    else:
+        dt_bias_arg, dt_softplus_arg = layer.dt_bias, True           # fused path (training + 1x eval)
     y, last_state = mamba_chunk_scan_combined(
         rearrange(x_ssm, "n l (h p) -> n l h p", p=layer.headdim),
         dt, A,
         rearrange(B, "n l (g s) -> n l g s", g=layer.ngroups),
         rearrange(C, "n l (g s) -> n l g s", g=layer.ngroups),
         chunk_size=layer.chunk_size, D=layer.D, z=None,
-        dt_bias=layer.dt_bias, dt_softplus=True,
+        dt_bias=dt_bias_arg, dt_softplus=dt_softplus_arg,
         initial_states=prev_ssm,                                     # (N, nheads, headdim, d_state) or None
         return_final_states=True,
     )

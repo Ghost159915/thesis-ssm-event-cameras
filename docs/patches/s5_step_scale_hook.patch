@@ -1,0 +1,27 @@
+diff --git a/RVT/models/layers/s5/s5_model.py b/RVT/models/layers/s5/s5_model.py
+index b098a1b..e4f4017 100644
+--- a/RVT/models/layers/s5/s5_model.py
++++ b/RVT/models/layers/s5/s5_model.py
+@@ -444,11 +444,21 @@ class S5Block(torch.nn.Module):
+         self.ff_norm = torch.nn.LayerNorm(dim)
+         self.ff_dropout = torch.nn.Dropout(p=ff_dropout)
+ 
++        # Stage-9 temporal-generalisation hook: rescale the S5 discretisation step Delta_t at
++        # inference to match a test-time event rate different from training
++        # (step_scale = test_window_ms / 50). Read once from the env so an eval process can set it
++        # without threading a config through the whole detection backbone. Defaults to 1.0, so
++        # training and canonical (1x) eval are byte-identical to the upstream behaviour.
++        self.step_scale = float(os.environ.get("S5_STEP_SCALE", "1.0"))
++        if self.step_scale != 1.0:
++            # one line per stage's S5Block -> the eval log self-documents that compensation was active
++            print(f"[S5Block] Stage-9 temporal-generalisation: step_scale={self.step_scale} (from S5_STEP_SCALE)")
++
+     def forward(self, x, states):
+         # Standard transfomer-style block with GEGLU/Pre-LayerNorm
+         fx = self.attn_norm(x)
+         res = fx.clone()
+-        x, new_state = self.s5(fx, states)
++        x, new_state = self.s5(fx, states, step_scale=self.step_scale)
+         x = F.gelu(x) + res
+         x = self.attn_dropout(x)
+ 

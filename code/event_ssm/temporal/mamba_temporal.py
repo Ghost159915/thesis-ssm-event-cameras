@@ -1,3 +1,4 @@
+import os
 import torch
 import torch.nn as nn
 from mamba_ssm import Mamba2
@@ -19,6 +20,15 @@ class MambaTemporalBlock(nn.Module):
             Mamba2(d_model=d_model, d_state=d_state, d_conv=d_conv, expand=expand, headdim=headdim)
             for _ in range(num_layers)
         )
+        # Stage-9 temporal-generalisation hook (mirrors S5_STEP_SCALE on the baseline, see
+        # docs/patches/README.md): rescale the selective-scan Delta_t at inference to match a
+        # test-time event rate != training rate (step_scale = test_window_ms / 50). Read once
+        # from the env so eval scripts can set it without threading a config through RVT.
+        # Defaults to 1.0 -> training and canonical 1x eval byte-identical (fused kernel path).
+        self.step_scale = float(os.environ.get("MAMBA_STEP_SCALE", "1.0"))
+        if self.step_scale != 1.0:
+            # one line per temporal block -> the eval log self-documents active compensation
+            print(f"[MambaTemporalBlock] Stage-9: step_scale={self.step_scale} (from MAMBA_STEP_SCALE)")
 
     def forward(self, x, state=None):
         if state is None:
@@ -27,7 +37,7 @@ class MambaTemporalBlock(nn.Module):
             f"state length {len(state)} != num_layers {len(self.layers)}"
         new_state = []
         for layer, st in zip(self.layers, state):
-            x, st2 = mamba2_scan_time(layer, x, st)
+            x, st2 = mamba2_scan_time(layer, x, st, step_scale=self.step_scale)
             new_state.append(st2)
         return x, new_state
 

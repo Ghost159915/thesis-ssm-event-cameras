@@ -1,0 +1,36 @@
+diff --git a/RVT/scripts/genx/preprocess_dataset.py b/RVT/scripts/genx/preprocess_dataset.py
+index 6540f1f..828878f 100644
+--- a/RVT/scripts/genx/preprocess_dataset.py
++++ b/RVT/scripts/genx/preprocess_dataset.py
+@@ -377,7 +377,13 @@ def labels_and_ev_repr_timestamps(
+ ):
+     assert npy_file.exists()
+     assert npy_file.suffix == ".npy"
+-    ts_step_frame_ms = 100
++    # ts_step_frame_ms is the label ("frame") period in ms. It must match the dataset's
++    # label rate so the representation grid lands at ts_step_ev_repr_ms (50 ms) spacing:
++    # num_ev_reprs_between = base_delta_count * (ts_step_frame_ms // ts_step_ev_repr_ms).
++    # Gen1 labels are 4 Hz (250 ms) -> need 250//50 = 5; Gen4 is ~10 Hz (100 ms) -> 100//50 = 2.
++    # The original hardcoded 100 is the Gen4 value and under-samples Gen1 by 2.5x (125 ms grid,
++    # ~8 Hz) vs the 50 ms (20 Hz) grid the model trains on. Set it per-dataset.
++    ts_step_frame_ms = 250 if dataset_type == "gen1" else 100
+     assert ts_step_frame_ms >= ts_step_ev_repr_ms
+     assert ts_step_frame_ms % ts_step_ev_repr_ms == 0 and ts_step_ev_repr_ms > 0
+ 
+@@ -387,6 +393,16 @@ def labels_and_ev_repr_timestamps(
+     sequence_labels = np.load(str(npy_file))
+     assert len(sequence_labels) > 0
+ 
++    # Raw Prophesee Gen1 .npy bbox files name their fields ('ts', ..., 'confidence'),
++    # whereas this RVT pipeline expects ('t', ..., 'class_confidence'). Normalise the
++    # field names in place (no data copy) so raw-converted recordings preprocess
++    # identically to the canonical dataset. Idempotent: correct names are left as-is.
++    _field_rename = {"ts": "t", "confidence": "class_confidence"}
++    if any(n in _field_rename for n in sequence_labels.dtype.names):
++        sequence_labels.dtype.names = tuple(
++            _field_rename.get(n, n) for n in sequence_labels.dtype.names
++        )
++
+     sequence_labels = apply_filters(
+         labels=sequence_labels,
+         split_type=split_type,
