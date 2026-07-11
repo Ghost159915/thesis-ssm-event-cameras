@@ -1,8 +1,9 @@
-"""Register the drop-in ResNetMamba backbone into RVT via monkeypatch.
+"""Register the drop-in ResNetMamba and PureSSM backbones into RVT via monkeypatch.
 
 register_resnet_mamba() wires TWO things (idempotent, call ONCE at startup):
-  1. build_recurrent_backbone -> returns ResNetMambaBackbone for backbone.name == "ResNetMamba".
-  2. dynamically_modify_train_config -> handles our backbone (sets backbone.in_res_hw to the
+  1. build_recurrent_backbone -> returns ResNetMambaBackbone for backbone.name == "ResNetMamba"
+     or PureSSM backbone for backbone.name == "PureSSM".
+  2. dynamically_modify_train_config -> handles our backbones (sets backbone.in_res_hw to the
      multiple-of-32 padded resolution and injects head.num_classes); the stock modifier only knows
      MaxViTRNN and raises NotImplementedError otherwise.
 
@@ -32,6 +33,26 @@ def register_backbone_builder():
                 num_layers_per_stage=backbone_cfg.get("num_layers_per_stage", 1),
                 temporal_stages=temporal_stages,
             )
+        if backbone_cfg.name == "PureSSM":
+            # Stage 12: fully-pure spatial BiMamba injected into the same recurrent skeleton.
+            # Temporal path/config identical to ResNetMamba (controlled experiment, spec §3).
+            from event_ssm.spatial import BiMambaSpatialStages
+            in_stages = backbone_cfg.get("in_stages", None)
+            temporal_stages = tuple(in_stages) if in_stages is not None else (2, 3, 4)
+            spatial = BiMambaSpatialStages(
+                in_channels=backbone_cfg.input_channels,
+                depths=tuple(backbone_cfg.get("depths", (2, 2, 8, 2))),
+                d_state=backbone_cfg.get("spatial_d_state", 16),
+                drop_path_rate=backbone_cfg.get("drop_path_rate", 0.1),
+                checkpoint_blocks=backbone_cfg.get("checkpoint_blocks", False),
+            )
+            return ResNetMambaBackbone(
+                in_channels=backbone_cfg.input_channels,
+                d_state=backbone_cfg.get("d_state", 64),
+                num_layers_per_stage=backbone_cfg.get("num_layers_per_stage", 1),
+                temporal_stages=temporal_stages,
+                spatial=spatial,
+            )
         return orig(backbone_cfg)
 
     patched._resnet_mamba_registered = True
@@ -56,7 +77,7 @@ def register_config_modifier():
 
     def patched_modify(config):
         mdl = config.model
-        if mdl.get("name") == "rnndet" and mdl.backbone.get("name") == "ResNetMamba":
+        if mdl.get("name") == "rnndet" and mdl.backbone.get("name") in ("ResNetMamba", "PureSSM"):
             with open_dict(config):
                 # Mirror the stock modifier's SLURM bookkeeping (it sets this BEFORE the model
                 # dispatch, so our early-return branch must replicate it -- Stage-6 SLURM logging
@@ -71,7 +92,7 @@ def register_config_modifier():
                 mdl.backbone.in_res_hw = mdl_hw
                 num_classes = 2 if config.dataset.name == "gen1" else 3
                 mdl.head.num_classes = num_classes
-            print(f"[resnet_mamba] set in_res_hw={tuple(mdl_hw)}, num_classes={num_classes}")
+            print(f"[{mdl.backbone.name}] set in_res_hw={tuple(mdl_hw)}, num_classes={num_classes}")
             return
         return orig(config)
 
