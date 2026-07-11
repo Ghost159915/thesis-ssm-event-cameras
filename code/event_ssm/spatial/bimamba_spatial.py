@@ -8,18 +8,23 @@ needed, VMamba evidence) and the in-block zero-init DWConv3x3. All token MIXING 
 (spiking-fork property, spec §10). No BatchNorm (LayerNorm family only)."""
 import torch
 import torch.nn as nn
+import torch.utils.checkpoint
 
 from event_ssm.spatial.bimamba_block import BiMamba2DBlock, LayerNorm2d
 
 
 class BiMambaSpatialStages(nn.Module):
+    """checkpoint_blocks is the local-16GB fallback (cloud 5090/32GB trains without it;
+    recompute costs ~+25-35% step time)."""
+
     stage_dims = (64, 128, 256, 512)
     strides = (4, 8, 16, 32)
 
     def __init__(self, in_channels: int = 20, depths=(2, 2, 8, 2), d_state: int = 16,
                  d_conv: int = 4, expand: int = 2, headdim: int = 64,
-                 drop_path_rate: float = 0.1):
+                 drop_path_rate: float = 0.1, checkpoint_blocks: bool = False):
         super().__init__()
+        self.checkpoint_blocks = checkpoint_blocks
         dims = self.stage_dims
         self.depths = tuple(depths)
         self.stem = nn.Sequential(                       # stride 4 (two 3x3 s2 convs)
@@ -46,8 +51,13 @@ class BiMambaSpatialStages(nn.Module):
     def forward(self, x: torch.Tensor) -> dict:
         x = self.stem(x)
         feats = {}
+        use_ckpt = self.checkpoint_blocks and self.training and torch.is_grad_enabled()
         for i, stage in enumerate(self.stages):
-            x = stage(x)
+            if use_ckpt:
+                for blk in stage:
+                    x = torch.utils.checkpoint.checkpoint(blk, x, use_reentrant=False)
+            else:
+                x = stage(x)
             feats[i + 1] = x
             if i < 3:
                 x = self.downsamples[i](x)

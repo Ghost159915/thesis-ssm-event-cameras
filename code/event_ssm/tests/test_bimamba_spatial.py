@@ -135,3 +135,33 @@ def test_default_backbone_unchanged(device):
     from event_ssm.backbone.resnet_spatial import ResNetSpatialStages
     bb = ResNetMambaBackbone(pretrained=False)
     assert isinstance(bb.spatial, ResNetSpatialStages)
+
+
+def test_checkpoint_blocks_output_and_grad_parity(device):
+    from event_ssm.spatial import BiMambaSpatialStages
+    torch.manual_seed(0)
+    m = BiMambaSpatialStages(drop_path_rate=0.0).to(device).train()
+    x = torch.randn(2, 20, 256, 320, device=device)
+    y_ref = m(x)[4]
+    loss_ref = y_ref.square().mean()
+    loss_ref.backward()
+    g_ref = m.stages[0][0].scan.A_log_fwd.grad.clone()
+    m.zero_grad(set_to_none=True)
+    m.checkpoint_blocks = True
+    y_ck = m(x)[4]
+    assert torch.allclose(y_ck, y_ref, atol=1e-5, rtol=1e-5)
+    y_ck.square().mean().backward()
+    g_ck = m.stages[0][0].scan.A_log_fwd.grad
+    assert torch.allclose(g_ck, g_ref, atol=1e-4, rtol=1e-4)
+
+
+def test_checkpoint_flag_inert_in_eval(device):
+    from event_ssm.spatial import BiMambaSpatialStages
+    torch.manual_seed(0)
+    m = BiMambaSpatialStages().to(device).eval()
+    x = torch.randn(1, 20, 256, 320, device=device)
+    with torch.no_grad():
+        y0 = m(x)[3]
+        m.checkpoint_blocks = True
+        y1 = m(x)[3]
+    assert torch.equal(y0, y1)
