@@ -1,0 +1,255 @@
+{
+  "schema": 1,
+  "meta": {
+    "test_ap": {
+      "eventssm": 0.462,
+      "baseline": 0.477
+    }
+  },
+  "models": {
+    "eventssm": {
+      "params_m": {
+        "total": 19.2
+      },
+      "flops": {
+        "counted_gflops": 1.0,
+        "analytic_gflops": 0.5,
+        "total_gflops": 1.5,
+        "unsupported_ops": {},
+        "counted_incomplete": false
+      },
+      "latency": {
+        "bf16": {
+          "full": {
+            "mean_ms": 1.0,
+            "std_ms": 0.1,
+            "p50_ms": 1.0,
+            "p95_ms": 1.2,
+            "hz": 1000.0,
+            "iters": 10
+          },
+          "network": {
+            "mean_ms": 1.0,
+            "std_ms": 0.1,
+            "p50_ms": 1.0,
+            "p95_ms": 1.2,
+            "hz": 1000.0,
+            "iters": 10
+          },
+          "components": {
+            "backbone": {
+              "mean_ms": 1.0,
+              "std_ms": 0.1,
+              "p50_ms": 1.0,
+              "p95_ms": 1.2,
+              "hz": 1000.0,
+              "iters": 10
+            },
+            "neck_head": {
+              "mean_ms": 1.0,
+              "std_ms": 0.1,
+              "p50_ms": 1.0,
+              "p95_ms": 1.2,
+              "hz": 1000.0,
+              "iters": 10
+            },
+            "postprocess": {
+              "mean_ms": 1.0,
+              "std_ms": 0.1,
+              "p50_ms": 1.0,
+              "p95_ms": 1.2,
+              "hz": 1000.0,
+              "iters": 10
+            }
+          },
+          "throughput": {
+            "b4_fps": 1.0,
+            "b8_fps": 1.0
+          }
+        },
+        "fp32": {
+          "full": {
+            "mean_ms": 1.0,
+            "std_ms": 0.1,
+            "p50_ms": 1.0,
+            "p95_ms": 1.2,
+            "hz": 1000.0,
+            "iters": 10
+          },
+          "network": {
+            "mean_ms": 1.0,
+            "std_ms": 0.1,
+            "p50_ms": 1.0,
+            "p95_ms": 1.2,
+            "hz": 1000.0,
+            "iters": 10
+          },
+          "components": {
+            "backbone": {
+              "mean_ms": 1.0,
+              "std_ms": 0.1,
+              "p50_ms": 1.0,
+              "p95_ms": 1.2,
+              "hz": 1000.0,
+              "iters": 10
+            },
+            "neck_head": {
+              "mean_ms": 1.0,
+              "std_ms": 0.1,
+              "p50_ms": 1.0,
+              "p95_ms": 1.2,
+              "hz": 1000.0,
+              "iters": 10
+            },
+            "postprocess": {
+              "mean_ms": 1.0,
+              "std_ms": 0.1,
+              "p50_ms": 1.0,
+              "p95_ms": 1.2,
+              "hz": 1000.0,
+              "iters": 10
+            }
+          },
+          "throughput": {
+            "b4_fps": 1.0,
+            "b8_fps": 1.0
+          }
+        }
+      },
+      "vram": {
+        "inference_mb": 100.0,
+        "train_mb": 1000.0,
+        "state_kb_per_stream": 50.0
+      },
+      "energy": {
+        "idle_w": 30.0,
+        "load_w": 150.0,
+        "j_per_frame": 0.5,
+        "frames": 100,
+        "seconds": 10.0
+      }
+    },
+    "baseline": {
+      "params_m": {
+        "total": 18.0
+      },
+      "flops": {
+        "counted_gflops": 1.0,
+        "analytic_gflops": 0.5,
+        "total_gflops": 2.5,
+        "unsupported_ops": {},
+        "counted_incomplete": false
+      },
+      "latency": {
+        "bf16": {
+          "full": {
+            "mean_ms": 1.0,
+            "std_ms": 0.1,
+            "p50_ms": 2.0,
+            "p95_ms": 1.2,
+            "hz": 1000.0,
+            "iters": 10
+          },
+          "network": {
+            "mean_ms": 1.0,
+            "std_ms": 0.1,
+            "p50_ms": 2.0,
+            "p95_ms": 1.2,
+            "hz": 1000.0,
+            "iters": 10
+          },
+          "components": {
+            "backbone": {
+              "mean_ms": 1.0,
+              "std_ms": 0.1,
+              "p50_ms": 2.0,
+              "p95_ms": 1.2,
+              "hz": 1000.0,
+              "iters": 10
+            },
+            "neck_head": {
+              "mean_ms": 1.0,
+              "std_ms": 0.1,
+              "p50_ms": 2.0,
+              "p95_ms": 1.2,
+              "hz": 1000.0,
+              "iters": 10
+            },
+            "postprocess": {
+              "mean_ms": 1.0,
+              "std_ms": 0.1,
+              "p50_ms": 2.0,
+              "p95_ms": 1.2,
+              "hz": 1000.0,
+              "iters": 10
+            }
+          },
+          "throughput": {
+            "b4_fps": 1.0,
+            "b8_fps": 1.0
+          }
+        },
+        "fp32": {
+          "full": {
+            "mean_ms": 1.0,
+            "std_ms": 0.1,
+            "p50_ms": 2.0,
+            "p95_ms": 1.2,
+            "hz": 1000.0,
+            "iters": 10
+          },
+          "network": {
+            "mean_ms": 1.0,
+            "std_ms": 0.1,
+            "p50_ms": 2.0,
+            "p95_ms": 1.2,
+            "hz": 1000.0,
+            "iters": 10
+          },
+          "components": {
+            "backbone": {
+              "mean_ms": 1.0,
+              "std_ms": 0.1,
+              "p50_ms": 2.0,
+              "p95_ms": 1.2,
+              "hz": 1000.0,
+              "iters": 10
+            },
+            "neck_head": {
+              "mean_ms": 1.0,
+              "std_ms": 0.1,
+              "p50_ms": 2.0,
+              "p95_ms": 1.2,
+              "hz": 1000.0,
+              "iters": 10
+            },
+            "postprocess": {
+              "mean_ms": 1.0,
+              "std_ms": 0.1,
+              "p50_ms": 2.0,
+              "p95_ms": 1.2,
+              "hz": 1000.0,
+              "iters": 10
+            }
+          },
+          "throughput": {
+            "b4_fps": 1.0,
+            "b8_fps": 1.0
+          }
+        }
+      },
+      "vram": {
+        "inference_mb": 100.0,
+        "train_mb": 1000.0,
+        "state_kb_per_stream": 50.0
+      },
+      "energy": {
+        "idle_w": 30.0,
+        "load_w": 150.0,
+        "j_per_frame": 0.5,
+        "frames": 100,
+        "seconds": 10.0
+      }
+    }
+  }
+}
