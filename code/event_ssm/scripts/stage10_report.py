@@ -24,6 +24,7 @@ def _rows(d: dict) -> list:
             "gflops_total": gflops,
             "gflops_counted": m["flops"]["counted_gflops"],
             "gflops_analytic": m["flops"]["analytic_gflops"],
+            "flops_incomplete": bool(m["flops"]["counted_incomplete"]),
             "lat_full_p50_ms": bf["full"]["p50_ms"], "lat_full_p95_ms": bf["full"]["p95_ms"],
             "lat_network_p50_ms": bf["network"]["p50_ms"],
             "hz_full": bf["full"]["hz"],
@@ -45,15 +46,29 @@ def _table_md(rows: list) -> str:
             ("VRAM inf (MB)", "vram_inf_mb"), ("VRAM train (MB)", "vram_train_mb"),
             ("State (KB/stream)", "state_kb"), ("J/frame", "j_per_frame"), ("Load (W)", "load_w"),
             ("mAP/GFLOP", "map_per_gflop")]
+    # These two cells are undercounted when fvcore tracing failed (flops.counted_incomplete) --
+    # dagger them per-row and add one shared footnote rather than silently presenting a partial
+    # GFLOPs figure as if it were complete.
+    dagger_cols = {"gflops_total", "map_per_gflop"}
     fmt = lambda v: (f"{v:.3f}" if isinstance(v, float) else ("—" if v is None else str(v)))
     lines = ["| " + " | ".join(h for h, _ in cols) + " |",
              "|" + "---|" * len(cols)]
     for r in rows:
-        lines.append("| " + " | ".join(fmt(r[k]) for _, k in cols) + " |")
+        cells = []
+        for h, k in cols:
+            v = fmt(r[k])
+            if k in dagger_cols and r.get("flops_incomplete"):
+                v += "†"
+            cells.append(v)
+        lines.append("| " + " | ".join(cells) + " |")
     lines.append("")
     lines.append("*Latency = bf16 streaming (B=1, L=1, state carried), full pipeline incl. postprocess/NMS "
                  "(headline) and network-only. Energy = differential J/frame vs idle, desktop-GPU proxy. "
                  "FLOPs = fvcore-counted + analytic SSM-kernel add-on (split shown).*")
+    if any(r.get("flops_incomplete") for r in rows):
+        lines.append("")
+        lines.append("† fvcore trace incomplete — GFLOPs reflects the analytic SSM-kernel component only; "
+                     "mAP/GFLOP not citable until re-measured.")
     return "\n".join(lines)
 
 
@@ -72,7 +87,8 @@ def _fig_pareto(rows, out_dir):
         # starts on top of the marker — a fixed offset overlapped large bubbles (see
         # task-7-report.md Step 6).
         radius_pts = (marker_pts2 / 3.141592653589793) ** 0.5
-        ax.annotate(f"{LABEL.get(r['model'], r['model'])}\n{r['params_m']:.1f}M · {r['gflops_total']:.1f} GFLOPs",
+        dagger = "†" if r.get("flops_incomplete") else ""
+        ax.annotate(f"{LABEL.get(r['model'], r['model'])}\n{r['params_m']:.1f}M · {r['gflops_total']:.1f}{dagger} GFLOPs",
                     (r["lat_full_p50_ms"], r["test_ap"] * 100), textcoords="offset points",
                     xytext=(radius_pts + 6, -4), fontsize=8.5, color=INK2)
     ax.set_xlabel("Full-pipeline latency p50 (ms, bf16, B=1 streaming)", color=INK2)
@@ -106,7 +122,7 @@ def _fig_components(d, out_dir):
             ax.bar(xi, v, bottom=bottom, width=0.5, color=HUE.get(kind, MUTED),
                    alpha=shades[c], edgecolor="white", linewidth=0.8)
             ax.annotate(f"{c} {v:.2f}", (xi, bottom + v / 2), ha="center", va="center",
-                        fontsize=8, color=INK)
+                        fontsize=8, color=INK2)
             bottom += v
         ax.annotate(f"Σ {bottom:.2f} ms", (xi, bottom), ha="center", va="bottom",
                     fontsize=9, color=INK2)

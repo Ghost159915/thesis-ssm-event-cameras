@@ -21,3 +21,13 @@ def test_report_tolerates_single_model(tmp_path):
     j = tmp_path / "partial.json"; j.write_text(json.dumps(d))
     rep.generate(json_path=j, out_dir=tmp_path)          # must not raise
     assert (tmp_path / "efficiency_table.md").exists()
+
+
+def test_report_flags_incomplete_flops(tmp_path):
+    d = json.loads(FIXTURE.read_text())
+    d["models"]["eventssm"]["flops"]["counted_incomplete"] = True
+    j = tmp_path / "incomplete.json"; j.write_text(json.dumps(d))
+    rep.generate(json_path=j, out_dir=tmp_path)
+    md = (tmp_path / "efficiency_table.md").read_text()
+    assert "†" in md
+    assert "fvcore trace incomplete" in md

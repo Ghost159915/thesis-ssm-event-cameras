@@ -69,6 +69,15 @@ def measure_model(kind: str, device, clip, smoke: bool) -> dict:
     class NetOnly(torch.nn.Module):
         def __init__(self, m): super().__init__(); self.m = m
         def forward(self, x): return self.m.network_step(x, None)[0]
+    # jit.trace (inside fvcore) refuses to inline any grad-requiring tensor as a graph constant,
+    # and model parameters carry requires_grad=True as a leaf attribute regardless of the
+    # no_grad() context inside network_step -- so tracing needs it explicitly off; also trace in
+    # fp32 (bf16 autocast under the same trace produced the same failure) and always restore both,
+    # since the training-VRAM section below calls loss.backward() and needs grads back.
+    prev_ac = model.autocast_bf16
+    model.autocast_bf16 = False
+    for p in model.detector.parameters():
+        p.requires_grad_(False)
     try:
         # frames[0:1] (not frames[0]): full_step/network_step/components each do exactly one
         # internal .unsqueeze(0), so the argument here must already carry the batch dim (B=1) --
@@ -79,6 +88,10 @@ def measure_model(kind: str, device, clip, smoke: bool) -> dict:
     except Exception as e:                       # tracing may fail on vmap paths (spec §8)
         counted = {"counted_gflops": 0.0, "unsupported_ops": {"trace_failed": 1, "err": str(e)[:200]}}
         incomplete = True
+    finally:
+        model.autocast_bf16 = prev_ac
+        for p in model.detector.parameters():
+            p.requires_grad_(True)
     analytic_macs = 0
     for t in model.temporal_hparams():
         if t["kind"] == "mamba2":
