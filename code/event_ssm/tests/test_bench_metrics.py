@@ -58,3 +58,19 @@ def test_fvcore_counts_toy_conv():
     # 3*8*3*3*16*16 = 55296 MACs -> 110592 FLOPs = 1.10592e-4 GFLOPs
     assert abs(r["counted_gflops"] - 55296 * 2 / 1e9) / (55296 * 2 / 1e9) < 0.05
     assert isinstance(r["unsupported_ops"], dict)
+
+
+from event_ssm.benchmark.bench_metrics import profiler_network_flops
+
+
+def test_profiler_counts_toy_conv():
+    import torch.nn as nn
+    m = nn.Conv2d(3, 8, 3, padding=1, bias=False)
+    x = torch.randn(1, 3, 16, 16)
+    r = profiler_network_flops(lambda: m(x), device=torch.device("cpu"))
+    # Same 55,296-MAC/110,592-FLOP toy case as test_fvcore_counts_toy_conv above -- pins the
+    # unit convention empirically: torch.profiler's `flops` field for aten::conv2d is already
+    # true FLOPs (2x MACs), matching fvcore's *2 convention exactly, so no extra scaling is
+    # applied inside profiler_network_flops.
+    assert abs(r["counted_gflops"] - 110592 / 1e9) / (110592 / 1e9) < 0.10
+    assert r["source"] == "torch.profiler"

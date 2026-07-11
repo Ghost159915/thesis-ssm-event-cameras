@@ -163,3 +163,27 @@ def fvcore_network_flops(module, inputs) -> dict:
         "counted_gflops": counted_macs * 2 / 1e9,
         "unsupported_ops": {str(k): int(v) for k, v in fca.unsupported_ops().items()},
     }
+
+
+def profiler_network_flops(step_fn, *, device) -> dict:
+    """Runtime FLOP count of one step_fn() call via torch.profiler (no jit tracing --
+    works where fvcore cannot: Triton/complex custom kernels simply contribute 0 and
+    are covered by the analytic add-on). Returns {"counted_gflops": float, "source": "torch.profiler"}."""
+    from torch.profiler import ProfilerActivity, profile
+    activities = [ProfilerActivity.CPU]
+    if device is not None and device.type == "cuda":
+        activities.append(ProfilerActivity.CUDA)
+    step_fn()                                              # untraced warmup (first-call noise excluded)
+    _sync(device)
+    with profile(activities=activities, with_flops=True) as prof:
+        step_fn()
+        _sync(device)
+    # Unit convention, settled empirically in test_profiler_counts_toy_conv: torch.profiler's
+    # `flops` field for e.g. aten::conv2d is already true FLOPs (2x MACs) -- a 55,296-MAC toy
+    # conv reports flops=110592, exactly matching fvcore_network_flops's *2-MACs convention. So,
+    # unlike fvcore (which reports MACs and is doubled above), no further scaling is applied here.
+    # The flops annotation lives on the CPU-side aten:: event even when CUDA activity is also
+    # captured (CUDA kernel events carry no flops field of their own), so summing across all
+    # profiled events never double-counts a GPU op.
+    total = sum(e.flops for e in prof.events() if getattr(e, "flops", None))
+    return {"counted_gflops": total / 1e9, "source": "torch.profiler"}

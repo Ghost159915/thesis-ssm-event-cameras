@@ -65,7 +65,9 @@ def measure_model(kind: str, device, clip, smoke: bool) -> dict:
     frames = clip.to(device)
     out = {"params_m": model.param_breakdown()}
 
-    # ---- FLOPs: counted (fvcore on network_step via a wrapper module) + analytic add-on ----
+    # ---- FLOPs: counted (fvcore first; torch.profiler runtime fallback if fvcore fails or
+    #      undercounts -- see task-7-report.md "Fix wave 2" for why fvcore's jit.trace cannot
+    #      survive either model's custom scan kernel) + analytic add-on ----
     class NetOnly(torch.nn.Module):
         def __init__(self, m): super().__init__(); self.m = m
         def forward(self, x): return self.m.network_step(x, None)[0]
@@ -73,25 +75,42 @@ def measure_model(kind: str, device, clip, smoke: bool) -> dict:
     # and model parameters carry requires_grad=True as a leaf attribute regardless of the
     # no_grad() context inside network_step -- so tracing needs it explicitly off; also trace in
     # fp32 (bf16 autocast under the same trace produced the same failure) and always restore both,
-    # since the training-VRAM section below calls loss.backward() and needs grads back.
+    # since the training-VRAM section below calls loss.backward() and needs grads back. The
+    # torch.profiler fallback below runs inside this same frozen/fp32 window -- it needs neither,
+    # but reusing the window keeps a single restore path in the one `finally`.
     prev_ac = model.autocast_bf16
     model.autocast_bf16 = False
     for p in model.detector.parameters():
         p.requires_grad_(False)
+    net_only = NetOnly(model)
     try:
-        # frames[0:1] (not frames[0]): full_step/network_step/components each do exactly one
-        # internal .unsqueeze(0), so the argument here must already carry the batch dim (B=1) --
-        # both backbones require a 5D (L,B,C,H,W) tensor after that unsqueeze (deviation from the
-        # brief's literal frames[0]; see task-5-report.md).
-        counted = bm.fvcore_network_flops(NetOnly(model), (frames[0:1],))
-        incomplete = False
-    except Exception as e:                       # tracing may fail on vmap paths (spec §8)
-        counted = {"counted_gflops": 0.0, "unsupported_ops": {"trace_failed": 1, "err": str(e)[:200]}}
-        incomplete = True
+        try:
+            # frames[0:1] (not frames[0]): full_step/network_step/components each do exactly one
+            # internal .unsqueeze(0), so the argument here must already carry the batch dim
+            # (B=1) -- both backbones require a 5D (L,B,C,H,W) tensor after that unsqueeze
+            # (deviation from the brief's literal frames[0]; see task-5-report.md).
+            counted = bm.fvcore_network_flops(net_only, (frames[0:1],))
+            source = "fvcore"
+        except Exception as e:                    # tracing may fail on vmap paths (spec §8)
+            counted = {"counted_gflops": 0.0, "unsupported_ops": {"trace_failed": 1, "err": str(e)[:200]}}
+            source = "none"
+        if counted["counted_gflops"] == 0.0:
+            # fvcore's jit.trace cannot survive mamba_ssm's Triton chunk-scan kernel (eventssm)
+            # or the jit.script complex-tensor associative scan (baseline S5) -- both
+            # pre-existing library-level tracing incompatibilities (task-7-report.md). Runtime
+            # profiling never traces, so those custom kernels simply contribute zero counted
+            # flops (never raise) while the surrounding matmul/conv ops (projections, ResNet/
+            # MaxViT spatial stages) still get counted; the scan itself stays priced by the
+            # analytic add-on below regardless of which path counted the rest.
+            prof_counted = bm.profiler_network_flops(lambda: net_only(frames[0:1]), device=device)
+            if prof_counted["counted_gflops"] > 0.0:
+                counted = {**counted, "counted_gflops": prof_counted["counted_gflops"]}
+                source = prof_counted["source"]
     finally:
         model.autocast_bf16 = prev_ac
         for p in model.detector.parameters():
             p.requires_grad_(True)
+    incomplete = counted["counted_gflops"] == 0.0
     analytic_macs = 0
     for t in model.temporal_hparams():
         if t["kind"] == "mamba2":
@@ -103,7 +122,8 @@ def measure_model(kind: str, device, clip, smoke: bool) -> dict:
     analytic_gflops = analytic_macs * 2 / 1e9
     out["flops"] = {"counted_gflops": counted["counted_gflops"], "analytic_gflops": analytic_gflops,
                     "total_gflops": counted["counted_gflops"] + analytic_gflops,
-                    "unsupported_ops": counted["unsupported_ops"], "counted_incomplete": incomplete}
+                    "unsupported_ops": counted["unsupported_ops"], "counted_incomplete": incomplete,
+                    "source": source}
 
     # ---- latency (bf16 + fp32): headline full, network-only, per-component, throughput ----
     out["latency"] = {}
