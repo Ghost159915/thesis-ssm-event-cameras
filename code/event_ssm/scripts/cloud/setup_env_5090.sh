@@ -47,6 +47,7 @@ set -u
 
 PY="$CONDA_PREFIX/bin/python"
 PIP="$CONDA_PREFIX/bin/pip"
+HF="$CONDA_PREFIX/bin/hf"
 
 # -----------------------------------------------------------------------------
 # 3. TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1 in the env's activate hook, so every future
@@ -112,7 +113,19 @@ else
 fi
 
 # -----------------------------------------------------------------------------
-# 8. Verification block (always runs -- cheap, and catches a partially-broken re-run)
+# 8. Hugging Face CLI (`hf`) -- needed by pull_dataset.sh (and upload_dataset_once.sh, run locally) to
+#    pull the training data onto the instance. huggingface_hub is NOT torch-dependent, so a plain
+#    (non --no-deps) install is safe here -- unlike step 5/6/7, it can't clobber the pinned cu128 torch.
+# -----------------------------------------------------------------------------
+if ! "$PY" -c "import huggingface_hub" >/dev/null 2>&1; then
+  echo "[setup_env_5090] installing huggingface_hub[cli] (hf CLI)"
+  "$PIP" install "huggingface_hub[cli]"
+else
+  echo "[setup_env_5090] huggingface_hub already installed -- skipping"
+fi
+
+# -----------------------------------------------------------------------------
+# 9. Verification block (always runs -- cheap, and catches a partially-broken re-run)
 # -----------------------------------------------------------------------------
 echo "[setup_env_5090] verifying install..."
 "$PY" -c "
@@ -128,5 +141,7 @@ print('causal_conv1d:', causal_conv1d.__version__)
 "
 # Stage-11 kernel-import one-liner (docs/superpowers/plans/2026-07-11-stage11-puressm-backbone.md:56)
 "$PY" -c "from mamba_ssm.ops.triton.ssd_combined import mamba_chunk_scan_combined, ssd_chunk_scan_combined_ref; from mamba_ssm.ops.triton.layernorm_gated import RMSNormGated; from causal_conv1d import causal_conv1d_fn; print('kernel imports ok')"
+echo -n "hf: "
+"$HF" version
 
 echo "[setup_env_5090] environment ready. Activate with: conda activate $ENV_NAME"

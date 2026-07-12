@@ -32,7 +32,7 @@ implements. You don't need to re-decide anything — just note the concrete valu
 |---|---|---|---|
 | Dataset storage | Private Hugging Face dataset repo (free, resumable uploads, fast pulls on the instance) | Backblaze B2 + rclone (~$0.45/mo) | `AngryGhostMan/gen1-rvt-preproc` |
 | Rental platform | vast.ai, verified/datacenter-tier hosts | RunPod Secure Cloud (fallback if vast.ai has no good listing) | Your vast.ai account, $25 credit available |
-| Code transfer to instance | `git push` to GitHub, then `git clone` on the instance with a short-lived access token | rsync from your laptop | `github.com/Ghost159915/thesis-ssm-event-cameras`, branch `stage13-cloud-short` |
+| Code transfer to instance | `git push` to GitHub, then `git clone` on the instance with a short-lived access token | rsync from your laptop | `github.com/Ghost159915/thesis-ssm-event-cameras`, branch `main` |
 | Training monitoring | W&B **online** mode — live dashboard from any browser | W&B offline + rsync the logs back afterwards | Needs a free wandb.ai account + an API key (Section 1.6) |
 
 **If this goes wrong:** nothing to run here — this is a reference table. If a later section
@@ -81,7 +81,9 @@ Your token has been saved to /home/ghost/.cache/huggingface/token
 ### 1.3 Upload the training data to Hugging Face (one-time, resumable)
 
 **The canonical, reusable way to do this** (this is what you'd run from scratch, and what a future
-re-run of this runbook, e.g. Stage 14, would use again):
+re-run of this runbook, e.g. Stage 14, would use again). Omitting `CONFIRM=1` runs a size-preview dry
+run instead of the real upload — it's the safety gate against accidentally kicking off a 73 GB,
+multi-hour upload with a single mistyped command:
 
 ```bash
 conda activate events_signals
@@ -127,28 +129,25 @@ containing `committed: 9435/9435` and:
 *Duration: hours (network-bound), unattended once started.*
 
 **If this goes wrong:** a dropped connection just stops the upload — re-run the exact same command
-(with `CONFIRM=1`) and it resumes from the last completed file, it does not restart from zero.
+(with `CONFIRM=1`) and it resumes from the last completed file, it does not restart from zero. If the
+upload crawls on many tiny files, retry with `UPLOAD_WORKERS=8` (e.g. prepend it to the same command
+above).
 
 ### 1.4 Push your code to GitHub
 
 The rented instance clones your code from GitHub — it needs to be pushed first. Check what's actually
-on GitHub before pushing (this machine's `main` branch is currently 47 commits ahead of
-`origin/main`, and the cloud scripts you'll need live on the branch you're on right now,
-`stage13-cloud-short`, which is not yet merged to `main`):
+on GitHub before pushing (`git status`, `git log --oneline -1 origin/main`) — this runbook assumes the
+Stage-13 cloud scripts have already been merged to `main`:
 
 ```bash
 git status
-git push origin stage13-cloud-short
+git push origin main
 ```
 
 **You should see** a normal push summary ending in something like:
 ```
- * [new branch]      stage13-cloud-short -> stage13-cloud-short
+   abcfa34..<sha>  main -> main
 ```
-
-> **Note:** push the **branch you're currently on** (`stage13-cloud-short`), not `main` — `main`
-> doesn't contain the cloud scripts yet. Once this Stage-13 work is reviewed and merged to `main`
-> (a later, separate step), future runs (Stage 14) can clone `main` directly instead.
 
 *Duration: seconds to ~1 min.*
 
@@ -302,9 +301,12 @@ Use the fine-grained token from Section 1.5. Replace `<TOKEN>` with the value yo
 
 ```bash
 cd ~
-git clone -b stage13-cloud-short https://<TOKEN>@github.com/Ghost159915/thesis-ssm-event-cameras.git
+git clone -b main https://<TOKEN>@github.com/Ghost159915/thesis-ssm-event-cameras.git
 cd ~/thesis-ssm-event-cameras
 ```
+
+(`main` is the repo's default branch, so a plain `git clone https://<TOKEN>@github.com/...` without
+`-b main` clones the same thing.)
 
 This clones into `~/thesis-ssm-event-cameras` — the exact path every script below defaults to, so no
 `REPO=` overrides are needed for the rest of this section.
@@ -312,10 +314,14 @@ This clones into `~/thesis-ssm-event-cameras` — the exact path every script be
 **You should see:** a normal clone progress output ending in the shell prompt back, and
 `ls` inside the new directory showing `code/`, `data/`, `docs/`, etc.
 
+> **If `code/event_ssm/scripts/cloud/` is missing after clone:** the Stage-13 branch hasn't merged to
+> `main` yet — stop and check with your assistant before continuing.
+
 *Duration: ~1 min.*
 
 **If this goes wrong:** `Authentication failed` means the token was mistyped, expired, or lacks
-repository access to `thesis-ssm-event-cameras` — regenerate it from Section 1.5's steps.
+repository access to `thesis-ssm-event-cameras` — regenerate it from Section 1.5's steps. If
+`code/event_ssm/scripts/cloud/` is missing after a successful clone, see the callout above.
 
 ### 3.4 Bootstrap the environment (~20 min)
 
@@ -367,7 +373,9 @@ This is expected and correct — the `test` split was deliberately never uploade
 *Duration: ~15–30 min depending on the instance's download bandwidth.*
 
 **If this goes wrong:** a stalled/failed download can just be re-run — `hf download` resumes partial
-files rather than restarting.
+files rather than restarting. `hf: command not found` means `setup_env_5090.sh` (Section 3.4) didn't
+finish installing the HF CLI — re-run that script (it's idempotent; it'll skip everything already
+done and just pick up the missing step).
 
 ### 3.6 Launch training (~3–5 h for the 25k-step short run)
 
@@ -424,7 +432,11 @@ before that, just relaunch fresh.)
 **If this goes wrong:** an OOM here would be surprising given the cloud RAM/VRAM headroom over local
 runs, but if it happens, drop `NUM_WORKERS_TRAIN`/`NUM_WORKERS_EVAL` the same way Stage 7 did locally
 (`NUM_WORKERS_TRAIN=2 NUM_WORKERS_EVAL=1 WANDB_API_KEY=... bash code/event_ssm/scripts/stage13_cloud_short.sh`)
-and use the resume command above to continue from the last checkpoint rather than restarting.
+and use the resume command above to continue from the last checkpoint rather than restarting. A
+`No such file or directory` error on a `conda.sh` source line means `CONDA_SH` isn't pointing at this
+instance's actual Miniforge install — it defaults to `$HOME/miniforge3/etc/profile.d/conda.sh`
+(matching where Section 3.4 installs it), so check Miniforge really landed under `$HOME` on this
+instance, or pass `CONDA_SH=/path/to/conda.sh` explicitly before the launch command.
 
 ---
 
@@ -524,8 +536,9 @@ actually destroyed — go back to the provider's console and check for a lingeri
 
 ### Looking ahead: Stage 14
 
-Stage 14 (the full 400k-step run) reuses this **exact same runbook** — no new setup, no new dataset
-upload. The only difference is the launch command in Section 3.6:
+Stage 14 (the full 400k-step run) reuses **Sections 2–5 of this runbook unchanged** — Section 1's
+one-time local prep (dataset upload, code push, GitHub token, W&B account) doesn't need repeating. The
+only difference is the launch command's environment in Section 3.6:
 ```bash
 MAX_STEPS=400000 VAL_EVERY=10000 WANDB_API_KEY=<your-wandb-key> bash code/event_ssm/scripts/stage13_cloud_short.sh
 ```

@@ -9,6 +9,12 @@
 # different checkout/conda root without touching the local script's defaults). Only the experiment
 # selection + step budget + labels + run dir + wandb mode differ (exported below).
 #
+# CONDA_SH default: stage7_midrun_local.sh falls back to a hardcoded local-dev-machine path
+# (/home/ghost/miniforge3/...) when CONDA_SH is unset, which does not exist on a rented instance (root
+# user, different $HOME). This wrapper exports a $HOME-relative default instead, matching where
+# setup_env_5090.sh installs Miniforge on the cloud instance -- so training doesn't abort at the
+# `source "$CONDA_SH"` line in stage7_midrun_local.sh. Still overridable via CONDA_SH=... if needed.
+#
 # Prerequisites (see code/event_ssm/scripts/cloud/): setup_env_5090.sh (env bootstrap) then
 # pull_dataset.sh (train/val only -- test stays local-only) must have already run on this instance.
 #
@@ -18,6 +24,7 @@
 set -euo pipefail
 
 export REPO="${REPO:-$HOME/thesis-ssm-event-cameras}"
+export CONDA_SH="${CONDA_SH:-$HOME/miniforge3/etc/profile.d/conda.sh}"
 
 # --- cloud short-run knobs (25k steps, PureSSM) -- everything else inherits stage7_midrun_local.sh's
 #     mid-run defaults (DATASET, PRECISION=bf16-mixed, MAX_EPOCHS=10000) ---
