@@ -129,9 +129,26 @@ containing `committed: 9435/9435` and:
 *Duration: hours (network-bound), unattended once started.*
 
 **If this goes wrong:** a dropped connection just stops the upload — re-run the exact same command
-(with `CONFIRM=1`) and it resumes from the last completed file, it does not restart from zero. If the
-upload crawls on many tiny files, retry with `UPLOAD_WORKERS=8` (e.g. prepend it to the same command
-above).
+(with `CONFIRM=1`) and it resumes from the last completed file, it does not restart from zero.
+
+If the upload is **killed, OOMs, or the machine becomes unresponsive** — this happened once already
+(2026-07-12): the default `hf` upload backend (`hf-xet`) grew to ~11 GB resident memory and the
+OOM-killer took down the upload along with VS Code and the assistant session at 512/9435 files
+committed — restart it with `HF_HUB_DISABLE_XET=1` prepended and `UPLOAD_WORKERS=2`, run from a
+**standalone terminal outside your IDE** (not a VS Code/editor-integrated terminal, which shares memory
+pressure with the editor itself):
+```bash
+HF_HUB_DISABLE_XET=1 UPLOAD_WORKERS=2 CONFIRM=1 HF_REPO=AngryGhostMan/gen1-rvt-preproc \
+  bash code/event_ssm/scripts/cloud/upload_dataset_once.sh
+```
+This resumes from the last committed file, same as any other interruption — `HF_HUB_DISABLE_XET` and
+`UPLOAD_WORKERS` are both plain environment variables the script passes straight through to `hf
+upload-large-folder` (`UPLOAD_WORKERS` maps to its `--num-workers` flag), so no other change is needed.
+
+If instead the upload merely **crawls on many tiny files** (no OOM, just slow), raising
+`UPLOAD_WORKERS` (e.g. to 8) can help — but more workers also means more memory use (`hf-xet`'s RSS
+scales with worker count, which is exactly what caused the OOM above). **Never raise `UPLOAD_WORKERS`
+as a response to an OOM or an unresponsive machine — lower it instead**, as shown above.
 
 ### 1.4 Push your code to GitHub
 
@@ -385,9 +402,14 @@ Compute capability: (12, 0)
 mamba_ssm: 2.3.2.post1
 causal_conv1d: 1.6.2.post1
 kernel imports ok
-hf: version=1.18.0
+hf: ✓ hf version
+  version: 1.18.0
 [setup_env_5090] environment ready. Activate with: conda activate events_signals
 ```
+(the script composes this line as `echo -n "hf: "` followed by `hf version`'s own output; `hf`'s CLI
+prints a green `✓ hf version` line plus an indented `version: 1.18.0` line in a normal interactive
+terminal — this is *not* the same as `hf --version`, and the exact formatting is internal to the `hf`
+CLI, so don't be alarmed if a future `huggingface_hub` release changes it slightly.)
 
 *Duration: ~20 min (mostly the mamba-ssm/causal-conv1d compile).*
 
@@ -444,11 +466,13 @@ This is expected and correct — the `test` split was deliberately never uploade
 *Duration: ~15–30 min depending on the instance's download bandwidth.*
 
 **If this goes wrong:** a stalled/failed download can just be re-run — `hf download` resumes partial
-files rather than restarting. `hf: command not found` means the current shell doesn't have the
-`events_signals` conda env active — run `source ~/miniforge3/etc/profile.d/conda.sh && conda activate
-events_signals` (re-running `setup_env_5090.sh` will **not** fix this: every step is
-import/existence-guarded, so on an already-bootstrapped instance it just prints "already installed --
-skipping" for everything and exits green without touching your shell).
+files rather than restarting. `hf: command not found` here is **not** a plain inactive-conda-env issue
+like Section 1.2 — `pull_dataset.sh` self-activates `events_signals` at its own header (`source
+"${CONDA_SH:-...}" && conda activate events_signals`), so it always runs with the right env active. If
+`hf` is still missing, the realistic cause is a failed or incomplete bootstrap (Section 3.4 didn't
+finish, so `huggingface_hub[cli]` never got installed) — re-run
+`bash code/event_ssm/scripts/cloud/setup_env_5090.sh` and check its "You should see" verification block
+(3.4) prints the `hf: ✓ hf version` / `version: 1.18.0` lines before retrying the pull.
 
 ### 3.7 Launch training (~3–5 h for the 25k-step short run)
 
@@ -493,8 +517,10 @@ training.
 
 **Resume insurance:** if the instance restarts or the process dies mid-run, training is resumable
 without losing progress. `stage7_midrun_local.sh` (the launcher this wrapper calls) documents this at
-its own header: *"Resumable: set `STAGE7_RESUME=/abs/last...ckpt`."* Find the newest checkpoint and
-relaunch with it:
+its own header: *"Resumable: set `STAGE7_RESUME=/abs/last...ckpt`."* This is safe under this cloud
+run's `WANDB_MODE=online`: the resume shim always loads the checkpoint straight from the local file you
+point at, so it never queries the wandb server for a (nonexistent) artifact and cannot abort a
+relaunch on a CommError. Find the newest checkpoint and relaunch with it:
 ```bash
 STAGE7_RESUME="$(ls -t ~/thesis-ssm-event-cameras/external/ssms_event_cameras/RVT/RVT/*/checkpoints/last_epoch=*.ckpt | head -1)" \
   WANDB_API_KEY=<your-wandb-key> bash code/event_ssm/scripts/stage13_cloud_short.sh

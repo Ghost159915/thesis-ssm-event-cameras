@@ -12,14 +12,16 @@ source-built Mamba kernels transfer without a rebuild recipe change.
   forward hook on `backbone.spatial` logging per-stage feature norms to wandb (`commit=False`, piggybacks
   on Lightning's step commit) and stdout, with a NON-FINITE alarm (NaN/Inf watch for a from-scratch
   BiMamba run nobody is baby-sitting locally). Env-gated: `PURESSM_MONITOR=1`,
-  cadence `PURESSM_MONITOR_EVERY` (default 200 steps). The whole hook is crash-guarded — a monitor bug
-  must never kill a paid training run.
+  cadence `PURESSM_MONITOR_EVERY` (default every 200 spatial forward calls — validation forwards
+  advance the counter too, so it is not exactly "every 200 training steps"). The whole hook is
+  crash-guarded — a monitor bug must never kill a paid training run.
 - **Cloud scripts** (`code/event_ssm/scripts/cloud/`):
-  - `setup_env_5090.sh` — idempotent instance bootstrap: Miniforge → `events_signals` env → torch
-    2.11.0+cu128 → locked deps (`--no-deps`) → `mamba-ssm`/`causal-conv1d` source-built for `sm_120`
-    (`--no-deps --no-build-isolation`) → `huggingface_hub[cli]` → **`external/` RVT bootstrap** (clone
-    `uzh-rpg/ssms_event_cameras` pinned @ `7c871b55a0c5f00673c2c3975f6b6a1c5adbab88` + the 4 Stage-12
-    Hydra config symlinks) → install verification block. Every step guarded; safe to re-run.
+  - `setup_env_5090.sh` — idempotent instance bootstrap, in actual script order: **`external/` RVT
+    bootstrap FIRST** (clone `uzh-rpg/ssms_event_cameras` pinned @
+    `7c871b55a0c5f00673c2c3975f6b6a1c5adbab88` + the 4 Stage-12 Hydra config symlinks) → Miniforge →
+    `events_signals` env → torch 2.11.0+cu128 → locked deps (`--no-deps`) → `mamba-ssm`/`causal-conv1d`
+    source-built for `sm_120` (`--no-deps --no-build-isolation`) → `torchdata`/`hdf5plugin` →
+    `huggingface_hub[cli]` → install verification block. Every step guarded; safe to re-run.
   - `pull_dataset.sh` — auth-guarded (`HF_TOKEN` + `hf auth whoami` pre-check) download of the private
     dataset repo; train+val only by design.
   - `upload_dataset_once.sh` — one-shot local→HF upload (`CONFIRM=1` gate, train/val whitelist,
@@ -43,8 +45,12 @@ efficiency pillar and final evals on fixed local hardware).
 
 **Upload incident (2026-07-12):** `hf upload-large-folder` with default settings grew an `hf-xet`
 resident set to ~11 GB and was OOM-killed (took VS Code and the assistant session with it) at 512/9435
-files committed. The upload is resumable by design. Fix recorded in the runbook's troubleshooting:
-`HF_HUB_DISABLE_XET=1` + `--num-workers 2`, run in a standalone terminal outside VS Code.
+files committed. The upload is resumable by design. Fix recorded in the runbook's §1.3 troubleshooting:
+`HF_HUB_DISABLE_XET=1` + `UPLOAD_WORKERS=2` (the wrapper's worker knob, passed through to `hf
+upload-large-folder --num-workers`), run in a standalone terminal outside VS Code. The runbook's
+previous "retry with `UPLOAD_WORKERS=8`" advice was actually the OOM-aggravating direction (more
+workers -> more `hf-xet` memory) — that advice is now qualified to the many-tiny-files-stall case only,
+never as an OOM response.
 
 ## Non-obvious fixes (4 review rounds on the runbook/scripts)
 
@@ -61,8 +67,9 @@ machine they're for.** Everything the local workstation provides implicitly (con
 
 ## Test suite
 
-97 passed (+1 gpu-deselected) at build close — 92 from Stages ≤12 plus the 5 new monitor tests
-(`test_monitors.py`, incl. cadence-pinning and the engagement spy).
+98 passed (+1 gpu-deselected) after the final-review fix wave — 92 from Stages ≤12, 5 monitor tests
+from build close (`test_monitors.py`, incl. cadence-pinning and the engagement spy), plus 1 more
+(`test_every_n_zero_raises_at_attach_time`) added for the `PURESSM_MONITOR_EVERY=0` build-time guard.
 
 ## Run results (Task 4) — PENDING
 
