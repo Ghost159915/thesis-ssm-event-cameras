@@ -59,7 +59,7 @@ modifier, then fails fast on the missing dataset). Three non-obvious wiring bugs
 | 7 | Post-run `AttributeError: 'Run' object has no attribute '_entity'` (RVT `wandb_logger._get_public_run`) | Offline wandb can't log checkpoint *artifacts* (`_entity` is online-only); RVT hardcodes `log_model=True`. **Training, validation, and the checkpoint all succeeded** — the crash is in post-run artifact upload only. | Launcher patches `get_wandb_logger` to set `_log_model=False` when `WANDB_MODE` is offline/disabled (checkpoint still saved to disk). |
 
 Proof the patched path is live end-to-end: the bogus-path run printed
-`[resnet_mamba] set in_res_hw=(256, 320), num_classes=2` (our modifier — the stock one
+`[ResNetMamba] set in_res_hw=(256, 320), num_classes=2` (our modifier since Stage 12 prints the backbone name; older logs show `[resnet_mamba]` — the stock one
 `NotImplementedError`s on ResNetMamba) before failing on the missing dataset.
 
 ## Monitoring checklist — paste back after the run

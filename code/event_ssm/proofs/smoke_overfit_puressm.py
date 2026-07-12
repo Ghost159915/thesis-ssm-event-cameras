@@ -1,4 +1,9 @@
-"""Stage-12 overfit smoke: PureSSM (BiMamba spatial) through the REAL Lightning stack..."""
+"""Stage-12 overfit smoke: PureSSM (BiMamba spatial) through the REAL Lightning stack (drop-in
+backbone + PAFPN + YOLOX + SimOTA) overfits a tiny real Gen1 batch via a real pl.Trainer.
+Asserts loss reduction >= 3x and no NaN. Writes a loss curve.
+
+Run (events_signals, CUDA):  python proofs/smoke_overfit_puressm.py [max_epochs]
+"""
 import sys, pathlib
 HERE = pathlib.Path(__file__).resolve()
 sys.path.insert(0, str(HERE.parents[2]))      # parents[2] == repo/code (so `event_ssm` is importable)
