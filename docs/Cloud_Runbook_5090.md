@@ -112,19 +112,11 @@ containing `committed: 9435/9435` and:
 [upload_dataset_once] done. test/** was NOT uploaded (local-only eval split).
 ```
 
-> **Your situation right now:** this upload is **already running** in another terminal (started in
-> the 2026-07-12 session, hand-run as the command-line equivalent of the script above). **Don't start
-> a second upload against the same repo** — instead, verify it finished:
->
-> 1. Check that other terminal's tail for the line `committed: 9435/9435` (or the final
->    `[upload_dataset_once] done.` line if you used the script).
-> 2. Confirm from here, once it looks done:
->    ```bash
->    /home/ghost/miniforge3/envs/events_signals/bin/hf datasets info AngryGhostMan/gen1-rvt-preproc
->    ```
->    **You should see** repo metadata (size, last-modified timestamp close to now, file count) with no
->    error. If the command errors with "not found" or shows a much older timestamp, the upload
->    hasn't landed yet — wait and re-check, don't proceed to Section 2 until it's confirmed.
+> **Your situation right now: this step is DONE (2026-07-12).** The upload completed —
+> `committed: 9435/9435` (77.9 GB, 2 h 19 m) — and was verified on the Hub via
+> `hf datasets info AngryGhostMan/gen1-rvt-preproc`: `private: True`, 1458 train / 429 val recordings
+> (exact match to the local extraction), 0 test files. **Do not re-run the upload.** Skip straight
+> ahead; the command block above stays for the from-scratch/Stage-14 case only.
 
 *Duration: hours (network-bound), unattended once started.*
 

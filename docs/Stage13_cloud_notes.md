@@ -43,6 +43,12 @@ Private HF dataset repo `AngryGhostMan/gen1-rvt-preproc` — **train (58 GB) + v
 test split (20 GB) deliberately stays local (test evals run on the workstation, keeping the Stage-10
 efficiency pillar and final evals on fixed local hardware).
 
+**Upload COMPLETE (2026-07-12 23:59 local):** 9435/9435 files committed (77.9 GB) in 2 h 19 m.
+Hub-side verification (`hf datasets info`): `private: True`, 1458 train / 429 val recordings — exact
+match to the local extraction — 0 test files, and the per-recording layout
+(`event_representations_v2/stacked_histogram_dt=50_nbins=10/` + `labels_v2/`) matches what the RVT
+loader expects, so `pull_dataset.sh` needs no reshuffling. Stage 14 reuses this repo as-is.
+
 **Upload incident (2026-07-12):** `hf upload-large-folder` with default settings grew an `hf-xet`
 resident set to ~11 GB and was OOM-killed (took VS Code and the assistant session with it) at 512/9435
 files committed. The upload is resumable by design. Fix recorded in the runbook's §1.3 troubleshooting:
