@@ -16,8 +16,74 @@ CONDA_ROOT="${CONDA_ROOT:-$HOME/miniforge3}"
 CONDA_SH="${CONDA_SH:-$CONDA_ROOT/etc/profile.d/conda.sh}"
 ENV_NAME="${ENV_NAME:-events_signals}"
 
+# external/ssms_event_cameras is fully gitignored in this repo (docs/patches/README.md is the
+# authority on why + what a fresh checkout must reconstruct) -- a `git clone` of the thesis repo
+# alone has NO external/ tree, so stage7_midrun_local.sh's `cd "$REPO/external/ssms_event_cameras/RVT"`
+# would abort on a fresh instance. Pinned to the exact commit this thesis's patches/results were built
+# against (from `git -C external/ssms_event_cameras remote -v` / `rev-parse HEAD` on the dev machine).
+EXTERNAL_GIT_URL="${EXTERNAL_GIT_URL:-https://github.com/uzh-rpg/ssms_event_cameras.git}"
+EXTERNAL_COMMIT="${EXTERNAL_COMMIT:-7c871b55a0c5f00673c2c3975f6b6a1c5adbab88}"
+
 # -----------------------------------------------------------------------------
-# 1. Miniforge (skip if already installed)
+# 1. external/ RVT training codebase: clone upstream at the pinned commit (skip if already checked
+#    out there) + re-create the Stage-12 Hydra config symlinks (docs/patches/README.md) for BOTH
+#    ablation arms (resnet_mamba = EventSSMDetector, puressm = PureSSMDetector). Split into a
+#    standalone function so it can be sourced/tested in isolation from the conda/pip steps below.
+# -----------------------------------------------------------------------------
+bootstrap_external() {
+  local ext_dir="$REPO/external/ssms_event_cameras"
+
+  if [[ ! -d "$ext_dir/.git" ]]; then
+    echo "[setup_env_5090] cloning $EXTERNAL_GIT_URL -> $ext_dir"
+    git clone "$EXTERNAL_GIT_URL" "$ext_dir"
+  else
+    echo "[setup_env_5090] $ext_dir already a git checkout -- skipping clone"
+  fi
+
+  local current_commit
+  current_commit="$(git -C "$ext_dir" rev-parse HEAD)"
+  if [[ "$current_commit" != "$EXTERNAL_COMMIT" ]]; then
+    echo "[setup_env_5090] checking out pinned commit $EXTERNAL_COMMIT (was $current_commit)"
+    git -C "$ext_dir" checkout "$EXTERNAL_COMMIT" 2>/dev/null || {
+      git -C "$ext_dir" fetch origin "$EXTERNAL_COMMIT"
+      git -C "$ext_dir" checkout "$EXTERNAL_COMMIT"
+    }
+  else
+    echo "[setup_env_5090] $ext_dir already at pinned commit $EXTERNAL_COMMIT -- skipping checkout"
+  fi
+
+  # Config symlinks -- absolute targets (robust to REPO's location), ln -sfn is idempotent (replaces a
+  # stale/incorrect link, no-ops on a correct one, and errors clearly instead of nesting if a real
+  # file/dir were ever there instead of a symlink).
+  mkdir -p "$ext_dir/RVT/config/model/resnet_mamba_yolox" \
+           "$ext_dir/RVT/config/model/puressm_yolox"
+  ln -sfn "$REPO/code/event_ssm/configs/resnet_mamba_yolox/default.yaml" \
+          "$ext_dir/RVT/config/model/resnet_mamba_yolox/default.yaml"
+  ln -sfn "$REPO/code/event_ssm/configs/puressm_yolox/default.yaml" \
+          "$ext_dir/RVT/config/model/puressm_yolox/default.yaml"
+  ln -sfn "$REPO/code/event_ssm/configs/experiment/gen1/resnet_mamba.yaml" \
+          "$ext_dir/RVT/config/experiment/gen1/resnet_mamba.yaml"
+  ln -sfn "$REPO/code/event_ssm/configs/experiment/gen1/puressm.yaml" \
+          "$ext_dir/RVT/config/experiment/gen1/puressm.yaml"
+
+  echo "[setup_env_5090] verifying external/ bootstrap..."
+  local link
+  for link in \
+    "$ext_dir/RVT/config/model/resnet_mamba_yolox/default.yaml" \
+    "$ext_dir/RVT/config/model/puressm_yolox/default.yaml" \
+    "$ext_dir/RVT/config/experiment/gen1/resnet_mamba.yaml" \
+    "$ext_dir/RVT/config/experiment/gen1/puressm.yaml"; do
+    if [[ ! ( -L "$link" && -e "$link" ) ]]; then
+      echo "[setup_env_5090] FATAL: symlink missing/broken: $link" >&2
+      exit 1
+    fi
+  done
+  echo "external: OK @ $(git -C "$ext_dir" rev-parse --short HEAD)"
+}
+bootstrap_external
+
+# -----------------------------------------------------------------------------
+# 2. Miniforge (skip if already installed)
 # -----------------------------------------------------------------------------
 if [[ ! -f "$CONDA_SH" ]]; then
   echo "[setup_env_5090] installing Miniforge -> $CONDA_ROOT"
@@ -34,7 +100,7 @@ set +u                                               # conda's activate.d script
 source "$CONDA_SH"
 
 # -----------------------------------------------------------------------------
-# 2. events_signals conda env (python 3.11) -- create if absent, then activate
+# 3. events_signals conda env (python 3.11) -- create if absent, then activate
 # -----------------------------------------------------------------------------
 if ! conda env list | grep -qE "^${ENV_NAME}[[:space:]]"; then
   echo "[setup_env_5090] creating conda env: $ENV_NAME (python 3.11)"
@@ -50,7 +116,7 @@ PIP="$CONDA_PREFIX/bin/pip"
 HF="$CONDA_PREFIX/bin/hf"
 
 # -----------------------------------------------------------------------------
-# 3. TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1 in the env's activate hook, so every future
+# 4. TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1 in the env's activate hook, so every future
 #    `conda activate events_signals` (including a fresh shell after a restart) has it set.
 # -----------------------------------------------------------------------------
 ACTIVATE_D="$CONDA_PREFIX/etc/conda/activate.d"
@@ -67,7 +133,7 @@ fi
 export TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1            # also apply for the rest of THIS script's run
 
 # -----------------------------------------------------------------------------
-# 4. PyTorch cu128 (Blackwell sm_120)
+# 5. PyTorch cu128 (Blackwell sm_120)
 # -----------------------------------------------------------------------------
 if ! "$PY" -c "import torch; assert torch.__version__.startswith('2.11.0')" >/dev/null 2>&1; then
   echo "[setup_env_5090] installing torch==2.11.0 (cu128)"
@@ -77,7 +143,7 @@ else
 fi
 
 # -----------------------------------------------------------------------------
-# 5. Repo dependency lock (everything except torch -- --no-deps so it can never clobber cu128 torch;
+# 6. Repo dependency lock (everything except torch -- --no-deps so it can never clobber cu128 torch;
 #    see the events_signals --no-deps rule: a plain `pip install` here has upgraded torch/CUDA before)
 # -----------------------------------------------------------------------------
 LOCK_FILE="$REPO/requirements_5070ti_lock.txt"
@@ -91,7 +157,7 @@ else
 fi
 
 # -----------------------------------------------------------------------------
-# 6. mamba-ssm / causal-conv1d -- compiles Triton/CUDA kernels for sm_120 from source (~10-20 min).
+# 7. mamba-ssm / causal-conv1d -- compiles Triton/CUDA kernels for sm_120 from source (~10-20 min).
 #    Guarded by import success so a completed build is skipped on re-run; --no-deps --no-build-isolation
 #    only (a plain `pip install` upgrades torch -> 2.12/CUDA -> 13 and breaks the cu128 stack).
 # -----------------------------------------------------------------------------
@@ -103,7 +169,7 @@ else
 fi
 
 # -----------------------------------------------------------------------------
-# 7. torchdata pin (repo uses the removed DataPipes API) + hdf5plugin
+# 8. torchdata pin (repo uses the removed DataPipes API) + hdf5plugin
 # -----------------------------------------------------------------------------
 if ! "$PY" -c "from torchdata.datapipes.map import MapDataPipe" >/dev/null 2>&1; then
   echo "[setup_env_5090] installing torchdata==0.9.0 (DataPipes API) + hdf5plugin"
@@ -113,20 +179,20 @@ else
 fi
 
 # -----------------------------------------------------------------------------
-# 8. Hugging Face CLI (`hf`) -- needed by pull_dataset.sh (and upload_dataset_once.sh, run locally) to
+# 9. Hugging Face CLI (`hf`) -- needed by pull_dataset.sh (and upload_dataset_once.sh, run locally) to
 #    pull the training data onto the instance. huggingface_hub is NOT torch-dependent, so a plain
-#    (non --no-deps) install is safe here -- unlike step 5/6/7, it can't clobber the pinned cu128 torch.
+#    (non --no-deps) install is safe here -- unlike step 6/7/8, it can't clobber the pinned cu128 torch.
 # -----------------------------------------------------------------------------
 if ! "$PY" -c "import huggingface_hub" >/dev/null 2>&1; then
   echo "[setup_env_5090] installing huggingface_hub[cli]==1.18.0 (hf CLI)"
   "$PIP" install "huggingface_hub[cli]==1.18.0"          # pin to the locally-verified version (reproducibility;
-                                                          # torch-free tree, so a plain install is safe here
+                                                          # torch-free tree, so a plain install is safe here)
 else
   echo "[setup_env_5090] huggingface_hub already installed -- skipping"
 fi
 
 # -----------------------------------------------------------------------------
-# 9. Verification block (always runs -- cheap, and catches a partially-broken re-run)
+# 10. Verification block (always runs -- cheap, and catches a partially-broken re-run)
 # -----------------------------------------------------------------------------
 echo "[setup_env_5090] verifying install..."
 "$PY" -c "

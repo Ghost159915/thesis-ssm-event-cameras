@@ -299,7 +299,12 @@ and retry. If it persists past a couple minutes, check the instance status is ac
 ### 3.2 Start a persistent session
 
 SSH sessions die if your laptop sleeps or your network blips. `tmux` keeps the training running
-regardless:
+regardless. Most GPU rental images already have it; if `tmux new -s train` below errors with
+`command not found`, install it first:
+
+```bash
+apt-get update && apt-get install -y tmux
+```
 
 ```bash
 tmux new -s train
@@ -330,7 +335,9 @@ This clones into `~/thesis-ssm-event-cameras` — the exact path every script be
 `REPO=` overrides are needed for the rest of this section.
 
 **You should see:** a normal clone progress output ending in the shell prompt back, and
-`ls` inside the new directory showing `code/`, `data/`, `docs/`, etc.
+`ls` inside the new directory showing `code/`, `docs/`, `results/`, etc. — **not** `data/` (that lands
+in Section 3.5) and **not** `external/` (that lands in the next step, Section 3.4 — it's gitignored so
+a fresh clone never has it; the bootstrap script reconstructs it).
 
 > **If `code/event_ssm/scripts/cloud/` is missing after clone:** the Stage-13 branch hasn't merged to
 > `main` yet — stop and check with your assistant before continuing.
@@ -347,12 +354,21 @@ repository access to `thesis-ssm-event-cameras` — regenerate it from Section 1
 bash code/event_ssm/scripts/cloud/setup_env_5090.sh
 ```
 
-This installs Miniforge, creates the `events_signals` conda env, installs torch 2.11.0 (cu128), the
-locked dependency set, builds `mamba-ssm`/`causal-conv1d` from source for `sm_120` (the slow part,
-~10–20 min), and installs `torchdata`/`hdf5plugin`. Every step is guarded — if the instance restarts
-mid-way, just re-run the same command and it skips whatever already finished.
+This first clones `external/ssms_event_cameras` (the upstream RVT training codebase, gitignored in this
+repo — see `docs/patches/README.md`) at its pinned commit and re-creates the Stage-12 Hydra config
+symlinks for both ablation arms, then installs Miniforge, creates the `events_signals` conda env,
+installs torch 2.11.0 (cu128), the locked dependency set, builds `mamba-ssm`/`causal-conv1d` from
+source for `sm_120` (the slow part, ~10–20 min), and installs `torchdata`/`hdf5plugin`. Every step is
+guarded — if the instance restarts mid-way, just re-run the same command and it skips whatever already
+finished.
 
-**You should see**, near the end:
+**You should see**, near the start:
+```
+[setup_env_5090] cloning https://github.com/uzh-rpg/ssms_event_cameras.git -> .../external/ssms_event_cameras
+[setup_env_5090] verifying external/ bootstrap...
+external: OK @ 7c871b5
+```
+and, near the end:
 ```
 [setup_env_5090] verifying install...
 torch: 2.11.0+cu128
@@ -401,7 +417,32 @@ events_signals` (re-running `setup_env_5090.sh` will **not** fix this: every ste
 import/existence-guarded, so on an already-bootstrapped instance it just prints "already installed --
 skipping" for everything and exits green without touching your shell).
 
-### 3.6 Launch training (~3–5 h for the 25k-step short run)
+### 3.6 Pre-flight: dry-run the training config
+
+Before launching the long run (you've already paid for the instance at this point, so this is about
+not wasting the hours you're about to spend on it, not about avoiding the rental) — do a GPU-free
+dry-run that only composes the Hydra config and exits, catching any bootstrap/config problem in
+seconds instead of hours into training:
+
+```bash
+bash code/event_ssm/scripts/stage13_cloud_short.sh --cfg job
+```
+
+**You should see**, somewhere in the printed config dump, both of these lines:
+```
+name: PureSSM
+...
+max_steps: 25000
+```
+
+*Duration: seconds.*
+
+**If this goes wrong:** ANY failure here — a missing `external/ssms_event_cameras` path, a Hydra
+"config not found" error, a missing symlink — means Section 3.4's bootstrap didn't complete cleanly.
+Re-run `bash code/event_ssm/scripts/cloud/setup_env_5090.sh` and re-check its "You should see" block
+(3.4) before re-attempting this dry-run. Do not proceed to 3.7 until both lines above appear.
+
+### 3.7 Launch training (~3–5 h for the 25k-step short run)
 
 Activate the environment, then launch with your W&B key from Section 1.6. The bootstrap in Section 3.4
 deliberately never edits your shell config (`.bashrc`), so `conda activate` doesn't work in a fresh
@@ -555,7 +596,7 @@ Quick confirmation pass — takes under a minute.
    (`results/` and `*.ckpt` are both ignored), so there's nothing to `git add`/commit for the
    checkpoint files themselves.
 4. **Loose ends:** if you used `STAGE7_RESUME` at any point, make a note of which run-id you actually
-   trained under for the results write-up — the wandb run URL from Section 3.6 has the full history.
+   trained under for the results write-up — the wandb run URL from Section 3.7 has the full history.
 
 **If this goes wrong:** a credit balance still decreasing after Section 4.4 means the instance wasn't
 actually destroyed — go back to the provider's console and check for a lingering instance.
@@ -564,7 +605,7 @@ actually destroyed — go back to the provider's console and check for a lingeri
 
 Stage 14 (the full 400k-step run) reuses **Sections 2–5 of this runbook unchanged** — Section 1's
 one-time local prep (dataset upload, code push, GitHub token, W&B account) doesn't need repeating. The
-only difference is the launch command's environment in Section 3.6:
+only difference is the launch command's environment in Section 3.7:
 ```bash
 MAX_STEPS=400000 VAL_EVERY=10000 WANDB_API_KEY=<your-wandb-key> bash code/event_ssm/scripts/stage13_cloud_short.sh
 ```
