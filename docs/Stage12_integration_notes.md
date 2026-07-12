@@ -1,6 +1,6 @@
 # Stage 12 — PureSSM Integration + Overfit Smoke: Notes
 
-**Date:** 2026-07-12 · **Branch:** `stage12-puressm-integration` (base `115b2d7`) · **Plan:** `docs/superpowers/plans/2026-07-11-stage12-puressm-integration.md`
+**Date:** 2026-07-12 · **Branch:** `stage12-puressm-integration` (base `47056a1`) · **Plan:** `docs/superpowers/plans/2026-07-11-stage12-puressm-integration.md`
 
 ## What was wired
 

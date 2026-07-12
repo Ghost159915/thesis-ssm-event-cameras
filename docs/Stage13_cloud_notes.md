@@ -1,6 +1,6 @@
 # Stage 13 — Cloud Short Run (rented RTX 5090): Notes
 
-**Date:** 2026-07-12 · **Branch:** `stage13-cloud-short` (base `d6013fd`) · **Plan:** `docs/superpowers/plans/2026-07-12-stage13-cloud-short-run.md`
+**Date:** 2026-07-12 · **Branch:** `stage13-cloud-short` (base `3c927bb`) · **Plan:** `docs/superpowers/plans/2026-07-12-stage13-cloud-short-run.md`
 
 Goal: a 25k-step PureSSM training run on a rented RTX 5090 32 GB (vast.ai) — the rehearsal for the
 Stage-14 400k run. Same `sm_120` compute capability as the local 5070 Ti ⇒ the locked cu128 stack and

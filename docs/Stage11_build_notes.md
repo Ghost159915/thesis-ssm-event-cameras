@@ -13,7 +13,7 @@
 - Scripts: `stage11_probe.py` (definitive U3 gate probe incl. CUDA-graph datapoint + `--smoke`), `stage11_erf.py` (ERF mechanism figure), `stage11_u1_proof.py`, `stage11_u2_proof.py`.
 - Tests: **27 new** (scan equivalence/flip/liveness/gradients/bf16, block axis semantics, pyramid contract/param-gate/statelessness, injection + state contract, checkpoint engagement); full suite green throughout (87 + 1 gpu-marked at close).
 
-## Official probe results (user-run, RTX 5070 Ti idle, commit `3e8cf30`)
+## Official probe results (user-run, RTX 5070 Ti idle, commit `7f0e40e`)
 
 | Metric | Value | Gate | Verdict |
 |---|---|---|---|
