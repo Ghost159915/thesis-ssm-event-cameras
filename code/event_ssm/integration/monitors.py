@@ -10,6 +10,15 @@ import torch
 
 
 def attach_spatial_norm_monitor(backbone, every_n: int = 200):
+    if every_n < 1:
+        # A cadence < 1 makes `state["calls"] % every_n` divide by zero on every forward call --
+        # the hook's own try/except would swallow that into a per-call "[monitor] hook error
+        # suppressed" log-spam line instead of failing loudly (PURESSM_MONITOR_EVERY=0 misconfig).
+        # Fail at attach time instead, with a clear message pointing at the likely env-var source.
+        raise ValueError(
+            f"attach_spatial_norm_monitor: every_n must be >= 1, got {every_n!r} "
+            f"(check PURESSM_MONITOR_EVERY if this was set via the environment)."
+        )
     state = {"calls": 0}
 
     def hook(_module, _inputs, output):

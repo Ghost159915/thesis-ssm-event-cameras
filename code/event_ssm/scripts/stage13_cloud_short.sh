@@ -28,12 +28,16 @@ export CONDA_SH="${CONDA_SH:-$HOME/miniforge3/etc/profile.d/conda.sh}"
 
 # --- cloud short-run knobs (25k steps, PureSSM) -- everything else inherits stage7_midrun_local.sh's
 #     mid-run defaults (DATASET, PRECISION=bf16-mixed, MAX_EPOCHS=10000) ---
-export EXPERIMENT=puressm                # +experiment/gen1=puressm (Stage 12 backbone; stage6_overrides.sh knob)
-export MAX_STEPS=25000                   # short cloud smoke/signal run, not the full 400k budget
-export VAL_EVERY=5000                    # 5 full-val mAP points across the run
-export BATCH=4
-export NUM_WORKERS_TRAIN=6               # cloud RAM allows the yaml defaults again (local was RAM-capped to 2)
-export NUM_WORKERS_EVAL=2
+# Every knob below respects a pre-set caller override (`${VAR:-default}`, same pattern as WANDB_MODE) --
+# an unconditional `export VAR=value` would silently clobber this script's own header usage example
+# (`EXPERIMENT=resnet_mamba bash ...`) and the runbook's documented overrides (OOM-recovery worker
+# counts in Section 3.7, the Stage-14 `MAX_STEPS=400000 VAL_EVERY=10000` relaunch).
+export EXPERIMENT="${EXPERIMENT:-puressm}"                # +experiment/gen1=puressm (Stage 12 backbone; stage6_overrides.sh knob)
+export MAX_STEPS="${MAX_STEPS:-25000}"                    # short cloud smoke/signal run, not the full 400k budget
+export VAL_EVERY="${VAL_EVERY:-5000}"                     # 5 full-val mAP points across the run
+export BATCH="${BATCH:-4}"
+export NUM_WORKERS_TRAIN="${NUM_WORKERS_TRAIN:-6}"        # cloud RAM allows the yaml defaults again (local was RAM-capped to 2)
+export NUM_WORKERS_EVAL="${NUM_WORKERS_EVAL:-2}"
 export GROUP_NAME=stage13_cloud_puressm  # wandb label
 export RUNDIR="$REPO/results/stage13_cloud"
 export PURESSM_MONITOR=1                 # attach the PureSSM spatial-norm monitor (register.py; zero-overhead when unset)

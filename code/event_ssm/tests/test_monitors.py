@@ -1,5 +1,6 @@
 # code/event_ssm/tests/test_monitors.py — Stage 13: training monitors (roadmap Stage-13 deliverable)
 import os
+import pytest
 import torch
 from omegaconf import OmegaConf
 
@@ -60,3 +61,10 @@ def test_every_n_cadence(device, monkeypatch, capsys):
         bb(x, None)
     out = capsys.readouterr().out
     assert out.count("[monitor] call") == 1, f"expected exactly 1 report in 3 calls at every_n=3, got: {out!r}"
+
+
+def test_every_n_zero_raises_at_attach_time(device, monkeypatch):
+    from event_ssm.integration.monitors import attach_spatial_norm_monitor
+    bb = _build(False, monkeypatch).to(device)
+    with pytest.raises(ValueError, match="every_n"):
+        attach_spatial_norm_monitor(bb, every_n=0)
