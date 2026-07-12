@@ -46,13 +46,19 @@ def register_backbone_builder():
                 drop_path_rate=backbone_cfg.get("drop_path_rate", 0.1),
                 checkpoint_blocks=backbone_cfg.get("checkpoint_blocks", False),
             )
-            return ResNetMambaBackbone(
+            bb = ResNetMambaBackbone(
                 in_channels=backbone_cfg.input_channels,
                 d_state=backbone_cfg.get("d_state", 64),
                 num_layers_per_stage=backbone_cfg.get("num_layers_per_stage", 1),
                 temporal_stages=temporal_stages,
                 spatial=spatial,
             )
+            import os
+            if os.environ.get("PURESSM_MONITOR") == "1":
+                # Stage-13: per-stage feature-norm + NaN monitor (spec §4.4 Mamba-R watch)
+                from event_ssm.integration.monitors import attach_spatial_norm_monitor
+                attach_spatial_norm_monitor(bb, every_n=int(os.environ.get("PURESSM_MONITOR_EVERY", "1")))
+            return bb
         return orig(backbone_cfg)
 
     patched._resnet_mamba_registered = True
