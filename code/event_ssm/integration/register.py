@@ -57,7 +57,7 @@ def register_backbone_builder():
             if os.environ.get("PURESSM_MONITOR") == "1":
                 # Stage-13: per-stage feature-norm + NaN monitor (spec §4.4 Mamba-R watch)
                 from event_ssm.integration.monitors import attach_spatial_norm_monitor
-                attach_spatial_norm_monitor(bb, every_n=int(os.environ.get("PURESSM_MONITOR_EVERY", "1")))
+                attach_spatial_norm_monitor(bb, every_n=int(os.environ.get("PURESSM_MONITOR_EVERY", "200")))
             return bb
         return orig(backbone_cfg)
 

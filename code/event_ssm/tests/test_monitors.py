@@ -39,6 +39,7 @@ def test_monitor_flags_nonfinite(device, monkeypatch, capsys):
 
 
 def test_env_gate_attaches_via_builder(device, monkeypatch, capsys):
+    monkeypatch.setenv("PURESSM_MONITOR_EVERY", "1")
     bb = _build(True, monkeypatch).to(device)
     bb(torch.randn(1, 1, 20, 256, 320, device=device), None)
     assert "[monitor]" in capsys.readouterr().out
@@ -48,3 +49,14 @@ def test_no_env_no_monitor(device, monkeypatch, capsys):
     bb = _build(False, monkeypatch).to(device)
     bb(torch.randn(1, 1, 20, 256, 320, device=device), None)
     assert "[monitor]" not in capsys.readouterr().out
+
+
+def test_every_n_cadence(device, monkeypatch, capsys):
+    from event_ssm.integration.monitors import attach_spatial_norm_monitor
+    bb = _build(False, monkeypatch).to(device)
+    attach_spatial_norm_monitor(bb, every_n=3)
+    x = torch.randn(1, 1, 20, 256, 320, device=device)
+    for _ in range(3):
+        bb(x, None)
+    out = capsys.readouterr().out
+    assert out.count("[monitor] call") == 1, f"expected exactly 1 report in 3 calls at every_n=3, got: {out!r}"

@@ -13,24 +13,27 @@ def attach_spatial_norm_monitor(backbone, every_n: int = 200):
     state = {"calls": 0}
 
     def hook(_module, _inputs, output):
-        state["calls"] += 1
-        if state["calls"] % every_n:
-            return
-        logs, parts = {}, []
-        for stage in sorted(output):
-            norm = output[stage].detach().float().norm(dim=1).mean()
-            if not torch.isfinite(norm):
-                print(f"[monitor] NON-FINITE spatial feature norm at stage {stage} "
-                      f"(call {state['calls']}) — numerics alert (Mamba-R watch)")
-            logs[f"monitor/spatial_featnorm_s{stage}"] = float(norm)
-            parts.append(f"s{stage}={float(norm):.3f}")
         try:
-            import wandb
-            if wandb.run is not None:
-                wandb.log(logs, commit=False)
-        except Exception:
-            pass  # wandb optional/offline — the printed line is the fallback record
-        print(f"[monitor] call {state['calls']} " + " ".join(parts))
+            state["calls"] += 1
+            if state["calls"] % every_n:
+                return
+            logs, parts = {}, []
+            for stage in sorted(output):
+                norm = output[stage].detach().float().norm(dim=1).mean()
+                if not torch.isfinite(norm):
+                    print(f"[monitor] NON-FINITE spatial feature norm at stage {stage} "
+                          f"(call {state['calls']}) — numerics alert (Mamba-R watch)")
+                logs[f"monitor/spatial_featnorm_s{stage}"] = float(norm)
+                parts.append(f"s{stage}={float(norm):.3f}")
+            try:
+                import wandb
+                if wandb.run is not None:
+                    wandb.log(logs, commit=False)
+            except Exception:
+                pass  # wandb optional/offline — the printed line is the fallback record
+            print(f"[monitor] call {state['calls']} " + " ".join(parts))
+        except Exception as e:
+            print(f"[monitor] hook error suppressed: {e!r}")
 
     handle = backbone.spatial.register_forward_hook(hook)
     return handle.remove
