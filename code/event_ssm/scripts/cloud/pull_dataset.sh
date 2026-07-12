@@ -13,9 +13,19 @@
 #   bash pull_dataset.sh
 set -euo pipefail
 
+set +u                                               # conda's activate.d scripts reference unbound vars
+source "${CONDA_SH:-$HOME/miniforge3/etc/profile.d/conda.sh}" && conda activate events_signals
+set -u
+
 REPO="${REPO:-$HOME/thesis-ssm-event-cameras}"
 HF_REPO="${HF_REPO:-AngryGhostMan/gen1-rvt-preproc}"
 DEST="${DEST:-$REPO/data/gen1_raw/gen1}"
+
+# --- auth guard (private repo -- HF_TOKEN or a prior `hf auth login` both work) --
+if [[ -z "${HF_TOKEN:-}" ]] && ! hf auth whoami >/dev/null 2>&1; then
+  echo "[pull_dataset] ERROR: private repo needs auth: export HF_TOKEN=<read-token> or run hf auth login" >&2
+  exit 1
+fi
 
 echo "[pull_dataset] downloading $HF_REPO -> $DEST"
 mkdir -p "$DEST"

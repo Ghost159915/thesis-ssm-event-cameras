@@ -118,8 +118,9 @@ fi
 #    (non --no-deps) install is safe here -- unlike step 5/6/7, it can't clobber the pinned cu128 torch.
 # -----------------------------------------------------------------------------
 if ! "$PY" -c "import huggingface_hub" >/dev/null 2>&1; then
-  echo "[setup_env_5090] installing huggingface_hub[cli] (hf CLI)"
-  "$PIP" install "huggingface_hub[cli]"
+  echo "[setup_env_5090] installing huggingface_hub[cli]==1.18.0 (hf CLI)"
+  "$PIP" install "huggingface_hub[cli]==1.18.0"          # pin to the locally-verified version (reproducibility;
+                                                          # torch-free tree, so a plain install is safe here
 else
   echo "[setup_env_5090] huggingface_hub already installed -- skipping"
 fi

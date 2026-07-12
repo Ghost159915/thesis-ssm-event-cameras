@@ -194,6 +194,24 @@ any browser without SSH'd into the instance.
 **If this goes wrong:** if you lose the key, https://wandb.ai/authorize always re-shows your current
 one (or lets you regenerate it) — no support ticket needed.
 
+### 1.7 Create a read-scoped Hugging Face token for the rented instance
+
+The rented instance only needs to **read** from the private `gen1-rvt-preproc` dataset repo (Section
+1.3) — it never pushes anything back to the Hub, so it should not carry your write-scoped login token
+from Section 1.2. Create a separate, narrowly-scoped token for it:
+
+1. Go to https://huggingface.co/settings/tokens.
+2. Click **Create new token** → token type **Read** (not "Write").
+3. **Name:** `cloud-read` (or anything memorable).
+4. Click **Create token**, then **copy it immediately** — the Hub only shows it once. Keep it handy
+   for Section 3.5 — you'll pass it as `HF_TOKEN=<your-read-token>` right before the pull-dataset
+   command, it does not go in a file.
+
+*Duration: ~1 min.*
+
+**If this goes wrong:** if you lose the token, generate a new one from the same settings page and
+revoke the old one — no support ticket needed.
+
 ---
 
 ## 2. Renting the GPU
@@ -343,6 +361,7 @@ Compute capability: (12, 0)
 mamba_ssm: 2.3.2.post1
 causal_conv1d: 1.6.2.post1
 kernel imports ok
+hf: version=1.18.0
 [setup_env_5090] environment ready. Activate with: conda activate events_signals
 ```
 
@@ -355,8 +374,11 @@ each step is idempotent and picks up where it left off.
 
 ### 3.5 Pull the dataset (~15–30 min)
 
+Use the read-scoped token from Section 1.7 — the dataset repo is private, so authentication is
+required:
+
 ```bash
-HF_REPO=AngryGhostMan/gen1-rvt-preproc bash code/event_ssm/scripts/cloud/pull_dataset.sh
+HF_TOKEN=<your-read-token> HF_REPO=AngryGhostMan/gen1-rvt-preproc bash code/event_ssm/scripts/cloud/pull_dataset.sh
 ```
 
 **You should see:**
@@ -373,16 +395,20 @@ This is expected and correct — the `test` split was deliberately never uploade
 *Duration: ~15–30 min depending on the instance's download bandwidth.*
 
 **If this goes wrong:** a stalled/failed download can just be re-run — `hf download` resumes partial
-files rather than restarting. `hf: command not found` means `setup_env_5090.sh` (Section 3.4) didn't
-finish installing the HF CLI — re-run that script (it's idempotent; it'll skip everything already
-done and just pick up the missing step).
+files rather than restarting. `hf: command not found` means the current shell doesn't have the
+`events_signals` conda env active — run `source ~/miniforge3/etc/profile.d/conda.sh && conda activate
+events_signals` (re-running `setup_env_5090.sh` will **not** fix this: every step is
+import/existence-guarded, so on an already-bootstrapped instance it just prints "already installed --
+skipping" for everything and exits green without touching your shell).
 
 ### 3.6 Launch training (~3–5 h for the 25k-step short run)
 
-Activate the environment, then launch with your W&B key from Section 1.6:
+Activate the environment, then launch with your W&B key from Section 1.6. The bootstrap in Section 3.4
+deliberately never edits your shell config (`.bashrc`), so `conda activate` doesn't work in a fresh
+shell until you source `conda.sh` yourself first:
 
 ```bash
-conda activate events_signals
+source ~/miniforge3/etc/profile.d/conda.sh && conda activate events_signals
 WANDB_API_KEY=<your-wandb-key> bash code/event_ssm/scripts/stage13_cloud_short.sh
 ```
 
