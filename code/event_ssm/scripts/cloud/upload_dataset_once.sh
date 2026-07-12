@@ -19,6 +19,7 @@ set -euo pipefail
 
 REPO="${REPO:-/home/ghost/Desktop/thesis-ssm-event-cameras}"
 HF_REPO="${HF_REPO:-AngryGhostMan/gen1-rvt-preproc}"
+UPLOAD_WORKERS="${UPLOAD_WORKERS:-4}"                # parallelism knob for hf upload-large-folder
 SRC="$REPO/data/gen1_raw/gen1"
 
 # --- auth guard -------------------------------------------------------------
@@ -51,6 +52,6 @@ hf repos create "$HF_REPO" --type dataset --private --exist-ok
 # --- resumable upload, train+val ONLY ----------------------------------------
 echo "[upload_dataset_once] uploading train/** + val/** to $HF_REPO (resumable -- safe to Ctrl-C and re-run)"
 hf upload-large-folder "$HF_REPO" "$SRC" --type dataset \
-  --include "train/**" --include "val/**" --num-workers 4
+  --include "train/**" --include "val/**" --num-workers "$UPLOAD_WORKERS"
 
 echo "[upload_dataset_once] done. test/** was NOT uploaded (local-only eval split)."

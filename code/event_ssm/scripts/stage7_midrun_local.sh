@@ -12,7 +12,7 @@ set -euo pipefail
 set +u                                               # conda's activate.d (cuda-nvcc) references unbound vars
 source "${CONDA_SH:-/home/ghost/miniforge3/etc/profile.d/conda.sh}" && conda activate events_signals
 set -u
-export WANDB_MODE=offline                            # RVT wandb cfg has no 'mode' key -> use the env var
+export WANDB_MODE="${WANDB_MODE:-offline}"           # RVT wandb cfg has no 'mode' key -> use the env var; wrappers (stage13_cloud_short.sh) may pre-set online
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True   # reduce fragmentation (real seq_len=21 is VRAM-heavy)
 export PYTHONUNBUFFERED=1                             # flush stdout/stderr live -> the tqdm step/loss bar
                                                      # streams to the terminal + tee'd log (no buffering freeze)
