@@ -10,13 +10,13 @@
 set -euo pipefail
 
 set +u                                               # conda's activate.d (cuda-nvcc) references unbound vars
-source /home/ghost/miniforge3/etc/profile.d/conda.sh && conda activate events_signals
+source "${CONDA_SH:-/home/ghost/miniforge3/etc/profile.d/conda.sh}" && conda activate events_signals
 set -u
 export WANDB_MODE=offline                            # RVT wandb cfg has no 'mode' key -> use the env var
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True   # reduce fragmentation (real seq_len=21 is VRAM-heavy)
 export PYTHONUNBUFFERED=1                             # flush stdout/stderr live -> the tqdm step/loss bar
                                                      # streams to the terminal + tee'd log (no buffering freeze)
-REPO=/home/ghost/Desktop/thesis-ssm-event-cameras
+REPO="${REPO:-/home/ghost/Desktop/thesis-ssm-event-cameras}"
 export PYTHONPATH="$REPO/code:$REPO/external/ssms_event_cameras/RVT:${PYTHONPATH:-}"
 cd "$REPO/external/ssms_event_cameras/RVT"           # hydra config_path="config" is relative to train.py
 

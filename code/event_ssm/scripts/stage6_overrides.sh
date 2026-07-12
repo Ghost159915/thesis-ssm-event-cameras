@@ -9,6 +9,7 @@
 #   GROUP_NAME (default stage6_short_mamba2) -> wandb.group_name (offline -> just a label)
 #   NUM_WORKERS_TRAIN (default 6) -> hardware.num_workers.train  (lower to cut HOST-RAM use; see below)
 #   NUM_WORKERS_EVAL  (default 2) -> hardware.num_workers.eval
+#   EXPERIMENT (default resnet_mamba) -> +experiment/gen1=$EXPERIMENT (e.g. `puressm` -- Stage 12/13)
 # NOTE: each Gen1 train worker held ~3.6 GB RSS; on a 16 GB-RAM box 6 workers exhausted system memory
 # and the kernel OOM-killer killed a pt_data_worker mid-run (2026-06-17). Lower these on small-RAM hosts.
 : "${MAX_EPOCHS:=1}"
@@ -17,8 +18,9 @@
 : "${GROUP_NAME:=stage6_short_mamba2}"
 : "${NUM_WORKERS_TRAIN:=6}"
 : "${NUM_WORKERS_EVAL:=2}"
+: "${EXPERIMENT:=resnet_mamba}"
 STAGE6_OVERRIDES=(
-  dataset=gen1 model=rnndet +experiment/gen1=resnet_mamba
+  dataset=gen1 model=rnndet +experiment/gen1="$EXPERIMENT"
   dataset.path="$DATASET"
   training.precision="$PRECISION"
   training.max_steps="$MAX_STEPS" training.max_epochs="$MAX_EPOCHS"
