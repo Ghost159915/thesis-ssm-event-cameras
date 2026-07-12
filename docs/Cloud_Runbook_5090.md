@@ -135,11 +135,13 @@ above).
 
 ### 1.4 Push your code to GitHub
 
-The rented instance clones your code from GitHub — it needs to be pushed first. Check what's actually
-on GitHub before pushing (`git status`, `git log --oneline -1 origin/main`) — this runbook assumes the
-Stage-13 cloud scripts have already been merged to `main`:
+The rented instance clones your code from GitHub — it needs to be pushed first. This runbook assumes
+the Stage-13 cloud scripts have already been **merged to `main`** — verify that BEFORE pushing (the
+first command below is a free, local check; catching it here costs nothing, catching it in Section 3.3
+costs a running GPU meter):
 
 ```bash
+git log --oneline -1 main -- code/event_ssm/scripts/cloud/   # MUST print a commit line, not nothing
 git status
 git push origin main
 ```
@@ -151,9 +153,12 @@ git push origin main
 
 *Duration: seconds to ~1 min.*
 
-**If this goes wrong:** `Permission denied` or `repository not found` means your local `gh`/git
-credentials aren't set up — this machine is already authenticated as `Ghost159915` via `gh auth
-status`, so this should just work; if not, run `gh auth login` first.
+**If this goes wrong:** if the first command prints **nothing**, your local `main` doesn't have the
+cloud scripts yet — **stop here, before renting anything in Section 2**, and merge the Stage-13 branch
+into `main` first (ask your assistant to run the merge), then re-run this section. `Permission denied`
+or `repository not found` means your local `gh`/git credentials aren't set up — this machine is
+already authenticated as `Ghost159915` via `gh auth status`, so this should just work; if not, run
+`gh auth login` first.
 
 ### 1.5 Create a GitHub access token for the rented instance (2 minutes)
 
@@ -204,7 +209,7 @@ from Section 1.2. Create a separate, narrowly-scoped token for it:
 2. Click **Create new token** → token type **Read** (not "Write").
 3. **Name:** `cloud-read` (or anything memorable).
 4. Click **Create token**, then **copy it immediately** — the Hub only shows it once. Keep it handy
-   for Section 3.5 — you'll pass it as `HF_TOKEN=<your-read-token>` right before the pull-dataset
+   for Section 3.6 — you'll pass it as `HF_TOKEN=<your-read-token>` right before the pull-dataset
    command, it does not go in a file.
 
 *Duration: ~1 min.*
@@ -336,7 +341,7 @@ This clones into `~/thesis-ssm-event-cameras` — the exact path every script be
 
 **You should see:** a normal clone progress output ending in the shell prompt back, and
 `ls` inside the new directory showing `code/`, `docs/`, `results/`, etc. — **not** `data/` (that lands
-in Section 3.5) and **not** `external/` (that lands in the next step, Section 3.4 — it's gitignored so
+in Section 3.6) and **not** `external/` (that lands in the next step, Section 3.4 — it's gitignored so
 a fresh clone never has it; the bootstrap script reconstructs it).
 
 > **If `code/event_ssm/scripts/cloud/` is missing after clone:** the Stage-13 branch hasn't merged to
@@ -365,9 +370,12 @@ finished.
 **You should see**, near the start:
 ```
 [setup_env_5090] cloning https://github.com/uzh-rpg/ssms_event_cameras.git -> .../external/ssms_event_cameras
+[setup_env_5090] checking out pinned commit 7c871b55a0c5f00673c2c3975f6b6a1c5adbab88 (was <some-other-sha>)
 [setup_env_5090] verifying external/ bootstrap...
 external: OK @ 7c871b5
 ```
+(the `checking out pinned commit` line is skipped if the clone already sits at the pin — either way,
+`external: OK @ 7c871b5` is the line that matters)
 and, near the end:
 ```
 [setup_env_5090] verifying install...
@@ -388,7 +396,32 @@ isn't actually an RTX 5090 (or the driver/image is misconfigured) — go back to
 and double check the GPU before troubleshooting further. Any other failure: re-run the same command;
 each step is idempotent and picks up where it left off.
 
-### 3.5 Pull the dataset (~15–30 min)
+### 3.5 Pre-flight: dry-run the training config
+
+Do this **before** the dataset pull: it's a GPU-free dry-run that only composes the Hydra config and
+exits — it never touches `data/`, so it works on a dataset-less instance and catches any
+bootstrap/config problem in seconds, before you spend the next section's 15–30 min (and matching
+rental cost) pulling 73 GB onto a broken setup:
+
+```bash
+bash code/event_ssm/scripts/stage13_cloud_short.sh --cfg job
+```
+
+**You should see**, somewhere in the printed config dump, both of these lines:
+```
+name: PureSSM
+...
+max_steps: 25000
+```
+
+*Duration: seconds.*
+
+**If this goes wrong:** ANY failure here — a missing `external/ssms_event_cameras` path, a Hydra
+"config not found" error, a missing symlink — means Section 3.4's bootstrap didn't complete cleanly.
+Re-run `bash code/event_ssm/scripts/cloud/setup_env_5090.sh` and re-check its "You should see" block
+(3.4) before re-attempting this dry-run. Do not proceed to 3.6 until both lines above appear.
+
+### 3.6 Pull the dataset (~15–30 min)
 
 Use the read-scoped token from Section 1.7 — the dataset repo is private, so authentication is
 required:
@@ -416,31 +449,6 @@ files rather than restarting. `hf: command not found` means the current shell do
 events_signals` (re-running `setup_env_5090.sh` will **not** fix this: every step is
 import/existence-guarded, so on an already-bootstrapped instance it just prints "already installed --
 skipping" for everything and exits green without touching your shell).
-
-### 3.6 Pre-flight: dry-run the training config
-
-Before launching the long run (you've already paid for the instance at this point, so this is about
-not wasting the hours you're about to spend on it, not about avoiding the rental) — do a GPU-free
-dry-run that only composes the Hydra config and exits, catching any bootstrap/config problem in
-seconds instead of hours into training:
-
-```bash
-bash code/event_ssm/scripts/stage13_cloud_short.sh --cfg job
-```
-
-**You should see**, somewhere in the printed config dump, both of these lines:
-```
-name: PureSSM
-...
-max_steps: 25000
-```
-
-*Duration: seconds.*
-
-**If this goes wrong:** ANY failure here — a missing `external/ssms_event_cameras` path, a Hydra
-"config not found" error, a missing symlink — means Section 3.4's bootstrap didn't complete cleanly.
-Re-run `bash code/event_ssm/scripts/cloud/setup_env_5090.sh` and re-check its "You should see" block
-(3.4) before re-attempting this dry-run. Do not proceed to 3.7 until both lines above appear.
 
 ### 3.7 Launch training (~3–5 h for the 25k-step short run)
 
