@@ -125,7 +125,7 @@ octomap-msgs==2.0.1
 omegaconf==2.3.0
 opencv-python==4.13.0.92
 osrf-pycommon==2.1.7
-packaging @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_packaging_1777103621/work
+packaging
 pal-statistics==2.7.0
 pal-statistics-msgs==2.7.0
 pandas==3.0.3

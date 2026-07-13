@@ -66,6 +66,12 @@ bootstrap_external() {
   ln -sfn "$REPO/code/event_ssm/configs/experiment/gen1/puressm.yaml" \
           "$ext_dir/RVT/config/experiment/gen1/puressm.yaml"
 
+  # Stage-13: RVT's wandb logger hardcodes log_model=True (loggers/utils.py). In WANDB *online* mode
+  # that uploads checkpoints via a private wandb attribute (experiment._entity) newer wandb removed ->
+  # AttributeError crash mid-run. We retrieve checkpoints via scp, not W&B artifacts, so disable it.
+  # Idempotent -- the pattern no longer matches once applied (offline local runs never hit this path).
+  sed -i 's/log_model=True,/log_model=False,/' "$ext_dir/RVT/loggers/utils.py"
+
   echo "[setup_env_5090] verifying external/ bootstrap..."
   local link
   for link in \
@@ -135,11 +141,13 @@ export TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1            # also apply for the rest o
 # -----------------------------------------------------------------------------
 # 5. PyTorch cu128 (Blackwell sm_120)
 # -----------------------------------------------------------------------------
-if ! "$PY" -c "import torch; assert torch.__version__.startswith('2.11.0')" >/dev/null 2>&1; then
-  echo "[setup_env_5090] installing torch==2.11.0 (cu128)"
-  "$PIP" install torch==2.11.0 --index-url https://download.pytorch.org/whl/cu128
+if ! "$PY" -c "import torch, torchvision, torchaudio; assert torch.__version__.startswith('2.11.0')" >/dev/null 2>&1; then
+  echo "[setup_env_5090] installing torch/torchvision/torchaudio==2.11.0 (cu128)"
+  # torchvision/torchaudio carry a +cu128 local version that only exists on the PyTorch index, NOT
+  # PyPI -- install them here alongside torch so the (PyPI, --no-deps) lock step below never has to.
+  "$PIP" install torch==2.11.0 torchvision==0.26.0 torchaudio==2.11.0 --index-url https://download.pytorch.org/whl/cu128
 else
-  echo "[setup_env_5090] torch==2.11.0 already installed -- skipping"
+  echo "[setup_env_5090] torch/torchvision/torchaudio already installed -- skipping"
 fi
 
 # -----------------------------------------------------------------------------
@@ -149,11 +157,32 @@ fi
 LOCK_FILE="$REPO/requirements_5070ti_lock.txt"
 LOCK_STAMP="$CONDA_PREFIX/.stage13_lock_installed"
 if [[ ! -f "$LOCK_STAMP" ]]; then
-  echo "[setup_env_5090] installing $LOCK_FILE (--no-deps)"
-  "$PIP" install -r "$LOCK_FILE" --no-deps
+  # The lock is a full `pip freeze` of the local events_signals env, which carries non-PyPI packages
+  # (a whole ROS 2 stack + conda-only builds). A bulk `pip install -r` aborts on the first such line.
+  # Install each line individually with --no-deps and skip whatever isn't on PyPI -- the skipped
+  # packages (ROS etc.) are never imported by training. --no-deps also keeps it off cu128 torch.
+  echo "[setup_env_5090] installing $LOCK_FILE (--no-deps, per-line; skipping non-PyPI/ROS lines)"
+  while IFS= read -r pkg; do
+    [[ -z "$pkg" || "$pkg" == \#* ]] && continue
+    "$PIP" install --no-deps "$pkg" >/dev/null 2>&1 || echo "[setup_env_5090]   skip (not on PyPI): $pkg"
+  done < "$LOCK_FILE"
   touch "$LOCK_STAMP"
 else
   echo "[setup_env_5090] requirements lock already installed -- skipping"
+fi
+
+# -----------------------------------------------------------------------------
+# 6b. transformers stack -- mamba_ssm/__init__ does a top-level `transformers` import (the thesis code
+#     imports `from mamba_ssm import Mamba2`), but transformers is ABSENT from the lock freeze. Pin to
+#     the locally-verified versions; --no-deps so it can't touch cu128 torch or downgrade the pinned
+#     huggingface_hub 1.18.0. MUST run before step 7 -- otherwise step 7's `import mamba_ssm` guard
+#     fails (no transformers) and needlessly rebuilds the kernels.
+# -----------------------------------------------------------------------------
+if ! "$PY" -c "import transformers" >/dev/null 2>&1; then
+  echo "[setup_env_5090] installing transformers stack (--no-deps: mamba_ssm import dependency)"
+  "$PIP" install --no-deps transformers==5.10.2 tokenizers==0.22.2 safetensors==0.7.0 regex==2026.5.9
+else
+  echo "[setup_env_5090] transformers already installed -- skipping"
 fi
 
 # -----------------------------------------------------------------------------
@@ -207,7 +236,7 @@ print('mamba_ssm:', mamba_ssm.__version__)
 print('causal_conv1d:', causal_conv1d.__version__)
 "
 # Stage-11 kernel-import one-liner (docs/superpowers/plans/2026-07-11-stage11-puressm-backbone.md:56)
-"$PY" -c "from mamba_ssm.ops.triton.ssd_combined import mamba_chunk_scan_combined, ssd_chunk_scan_combined_ref; from mamba_ssm.ops.triton.layernorm_gated import RMSNormGated; from causal_conv1d import causal_conv1d_fn; print('kernel imports ok')"
+"$PY" -c "from mamba_ssm.ops.triton.ssd_combined import mamba_chunk_scan_combined, ssd_chunk_scan_combined_ref; from mamba_ssm.ops.triton.layernorm_gated import RMSNorm; from causal_conv1d import causal_conv1d_fn; print('kernel imports ok')"
 echo -n "hf: "
 "$HF" version
 
