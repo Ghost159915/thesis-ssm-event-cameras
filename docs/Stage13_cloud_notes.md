@@ -77,7 +77,49 @@ machine they're for.** Everything the local workstation provides implicitly (con
 from build close (`test_monitors.py`, incl. cadence-pinning and the engagement spy), plus 1 more
 (`test_every_n_zero_raises_at_attach_time`) added for the `PURESSM_MONITOR_EVERY=0` build-time guard.
 
-## Run results (Task 4) — PENDING
+## Run results (Task 4) — EXECUTED 2026-07-13
 
-To be filled after the user executes the runbook: val/AP trajectory (gate band 0.10–0.15 at 25k,
-EventSSM precedent 0.125), wall-time, actual cost, monitor norm behavior, any surprises.
+Ran on a rented **vast.ai RTX 5090** (Texas, verified datacenter host; base image
+`vastai/base-image:cuda-12.8.1-auto` — CUDA 12.8 matches the cu128 stack and ships `nvcc` for the mamba
+build). Env built + 73 GB dataset pulled from the Hub onto the instance.
+
+**25k short-run result — gate PASSED:**
+
+| step | val/AP |
+|---|---|
+| 5k  | 0.155 |
+| 15k | 0.286 |
+| 25k (final) | **0.351** |
+
+- Beats the 0.10–0.15 gate comfortably; steady monotonic climb, no instability → PureSSM trains cleanly.
+- Monitor norms stable + finite throughout (s1≈12, s2≈17.6, s3≈57, s4≈38) — no NaN/blow-up.
+- Speed ~3.74 it/s on the 5090 ⇒ the 400k run projects to ~30 h.
+- ⚠️ **Not comparable to EventSSM** — the 25k run uses a *compressed* OneCycle schedule (a sanity gate),
+  and EventSSM never ran a matching 25k run (its short run was 10%-data → 0.125; real runs were 100k→0.445
+  and 400k→0.463). The only valid scoreboard is the **Stage-14 400k** run on the same schedule.
+
+**Six env-bootstrap gremlins fixed (commit `f788e75`)** — all invisible to local runs, which log offline
+and use the full local env. `setup_env_5090.sh` now self-heals each so Stage 14 needs no manual patching:
+1. lock is a full `pip freeze` carrying a whole ROS 2 stack (171 non-PyPI pkgs) → bulk `pip install -r`
+   aborted; now installs **per-line, skipping non-PyPI**.
+2. `packaging` pinned to a local conda `file://` build path → de-pinned in the lock.
+3. `torchvision`/`torchaudio` (`+cu128` local versions absent from PyPI) → installed from the cu128 index
+   alongside torch.
+4. `transformers`/`tokenizers`/`safetensors`/`regex` absent from the freeze but required by the top-level
+   `from mamba_ssm import Mamba2` → added (`--no-deps`, pinned to local versions; hf_hub stays 1.18.0).
+5. verify block imported `RMSNormGated` (removed name) → `RMSNorm` (the real symbol; code aliases it).
+6. RVT wandb logger hardcoded `log_model=True` → in **online** mode it uploads checkpoints via the removed
+   `experiment._entity` API and crashed mid-run → auto-`sed` to `log_model=False` on external bootstrap
+   (we retrieve checkpoints via scp, not W&B artifacts).
+
+**Host-selection lesson (cost a false start):** the first rented host (California, "verified", advertised
+2460 Mbps) delivered ~**11 kB/s** to GitHub/PyPI/HF — real CDN egress ≠ the vast.ai benchmark. Destroyed it
+(~$0.30 lost) and switched to a Texas datacenter host that pulled from HF at **117 MB/s**. **Always test
+real bandwidth first:** `curl -o /dev/null --max-time 15 -w '%{speed_download}\n' -L
+https://huggingface.co/gpt2/resolve/main/pytorch_model.bin` — want > 10 MB/s before bootstrapping.
+
+**Stage 14 (400k full run) LAUNCHED 2026-07-13** on the same instance (reuses the built env + pulled data,
+zero re-setup): `MAX_STEPS=400000 VAL_EVERY=10000` (val point at 20k ⇒ directly comparable to EventSSM's
+0.283@20k). ~30 h, ~$8–12, W&B online. **Pending next session:** monitor the 400k → scp the best/last ckpt
+home (before destroying the instance) → **local test-set eval** vs EventSSM (0.462 overall, **AP_L 44.7** —
+the metric the whole PureSSM hypothesis targets).
