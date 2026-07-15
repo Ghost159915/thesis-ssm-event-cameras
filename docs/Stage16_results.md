@@ -70,19 +70,28 @@ Same two regimes as Stage 9, same COCO-mAP metric. PureSSM sweeps **running 2026
 
 ### Regime 1 — fixed cadence, variable accumulation window (COCO mAP ×100)
 
-| mult | dt (ms) | S5-RVT | EventSSM | **PureSSM** |
-|---|---|---|---|---|
-| 0.25× | 200 | 41.0 | 40.9 | **41.65** ✅ (first point in) |
-| 0.5× | 100 | 46.5 | 45.5 | ⏳ |
-| 1× (train) | 50 | 47.7 | 46.2 | ⏳ |
-| 2× | 25 | 45.0 | 43.5 | ⏳ |
-| 4× | 12 | 38.4 | 35.4 | ⏳ |
+| mult | dt (ms) | S5-RVT | EventSSM | **PureSSM** | PureSSM retention (÷own 1×) |
+|---|---|---|---|---|---|
+| 0.25× | 200 | 41.0 | 40.9 | **41.65** | 89.7 % |
+| 0.5× | 100 | 46.5 | 45.5 | **45.67** | 98.3 % |
+| 1× (train) | 50 | 47.7 | 46.2 | **46.45** | 100 % |
+| 2× | 25 | 45.0 | 43.5 | **44.09** | 94.9 % |
+| 4× | 12 | 38.4 | 35.4 | **35.68** | 76.8 % |
 
-### Regime 2 — true rate change (retention = mAP@rate ÷ mAP@1×)
+✅ **Regime-1 no-comp VALIDATED** (2026-07-15): PureSSM 1× = **46.45** (AP_L 47.42) matches its canonical
+Stage-15 result (46.43, AP_L 47.65) → the eval chain is correct. **Reading:** PureSSM ≈ EventSSM in this
+regime (tied within noise; 4× retention 76.8 % vs EventSSM 76.6 %), both marginally below S5-RVT (80.6 % @4×).
+*Pending: Regime-1 **compensated** (Δt-scaled) sweep not yet run.*
+
+### Regime 2 — true rate change (retention = mAP@rate ÷ mAP@1×) — THE headline robustness number
 
 | | S5-RVT | EventSSM | ConvLSTM (paper) | **PureSSM** |
 |---|---|---|---|---|
-| true-10× retention | 62.2 % | 63.0 % | 17.7 % | ⏳ |
+| true-10× retention | 62.2 % | 63.0 % | 17.7 % | ⏳ (sweep launched 2026-07-15) |
+
+*⚠️ Note: the Regime-2 **true-rate** sweep is the dramatic SSM-vs-ConvLSTM regime and is the one that matters
+most — PureSSM's number here is still pending (the ~6 h sweep). `stage9_truerate_plot.py` now prints a 3-model
+table + a `retention @10x` line, so PureSSM's value slots in directly against EventSSM 63 % / ConvLSTM 17.7 %.*
 
 **Fill with** (needs GPU; see `docs/Stage16_results.md` §runbook or the sweep commands — set `OURS_WRAP`/`OURS_CKPT`/`OURS_KEY`, then):
 `RUN_BASELINE=0 bash code/event_ssm/scripts/stage9_eval_sweep.sh` · `bash code/event_ssm/scripts/stage9_mamba_scale_sweep.sh` · `RUN_BASELINE=0 bash code/event_ssm/scripts/stage9_truerate_sweep.sh` → then `python code/event_ssm/scripts/stage9_degradation_plot.py && python code/event_ssm/scripts/stage9_truerate_plot.py`

@@ -72,24 +72,37 @@ def main():
         print(f"[skip] no 1x (dt=50) anchor log for {absent} — omitting from the figure (run its sweep first)")
 
     print("=== regime 2 (true rate: stride = window) — COCO test/AP ===")
-    hdr = f"{'mult':>5} {'dt':>4} {'S5 nc':>8} {'S5 comp':>8} {'ours nc':>8} {'ours comp':>9}"
+    COLS = [("baseline", "S5-RVT"), ("eventssm", "EventSSM"), ("puressm", "PureSSM")]
+    fmt = lambda v: f"{v:.4f}" if v is not None else "—"
+    hdr = f"{'mult':>5} {'dt':>4}"
+    for _, name in COLS:
+        hdr += f" | {name + ' nc':>11} {name + ' cmp':>11}"
     print(hdr)
     print("-" * len(hdr))
-    fmt = lambda v: f"{v:8.4f}" if v is not None else "       —"
     for dt in RATES:
-        print(f"{MULT[dt]:>4.0f}x {dt:>4} {fmt(data['baseline']['nc'].get(dt))} "
-              f"{fmt(data['baseline']['comp'].get(dt))} {fmt(data['eventssm']['nc'].get(dt))} "
-              f"{fmt(data['eventssm']['comp'].get(dt)):>9}")
-    print(f"paper @10x: S5+comp {PAPER_10X['S5+comp (paper)']} · ConvLSTM {PAPER_10X['RVT ConvLSTM (paper)']}")
+        row = f"{MULT[dt]:>4.0f}x {dt:>4}"
+        for k, _ in COLS:
+            row += f" | {fmt(data[k]['nc'].get(dt)):>11} {fmt(data[k]['comp'].get(dt)):>11}"
+        print(row)
+    # headline: retention at the fastest true rate (10x) vs each model's own 1x anchor, no-comp
+    print("\nretention @10x  (mAP@10x / mAP@1x, no-comp):")
+    for k, name in COLS:
+        one, ten = data[k]["nc"].get(50), data[k]["nc"].get(5)
+        pct = (f"{100 * ten / one:5.1f}%   (10x {ten:.4f} / 1x {one:.4f})"
+               if (one and ten) else "  — (run its true-rate sweep)")
+        print(f"  {name:9s} {pct}")
+    print(f"paper @10x: S5+comp {PAPER_10X['S5+comp (paper)']} · ConvLSTM "
+          f"{PAPER_10X['RVT ConvLSTM (paper)']} (~17.7% retention)")
 
     OUT.mkdir(parents=True, exist_ok=True)
     with open(OUT / "truerate_table.csv", "w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["mult", "dt_ms", "base_nc_AP", "base_comp_AP", "ours_nc_AP", "ours_comp_AP"])
+        w.writerow(["mult", "dt_ms", "base_nc", "base_comp", "eventssm_nc", "eventssm_comp",
+                    "puressm_nc", "puressm_comp"])
         g = lambda v: f"{v:.4f}" if v is not None else ""
         for dt in RATES:
-            w.writerow([MULT[dt], dt, g(data["baseline"]["nc"].get(dt)), g(data["baseline"]["comp"].get(dt)),
-                        g(data["eventssm"]["nc"].get(dt)), g(data["eventssm"]["comp"].get(dt))])
+            w.writerow([MULT[dt], dt] +
+                       [g(data[k][arm].get(dt)) for k, _ in COLS for arm in ("nc", "comp")])
 
     import matplotlib
     matplotlib.use("Agg")
