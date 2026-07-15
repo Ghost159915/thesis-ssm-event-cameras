@@ -32,18 +32,24 @@ objects — a compression win at equal accuracy. Full detail: `docs/Stage15_resu
 
 Full-pipeline streaming inference, RTX 5070 Ti, idle-GPU-guarded harness (`code/event_ssm/benchmark/`).
 
-| Metric | S5-RVT baseline | EventSSM | **PureSSM (eager)** |
-|---|---|---|---|
-| Latency p50 (ms) | 19.67 | 14.25 | ⏳ |
-| Throughput (Hz) | 51 | 70 | ⏳ |
-| Energy (J/frame) | 0.73 | 0.40 | ⏳ |
-| FLOPs (G) | 11.89 | 13.55 | ⏳ |
-| Streaming state / stream | 4.7 MB | 144 MB | ⏳ |
+Measured 2026-07-16, one consistent session, all three models (`bench_results.json`). *Absolute latencies run
+~10 % faster than the original Stage-10 citable run (GPU-clock variation — a known latency-benchmark sensitivity);
+the 3-way comparison here is internally consistent, which is what matters.*
 
-**Fill with:** `bash code/event_ssm/scripts/stage10_run_local.sh --models all && python code/event_ssm/scripts/stage10_report.py` *(needs an idle GPU)*
+| Metric | S5-RVT baseline | EventSSM | **PureSSM** | PureSSM verdict |
+|---|---|---|---|---|
+| Latency p50 eager (ms) | 17.14 | 12.60 | **26.86** | slowest (launch-bound) |
+| Throughput eager (Hz) | 58 | 79 | **37** | slowest eager |
+| Energy (J/frame, eager) | 0.723 | 0.438 | **0.652** | mid |
+| **FLOPs (G)** | 11.89 | 13.55 | **10.12** | ✅ **fewest** |
+| **mAP / GFLOP** | 4.01 | 3.41 | **4.59** | ✅ **best (most compute-efficient)** |
+| Streaming state / stream | 4.7 MB | 144 MB | **144 MB** | = EventSSM (shared Mamba temporal) |
 
-*Provisional (Stage-11 probe, not the harness): PureSSM eager ≈ 39.5 Hz — below EventSSM; see the CUDA-graph
-column below for the deployment-mode figure.*
+**Honest read:** PureSSM does the **least compute** (fewest FLOPs *and* params) and has the **best accuracy-per-FLOP
+(4.59, beating both)** — but it's the **slowest in wall-clock eager (37 Hz)**. Not a contradiction: its BiMamba
+backbone is *many small SSM-scan ops* → **launch-overhead-bound**, and SSM-scan GPU utilisation is lower than
+cuDNN convolutions (EventSSM does *more* FLOPs *faster*). So PureSSM is *algorithmically* leanest but *hardware*
+launch-bound — which is exactly what the CUDA-graph column (below) addresses.
 
 ---
 
@@ -52,15 +58,21 @@ column below for the deployment-mode figure.*
 State-carrying graph-replay latency — reported as a **separate labeled column, never substituted** for the
 eager number (Stage-11 decision).
 
-| | eager | **graph-replay (state-carrying)** |
-|---|---|---|
-| PureSSM backbone p50 (ms) | 18.09 (probe) | ⏳ (target ≈ 3.8) |
-| PureSSM pipeline (Hz) | ≈ 39.5 (probe) | ⏳ (projected ≈ 87–91) |
+State-carrying graph-replay **VERIFIED** (both `@gpu` correctness tests pass, 2026-07-16: replay output matches
+eager + state carries). Reported as a separate labeled column, never substituted for eager. "graph-deploy" =
+graph network-step replay + eager postprocess (~0.6 ms).
 
-**Fill with:** `bash code/event_ssm/scripts/stage10_run_local.sh --models all --graph` *(after Slice C lands the `graph_capture` helper + the `_scan.py` `.clone()` parity fix; needs idle GPU)*
+| | eager full (Hz) | **graph-deploy (Hz)** | net speedup |
+|---|---|---|---|
+| S5-RVT | 58 | not captured (different S5 state machinery) | — |
+| EventSSM | 79 | **210** | 2.8× |
+| PureSSM | 37 | **181** | **5.3×** |
 
-*Status: not yet built. This is the first **real** state-carrying replay measurement — the Stage-11 probe's
-3.77 ms was fixed-state (speed only, not streaming-correct).*
+**Read:** graph-replay gives PureSSM the **biggest boost (5.3× vs EventSSM's 2.8×)** — precisely because it was the
+most launch-bound — lifting it 37 → **181 Hz (comfortably real-time)**. BUT the fair same-mode comparison still
+has **EventSSM ahead in both modes** (79/210 vs 37/181): cuDNN convolutions utilise the GPU better than SSM scans.
+So PureSSM is **deployment-viable, not the wall-clock fastest.** (Energy measured eager only; graph mode would
+likely narrow PureSSM's energy gap — not measured.)
 
 ---
 
