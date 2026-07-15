@@ -20,9 +20,15 @@ set -uo pipefail        # NOT -e: one failed eval must not abort the sweep
 REPO=/home/ghost/Desktop/thesis-ssm-event-cameras
 SCRIPTS="$REPO/code/event_ssm/scripts"
 PREPROC="$REPO/data/gen1_stage9/preproc"            # dir CONTAINING test/ (the rebuilt stage9 set)
-OURS_CKPT="$REPO/external/ssms_event_cameras/RVT/RVT/8zotrwjw/checkpoints/epoch=003-step=320000-val_AP=0.46.ckpt"
-OUT="$REPO/results/stage9/sweep_ss"                 # shared with the compensated-baseline sweep
-NOCOMP="$REPO/results/stage9/sweep"                 # uncompensated logs (for the summary delta col)
+OURS_CKPT="${OURS_CKPT:-$REPO/external/ssms_event_cameras/RVT/RVT/8zotrwjw/checkpoints/epoch=003-step=320000-val_AP=0.46.ckpt}"
+# --- model selection (env-overridable; UNSET = the original EventSSM compensated sweep) ---
+# PureSSM (Stage 16): OURS_WRAP=.../stage14_puressm_test_eval_local.sh OURS_CKPT=.../stage14_cloud/... \
+#                     OURS_KEY=puressm OURS_LABEL=PureSSM   (keep default OUT/NOCOMP so plots find puressm_*)
+OURS_WRAP="${OURS_WRAP:-$SCRIPTS/stage7_test_eval_local.sh}"
+OURS_KEY="${OURS_KEY:-eventssm}"
+OURS_LABEL="${OURS_LABEL:-EventSSM}"
+OUT="${OUT:-$REPO/results/stage9/sweep_ss}"         # shared with the compensated-baseline sweep
+NOCOMP="${NOCOMP:-$REPO/results/stage9/sweep}"      # uncompensated logs (for the summary delta col)
 mkdir -p "$OUT"
 
 RATES=("$@"); [[ ${#RATES[@]} -eq 0 ]] && RATES=(200 100 50 25 12)
@@ -49,16 +55,16 @@ for V in "${RATES[@]}"; do
     continue
   fi
 
-  OLOG="$OUT/eventssm_dt${V}_ss${SS}.log"
+  OLOG="$OUT/${OURS_KEY}_dt${V}_ss${SS}.log"
   if done_log "$OLOG"; then
-    echo "[done] EventSSM ${MULT[$V]} (dt=${V}, step_scale=${SS}) already evaluated (AP=$(ap_of "$OLOG")) — skipping"
+    echo "[done] ${OURS_LABEL} ${MULT[$V]} (dt=${V}, step_scale=${SS}) already evaluated (AP=$(ap_of "$OLOG")) — skipping"
     continue
   fi
 
-  echo "===== ${MULT[$V]} | dt=${V} ms | MAMBA_STEP_SCALE=${SS} | EventSSM (ours) ====="
+  echo "===== ${MULT[$V]} | dt=${V} ms | MAMBA_STEP_SCALE=${SS} | ${OURS_LABEL} (ours) ====="
   # sanity: the eval log MUST contain '[MambaTemporalBlock] Stage-9: step_scale=...' lines
   # (except at 1x where the hook is silent by design) — proof the knob engaged in-process.
-  MAMBA_STEP_SCALE="$SS" DATASET="$PREPROC" bash "$SCRIPTS/stage7_test_eval_local.sh" "$OURS_CKPT" \
+  MAMBA_STEP_SCALE="$SS" DATASET="$PREPROC" bash "$OURS_WRAP" "$OURS_CKPT" \
     "dataset.ev_repr_name='${EVR}'" 2>&1 | tee "$OLOG"
 done
 
@@ -67,8 +73,8 @@ echo "============ SUMMARY: EventSSM (ours) — no-comp vs delta-scaled ========
 printf "%-7s %-8s %-12s %-14s %-14s\n" "mult" "dt(ms)" "step_scale" "no-comp AP" "comp AP"
 for V in "${RATES[@]}"; do
   SS=$(step_scale_of "$V")
-  comp=$(ap_of "$OUT/eventssm_dt${V}_ss${SS}.log")
-  nocomp=$(ap_of "$NOCOMP/eventssm_dt${V}.log")
+  comp=$(ap_of "$OUT/${OURS_KEY}_dt${V}_ss${SS}.log")
+  nocomp=$(ap_of "$NOCOMP/${OURS_KEY}_dt${V}.log")
   printf "%-7s %-8s %-12s %-14s %-14s\n" "${MULT[$V]:-?}" "$V" "$SS" "${nocomp:-—}" "${comp:-—}"
 done
 echo "============================================================================"

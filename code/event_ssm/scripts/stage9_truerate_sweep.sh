@@ -20,9 +20,15 @@ set -uo pipefail        # NOT -e: one failed eval must not abort the grid
 REPO=/home/ghost/Desktop/thesis-ssm-event-cameras
 SCRIPTS="$REPO/code/event_ssm/scripts"
 PREPROC="$REPO/data/gen1_stage9/preproc_tr"         # dir CONTAINING test/ (the TRUE-RATE renders)
-OURS_CKPT="$REPO/external/ssms_event_cameras/RVT/RVT/8zotrwjw/checkpoints/epoch=003-step=320000-val_AP=0.46.ckpt"
+OURS_CKPT="${OURS_CKPT:-$REPO/external/ssms_event_cameras/RVT/RVT/8zotrwjw/checkpoints/epoch=003-step=320000-val_AP=0.46.ckpt}"
 BASE_CKPT="$REPO/checkpoints/gen1_base.ckpt"
-OUT="$REPO/results/stage9/sweep_tr"
+# --- model selection (env-overridable; UNSET = the original EventSSM+baseline true-rate grid) ---
+# PureSSM (Stage 16): OURS_WRAP=.../stage14_puressm_test_eval_local.sh OURS_CKPT=.../stage14_cloud/... \
+#                     OURS_KEY=puressm RUN_BASELINE=0   (keep default OUT so plots find puressm_*)
+OURS_WRAP="${OURS_WRAP:-$SCRIPTS/stage7_test_eval_local.sh}"
+OURS_KEY="${OURS_KEY:-eventssm}"
+RUN_BASELINE="${RUN_BASELINE:-1}"                   # 0 skips the S5-RVT arm (already evaluated)
+OUT="${OUT:-$REPO/results/stage9/sweep_tr}"
 mkdir -p "$OUT"
 
 RATES=("$@"); [[ ${#RATES[@]} -eq 0 ]] && RATES=(25 5)
@@ -55,7 +61,7 @@ run_eval() {  # $1 model-key  $2 dt  $3 step_scale ('' = no-comp)
   if [[ "$K" == "baseline" ]]; then
     WRAP="$SCRIPTS/stage8_baseline_eval_local.sh"; local CKPT="$BASE_CKPT"; ENVX="S5_STEP_SCALE"
   else
-    WRAP="$SCRIPTS/stage7_test_eval_local.sh";     local CKPT="$OURS_CKPT"; ENVX="MAMBA_STEP_SCALE"
+    WRAP="$OURS_WRAP";                             local CKPT="$OURS_CKPT"; ENVX="MAMBA_STEP_SCALE"
   fi
   # comp runs must show the engagement lines ([S5Block]/[MambaTemporalBlock] step_scale=...) in the log
   if [[ -z "$SS" ]]; then
@@ -73,10 +79,12 @@ for V in "${RATES[@]}"; do
     continue
   fi
   SS=$(step_scale_of "$V")
-  run_eval baseline "$V" ""       # S5-RVT, no compensation  (expect real degradation here)
-  run_eval baseline "$V" "$SS"    # S5-RVT + step_scale      (paper mechanism; 10x target ≈ 39.8)
-  run_eval eventssm "$V" ""       # EventSSM, no compensation (does Mamba's input-dependent Δt self-adapt?)
-  run_eval eventssm "$V" "$SS"    # EventSSM + delta-scaling  (the Mamba analog)
+  if [[ "$RUN_BASELINE" == "1" ]]; then
+    run_eval baseline "$V" ""     # S5-RVT, no compensation  (expect real degradation here)
+    run_eval baseline "$V" "$SS"  # S5-RVT + step_scale      (paper mechanism; 10x target ≈ 39.8)
+  fi
+  run_eval "$OURS_KEY" "$V" ""    # ours, no compensation (does Mamba's input-dependent Δt self-adapt?)
+  run_eval "$OURS_KEY" "$V" "$SS" # ours + delta-scaling  (the Mamba analog)
 done
 
 echo
@@ -86,7 +94,7 @@ for V in "${RATES[@]}"; do
   SS=$(step_scale_of "$V")
   printf "%-5s %-9s %-12s %-12s %-12s %-12s\n" "${MULT[$V]:-?}" "$V" \
     "$(ap_of "$OUT/baseline_dt${V}_nc.log")"  "$(ap_of "$OUT/baseline_dt${V}_ss${SS}.log")" \
-    "$(ap_of "$OUT/eventssm_dt${V}_nc.log")"  "$(ap_of "$OUT/eventssm_dt${V}_ss${SS}.log")"
+    "$(ap_of "$OUT/${OURS_KEY}_dt${V}_nc.log")"  "$(ap_of "$OUT/${OURS_KEY}_dt${V}_ss${SS}.log")"
 done
 echo "==============================================================================="
 echo "anchors (1x, shared with regime 1): ours 0.4620 / baseline 0.4769"

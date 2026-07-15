@@ -17,9 +17,16 @@ set -uo pipefail        # NOT -e: one failed eval must not abort the whole sweep
 REPO=/home/ghost/Desktop/thesis-ssm-event-cameras
 SCRIPTS="$REPO/code/event_ssm/scripts"
 PREPROC="$REPO/data/gen1_stage9/preproc"            # dir CONTAINING test/ (the rebuilt stage9 set)
-OURS_CKPT="$REPO/external/ssms_event_cameras/RVT/RVT/8zotrwjw/checkpoints/epoch=003-step=320000-val_AP=0.46.ckpt"
+OURS_CKPT="${OURS_CKPT:-$REPO/external/ssms_event_cameras/RVT/RVT/8zotrwjw/checkpoints/epoch=003-step=320000-val_AP=0.46.ckpt}"
 BASE_CKPT="$REPO/checkpoints/gen1_base.ckpt"        # S5-RVT baseline (47.7 mAP on canonical data)
-OUT="$REPO/results/stage9/sweep"
+# --- model selection (env-overridable; UNSET = the original EventSSM sweep, byte-identical) ---
+# PureSSM (Stage 16): OURS_WRAP=.../stage14_puressm_test_eval_local.sh OURS_CKPT=.../stage14_cloud/... \
+#                     OURS_KEY=puressm OURS_LABEL=PureSSM RUN_BASELINE=0   (keep default OUT so plots find puressm_*)
+OURS_WRAP="${OURS_WRAP:-$SCRIPTS/stage7_test_eval_local.sh}"   # eval wrapper (bakes in the backbone)
+OURS_KEY="${OURS_KEY:-eventssm}"                              # log-name prefix + summary read key
+OURS_LABEL="${OURS_LABEL:-EventSSM}"                          # summary column header
+RUN_BASELINE="${RUN_BASELINE:-1}"                            # 0 skips the S5-RVT arm (already evaluated)
+OUT="${OUT:-$REPO/results/stage9/sweep}"
 mkdir -p "$OUT"
 
 RATES=(200 100 50 25 12)                            # 0.25x 0.5x 1x 2x 4x  (window ms; grid stride fixed at 50ms)
@@ -44,32 +51,34 @@ for V in "${RATES[@]}"; do
   fi
 
   # --- EventSSM (ours) — stage7 wrapper registers ResNetMamba; ckpt MUST precede the override ---
-  OLOG="$OUT/eventssm_dt${V}.log"
+  OLOG="$OUT/${OURS_KEY}_dt${V}.log"
   if done_log "$OLOG"; then
-    echo "[done] EventSSM dt=${V} ms already evaluated (AP=$(ap_of "$OLOG")) — skipping"
+    echo "[done] ${OURS_LABEL} dt=${V} ms already evaluated (AP=$(ap_of "$OLOG")) — skipping"
   else
-    echo "===== dt=${V} ms | EventSSM (ours) ====="
-    DATASET="$PREPROC" bash "$SCRIPTS/stage7_test_eval_local.sh" "$OURS_CKPT" \
+    echo "===== dt=${V} ms | ${OURS_LABEL} (ours) ====="
+    DATASET="$PREPROC" bash "$OURS_WRAP" "$OURS_CKPT" \
       "dataset.ev_repr_name='${EVR}'" 2>&1 | tee "$OLOG"
   fi
 
   # --- S5-RVT baseline — stage8 wrapper, stock S5-ViT (no register); ckpt MUST precede the override ---
-  BLOG="$OUT/baseline_dt${V}.log"
-  if done_log "$BLOG"; then
-    echo "[done] S5-RVT baseline dt=${V} ms already evaluated (AP=$(ap_of "$BLOG")) — skipping"
-  else
-    echo "===== dt=${V} ms | S5-RVT baseline ====="
-    DATASET="$PREPROC" bash "$SCRIPTS/stage8_baseline_eval_local.sh" "$BASE_CKPT" \
-      "dataset.ev_repr_name='${EVR}'" 2>&1 | tee "$BLOG"
+  if [[ "$RUN_BASELINE" == "1" ]]; then
+    BLOG="$OUT/baseline_dt${V}.log"
+    if done_log "$BLOG"; then
+      echo "[done] S5-RVT baseline dt=${V} ms already evaluated (AP=$(ap_of "$BLOG")) — skipping"
+    else
+      echo "===== dt=${V} ms | S5-RVT baseline ====="
+      DATASET="$PREPROC" bash "$SCRIPTS/stage8_baseline_eval_local.sh" "$BASE_CKPT" \
+        "dataset.ev_repr_name='${EVR}'" 2>&1 | tee "$BLOG"
+    fi
   fi
 done
 
 echo
 echo "================ SUMMARY: test/AP (COCO mAP) by model x rate ================"
-printf "%-9s %-10s %-12s %-12s\n" "mult" "dt(ms)" "EventSSM" "S5-RVT"
+printf "%-9s %-10s %-12s %-12s\n" "mult" "dt(ms)" "$OURS_LABEL" "S5-RVT"
 declare -A MULT=( [200]=0.25x [100]=0.5x [50]=1x [25]=2x [12]=4x )
 for V in "${RATES[@]}"; do
-  a=$(ap_of "$OUT/eventssm_dt${V}.log"); b=$(ap_of "$OUT/baseline_dt${V}.log")
+  a=$(ap_of "$OUT/${OURS_KEY}_dt${V}.log"); b=$(ap_of "$OUT/baseline_dt${V}.log")
   printf "%-9s %-10s %-12s %-12s\n" "${MULT[$V]}" "$V" "${a:-—}" "${b:-—}"
 done
 echo "============================================================================="
