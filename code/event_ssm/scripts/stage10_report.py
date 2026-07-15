@@ -7,8 +7,9 @@ import json
 import pathlib
 
 REPO = pathlib.Path(__file__).resolve().parents[3]
-HUE = {"eventssm": "#2a78d6", "baseline": "#1baf7a"}
-LABEL = {"eventssm": "EventSSM (ours, Mamba)", "baseline": "S5-RVT (baseline)"}
+HUE = {"eventssm": "#2a78d6", "baseline": "#1baf7a", "puressm": "#d67a2a"}
+LABEL = {"eventssm": "EventSSM (ours, Mamba)", "baseline": "S5-RVT (baseline)",
+         "puressm": "PureSSM (ours, BiMamba)"}
 INK, INK2, MUTED, GRID = "#0b0b0b", "#52514e", "#898781", "#e1e0d9"
 
 

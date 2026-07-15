@@ -18,7 +18,7 @@ for p in (REPO / "code", REPO / "external/ssms_event_cameras/RVT"):
 import torch  # noqa: E402
 
 REQUIRED_MODEL_KEYS = {"params_m", "flops", "latency", "vram", "energy"}
-TEST_AP = {"eventssm": 0.462, "baseline": 0.477}   # Stage-8 one-shot test results
+TEST_AP = {"eventssm": 0.462, "baseline": 0.477, "puressm": 0.4643}   # Stage-8/15 one-shot test results
 
 
 def validate_results(d: dict) -> list:
@@ -255,7 +255,8 @@ def measure_model(kind: str, device, clip, smoke: bool) -> dict:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--models", default="both", choices=["both", "eventssm", "baseline"])
+    ap.add_argument("--models", default="both",
+                    choices=["both", "all", "eventssm", "baseline", "puressm"])
     ap.add_argument("--smoke", action="store_true")
     ap.add_argument("--out", default=str(REPO / "results/stage10"))
     args = ap.parse_args()
@@ -272,7 +273,12 @@ def main():
 
     results = {"schema": 1, "meta": gather_meta(blob["src"]), "models": {}}
     results["meta"]["ckpts"] = {k: str(v) for k, v in CKPTS.items()}
-    kinds = ["eventssm", "baseline"] if args.models == "both" else [args.models]
+    if args.models == "both":
+        kinds = ["eventssm", "baseline"]
+    elif args.models == "all":
+        kinds = ["eventssm", "baseline", "puressm"]
+    else:
+        kinds = [args.models]
     for kind in kinds:
         print(f"[stage10] measuring {kind} ({'smoke' if args.smoke else 'full'}) ...")
         results["models"][kind] = measure_model(kind, device, clip, args.smoke)
