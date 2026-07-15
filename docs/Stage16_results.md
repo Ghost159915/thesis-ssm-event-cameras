@@ -83,6 +83,17 @@ Stage-15 result (46.43, AP_L 47.65) → the eval chain is correct. **Reading:** 
 regime (tied within noise; 4× retention 76.8 % vs EventSSM 76.6 %), both marginally below S5-RVT (80.6 % @4×).
 *Pending: Regime-1 **compensated** (Δt-scaled) sweep not yet run.*
 
+> **Sub-finding — dense-window AP_L robustness (noted, single-seed).** At **0.25×** (dt 200 ms — a 4×
+> accumulation window) PureSSM (41.65) *overtakes* the S5-RVT baseline (40.95, **+0.71**) — the only rate where it
+> does (S5-RVT leads at every other rate, widening to −2.73 @4×). The driver is **large objects**: at 0.25×,
+> PureSSM AP_L = **39.96** vs S5-RVT **36.38** (+3.58). The ViT baseline's large-object accuracy **collapses** at
+> the dense/saturated window (AP_L 50.66 → 36.38, **−14.3**) while PureSSM's holds (47.65 → 39.96, **−7.7**) — the
+> SSM-scan receptive field is more *robust* to smeared dense frames, extending the Stage-15 receptive-field
+> advantage into robustness. **Do not over-claim:** single-seed ⇒ the overall +0.71 is within noise; the **AP_L
+> gap (+3.58) is the trustworthy part.** It is one rate — at the sparse/fast end (4×) S5-RVT is clearly more robust.
+> Honest framing: *PureSSM more robust at the dense/slow end, S5-RVT at the sparse/fast end — AP_L-driven, not a
+> baseline-beating claim.*
+
 ### Regime 2 — true rate change (retention = mAP@rate ÷ mAP@1×) — THE headline robustness number
 
 | | S5-RVT | EventSSM | ConvLSTM (paper) | **PureSSM** |
