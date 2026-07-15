@@ -22,11 +22,12 @@ OUT = REPO / "results/stage9"
 
 RATES = [50, 25, 5]                                # dt == stride (ms); 50 is the shared anchor
 MULT = {50: 1.0, 25: 2.0, 5: 10.0}
-MODELS = {"eventssm": "EventSSM (ours, Mamba)", "baseline": "S5-RVT (baseline)"}
+MODELS = {"eventssm": "EventSSM (ours, Mamba)", "baseline": "S5-RVT (baseline)",
+          "puressm": "PureSSM (ours, BiMamba)"}
 PAPER_10X = {"S5+comp (paper)": 39.84, "RVT ConvLSTM (paper)": 8.35}
 
-HUE = {"eventssm": "#2a78d6", "baseline": "#1baf7a"}
-MARKER = {"eventssm": "o", "baseline": "s"}
+HUE = {"eventssm": "#2a78d6", "baseline": "#1baf7a", "puressm": "#d67a2a"}
+MARKER = {"eventssm": "o", "baseline": "s", "puressm": "^"}
 INK, INK2, MUTED, GRID = "#0b0b0b", "#52514e", "#898781", "#e1e0d9"
 
 
@@ -62,6 +63,13 @@ def load():
 
 def main():
     data = load()
+
+    # 1x anchor (dt=50, shared with regime-1) gates whether a model gets a curve at all; models
+    # without it are omitted from the figure rather than crashing (e.g. puressm pre-sweep).
+    anchored = {k for k in MODELS if 50 in data[k]["nc"]}
+    absent = [k for k in MODELS if k not in anchored]
+    if absent:
+        print(f"[skip] no 1x (dt=50) anchor log for {absent} — omitting from the figure (run its sweep first)")
 
     print("=== regime 2 (true rate: stride = window) — COCO test/AP ===")
     hdr = f"{'mult':>5} {'dt':>4} {'S5 nc':>8} {'S5 comp':>8} {'ours nc':>8} {'ours comp':>9}"
@@ -101,7 +109,7 @@ def main():
         ax.annotate(f"{ys[-1]:.1f}", (xs[-1], ys[-1]), textcoords="offset points",
                     xytext=(9, -3), fontsize=8.5, color=INK2)
 
-    for k in MODELS:
+    for k in anchored:
         series(k, "nc")
         series(k, "comp")
 
