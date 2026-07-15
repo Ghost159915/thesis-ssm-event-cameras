@@ -2,7 +2,8 @@
 
 > *Stage 15 = evaluation of the Stage-14 400k training run. The eval **script** keeps the `stage14_`
 > prefix (named after the training stage, mirroring how EventSSM's `stage7_test_eval_local.sh` produced
-> the Stage-8 table). Remaining Stage-15 deliverable: the trained-weights ERF figure.*
+> the Stage-8 table). Both Stage-15 deliverables are in: the test-AP table (below) and the trained-weights
+> ERF figure (§ Mechanism).*
 
 **Thesis B | MMAN4952 | UNSW Sydney | Benas Vaiciulis** · 2026-07-15
 
@@ -65,6 +66,37 @@ long-range context the CNN lacks. The controlled backbone swap delivered exactly
 **AP_75 (+0.17) vs AP_50 (−0.45):** PureSSM localises *tighter* on the objects it finds (AP_75 up) but
 *finds* marginally fewer (AP_50 down) — consistent with trading a little recall on small/sparse instances
 for better-localised large-object boxes.
+
+---
+
+## Mechanism — trained effective receptive field (the AP_L "why")
+
+The AP_L gain above is a *number*; the effective-receptive-field (ERF) probe is the *visual mechanism*.
+Gradient-based ERF (Luo et al. 2016: ∂|f(centre)|/∂x, aggregated over channels + 8 random inputs) measures
+how much of the input each **trained** backbone actually "sees" at the frame centre. `σ` = RMS spatial spread
+of that gradient mass, in input pixels (bigger σ ⇒ wider receptive field). Probe:
+`code/event_ssm/scripts/stage15_erf.py`; figure `code/event_ssm/proofs/out/u5_erf_trained.png`;
+data `code/event_ssm/proofs/out/u5_erf_extent.md`.
+
+![Trained ERF: ResNet-18 (EventSSM) vs BiMamba (PureSSM)](../code/event_ssm/proofs/out/u5_erf_trained.png)
+
+| Backbone | Stage | σ untrained (px) | σ trained (px) | Δ train |
+|---|---|---|---|---|
+| ResNet-18 (EventSSM) | 3 | 41.5 | 41.8 | +0.2 |
+| ResNet-18 (EventSSM) | 4 | 78.2 | 84.4 | +6.2 |
+| BiMamba (PureSSM) | 3 | 51.1 | **85.6** | **+34.4** |
+| BiMamba (PureSSM) | 4 | 75.4 | **105.5** | **+30.1** |
+
+**Two findings, both supporting the receptive-field story:**
+1. **BiMamba sees wider at every depth.** Trained σ: stage 3 **85.6 vs 41.8** (2.05×), stage 4
+   **105.5 vs 84.4** (1.25×). In the figure, ResNet stage 3 is a tight central blob in a black field
+   (pixels it is blind to); BiMamba is lit corner-to-corner. A large object spanning the 304×240 frame
+   falls *inside* BiMamba's field but *outside* ResNet's — the direct visual cause of AP_L 44.70 → 47.65.
+2. **The SSM receptive field is *learned*; the CNN's is *fixed*.** Training widened BiMamba's σ by +30–34 px
+   but barely moved ResNet's (+0.2 at stage 3 — a convolution's reach is architecturally hard-capped). The
+   selective scan can be *taught* to exploit long-range context; the conv stack cannot. (Method note:
+   BiMamba's maps are textured/slightly banded rather than radially Gaussian — the scan spreads influence
+   along the row/column unroll, so the shape reflects the mechanism, not noise.)
 
 ---
 
