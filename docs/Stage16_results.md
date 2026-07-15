@@ -98,11 +98,19 @@ regime (tied within noise; 4× retention 76.8 % vs EventSSM 76.6 %), both margin
 
 | | S5-RVT | EventSSM | ConvLSTM (paper) | **PureSSM** |
 |---|---|---|---|---|
-| true-10× retention | 62.2 % | 63.0 % | 17.7 % | ⏳ (sweep launched 2026-07-15) |
+| true-10× mAP (no-comp) | 29.67 | 29.09 | 8.35 | **32.38** |
+| **true-10× retention** | 62.2 % | 63.0 % | 17.7 % | **69.7 %** ✅ |
+| true-2× retention | 95.1 % | 95.5 % | — | **95.9 %** |
 
-*⚠️ Note: the Regime-2 **true-rate** sweep is the dramatic SSM-vs-ConvLSTM regime and is the one that matters
-most — PureSSM's number here is still pending (the ~6 h sweep). `stage9_truerate_plot.py` now prints a 3-model
-table + a `retention @10x` line, so PureSSM's value slots in directly against EventSSM 63 % / ConvLSTM 17.7 %.*
+✅ **HEADLINE (2026-07-16): PureSSM is the MOST rate-robust model.** At true 10× (uncompensated) it retains
+**69.7 %** of its 1× accuracy — beating EventSSM (63.0 %) and S5-RVT (62.2 %), and crushing the paper's ConvLSTM
+(17.7 %); it also has the highest *absolute* mAP at 10× (32.38). **Mechanism:** EventSSM and PureSSM share the
+*identical* Mamba temporal path, so the extra robustness comes from the **BiMamba spatial backbone** — the global
+SSM-scan receptive field stays informative when true-10× frames are event-sparse (5 ms windows), the same
+receptive-field advantage behind the AP_L result (Stage 15). **Δt-compensation falsified for PureSSM too** (10×
+comp 19.70 < nc 32.38, −13 mAP), consistent with Stage-9 F1/F2 across all three SSM models. **Caveat:** single
+seed, no error bars — but the ~3 mAP absolute gap at 10× is well above the training-rate noise (~0.2–0.7) and the
+ordering is clean. Figure: `results/stage9/stage9_truerate_curve.png` (3 curves).
 
 **Fill with** (needs GPU; see `docs/Stage16_results.md` §runbook or the sweep commands — set `OURS_WRAP`/`OURS_CKPT`/`OURS_KEY`, then):
 `RUN_BASELINE=0 bash code/event_ssm/scripts/stage9_eval_sweep.sh` · `bash code/event_ssm/scripts/stage9_mamba_scale_sweep.sh` · `RUN_BASELINE=0 bash code/event_ssm/scripts/stage9_truerate_sweep.sh` → then `python code/event_ssm/scripts/stage9_degradation_plot.py && python code/event_ssm/scripts/stage9_truerate_plot.py`
