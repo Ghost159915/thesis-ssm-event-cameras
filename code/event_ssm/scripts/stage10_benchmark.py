@@ -33,6 +33,13 @@ def validate_results(d: dict) -> list:
             lat = m.get("latency", {}).get(prec, {})
             if lat and not {"full", "network", "components", "throughput"} <= set(lat):
                 problems.append(f"{kind}.latency.{prec}: incomplete")
+        # Optional Slice-C cuda-graph-replay column (never required -- eager-only runs validate
+        # clean). Two accepted shapes: a captured entry (p50_ms/hz/protocol/state_semantics) or an
+        # honest {"captured": False, "reason": ...} skip; only a claimed-captured entry is checked.
+        graph = m.get("latency", {}).get("graph")
+        if graph is not None and graph.get("captured", True) and not \
+                {"p50_ms", "hz", "protocol", "state_semantics"} <= set(graph):
+            problems.append(f"{kind}.latency.graph: incomplete")
     return problems
 
 
@@ -95,7 +102,7 @@ def gather_meta(clip_src: str) -> dict:
     return meta
 
 
-def measure_model(kind: str, device, clip, smoke: bool) -> dict:
+def measure_model(kind: str, device, clip, smoke: bool, graph: bool = False) -> dict:
     from event_ssm.benchmark.bench_models import build_model, CKPTS
     from event_ssm.benchmark import bench_metrics as bm
 
@@ -200,6 +207,28 @@ def measure_model(kind: str, device, clip, smoke: bool) -> dict:
             thr[f"b{b}_fps"] = 1000.0 / r["p50_ms"] * b
         out["latency"][prec] = {"full": lat_full, "network": lat_net, "components": comps, "throughput": thr}
 
+    # ---- cuda-graph-replay latency (opt-in --graph): a SEPARATE labeled column, never a
+    #      substitute for the eager bf16/fp32 protocols above (Stage-11 decision 3). Only the "ours"
+    #      backbones honor the state-carry contract; the S5 baseline is recorded as an honest skip. ----
+    if graph:
+        if kind in ("eventssm", "puressm"):
+            from event_ssm.benchmark.graph_capture import capture_state_carrying
+            model.autocast_bf16 = True
+            replay = capture_state_carrying(model, frames[0:1].shape, device)
+            gidx = {"i": 0}
+            def step_graph():
+                i = gidx["i"] % n
+                replay(frames[i:i + 1]); gidx["i"] += 1
+            lat_graph = bm.time_fn(step_graph, warmup=warmup, iters=iters, device=device)
+            p50 = lat_graph["p50_ms"]
+            out["latency"]["graph"] = {
+                "p50_ms": p50, "hz": 1000.0 / p50 if p50 > 0 else float("inf"),
+                "protocol": "cuda-graph-replay", "state_semantics": "carried",
+                "mean_ms": lat_graph["mean_ms"], "p95_ms": lat_graph["p95_ms"], "iters": lat_graph["iters"]}
+        else:
+            out["latency"]["graph"] = {"captured": False,
+                "reason": "S5 baseline uses stock-RVT state machinery; not covered by the ours state-carry contract"}
+
     # ---- VRAM ----
     model.autocast_bf16 = True
     st = {"s": None}
@@ -258,6 +287,9 @@ def main():
     ap.add_argument("--models", default="both",
                     choices=["both", "all", "eventssm", "baseline", "puressm"])
     ap.add_argument("--smoke", action="store_true")
+    ap.add_argument("--graph", action="store_true",
+                    help="also measure the state-carrying cuda-graph-replay latency as a separate "
+                         "labeled latency.graph column (ours backbones only; eager numbers untouched)")
     ap.add_argument("--out", default=str(REPO / "results/stage10"))
     args = ap.parse_args()
     assert torch.cuda.is_available(), "Stage-10 benchmark needs the CUDA GPU (run via stage10_run_local.sh)"
@@ -281,7 +313,7 @@ def main():
         kinds = [args.models]
     for kind in kinds:
         print(f"[stage10] measuring {kind} ({'smoke' if args.smoke else 'full'}) ...")
-        results["models"][kind] = measure_model(kind, device, clip, args.smoke)
+        results["models"][kind] = measure_model(kind, device, clip, args.smoke, graph=args.graph)
         # Run protection: dump after EVERY model so a crash on model 2 doesn't lose model 1's
         # ~15 min of measurement -- this JSON is overwritten again (complete) at the end.
         outfile.write_text(json.dumps(results, indent=2))
