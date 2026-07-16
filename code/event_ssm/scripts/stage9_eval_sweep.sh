@@ -83,4 +83,4 @@ for V in "${RATES[@]}"; do
 done
 echo "============================================================================="
 echo "logs: $OUT/   |   per-class car/ped AP is in each log (grep '\\[per-class\\]')"
-echo "published RVT(ConvLSTM)/S5-RVT degradation numbers for the comparison table: stages/Stage_09_Temporal_Generalisation.md"
+echo "published RVT(ConvLSTM)/S5-RVT degradation numbers for the comparison table: docs/roadmap/Stage_09_Temporal_Generalisation.md"

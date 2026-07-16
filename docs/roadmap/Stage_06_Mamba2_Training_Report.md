@@ -24,8 +24,8 @@ stages 2/3/4, so the stage-1 temporal block was dead weight (grad-less, ~9% of b
 Stage 6 resolves both, then produces the artifacts for a short Gen1 training run (handed to the user
 per the terminal policy).
 
-Spec: `docs/superpowers/specs/2026-06-12-stage6-mamba2-short-training-design.md`.
-Plan: `docs/superpowers/plans/2026-06-12-stage6-mamba2-short-training.md` (12 tasks).
+Spec: `docs/specs/2026-06-12-stage6-mamba2-short-training-design.md`.
+Plan: `docs/plans/2026-06-12-stage6-mamba2-short-training.md` (12 tasks).
 
 ---
 

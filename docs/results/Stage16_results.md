@@ -24,7 +24,7 @@ only the spatial backbone (and, EventSSM→PureSSM, *only* the spatial mixer) di
 | — neck + head (shared) | 5.75 M | 5.75 M | 5.75 M |
 
 *Headline so far: PureSSM is the **smallest** model, **matches** EventSSM overall, and **beats** it on large
-objects — a compression win at equal accuracy. Full detail: `docs/Stage15_results_comparison.md`.*
+objects — a compression win at equal accuracy. Full detail: `docs/results/Stage15_results_comparison.md`.*
 
 ---
 
@@ -124,7 +124,7 @@ comp 19.70 < nc 32.38, −13 mAP), consistent with Stage-9 F1/F2 across all thre
 seed, no error bars — but the ~3 mAP absolute gap at 10× is well above the training-rate noise (~0.2–0.7) and the
 ordering is clean. Figure: `results/stage9/stage9_truerate_curve.png` (3 curves).
 
-**Fill with** (needs GPU; see `docs/Stage16_results.md` §runbook or the sweep commands — set `OURS_WRAP`/`OURS_CKPT`/`OURS_KEY`, then):
+**Fill with** (needs GPU; see `docs/results/Stage16_results.md` §runbook or the sweep commands — set `OURS_WRAP`/`OURS_CKPT`/`OURS_KEY`, then):
 `RUN_BASELINE=0 bash code/event_ssm/scripts/stage9_eval_sweep.sh` · `bash code/event_ssm/scripts/stage9_mamba_scale_sweep.sh` · `RUN_BASELINE=0 bash code/event_ssm/scripts/stage9_truerate_sweep.sh` → then `python code/event_ssm/scripts/stage9_degradation_plot.py && python code/event_ssm/scripts/stage9_truerate_plot.py`
 
 *Headline to extract: PureSSM true-10× retention vs EventSSM 63 % / ConvLSTM 17.7 % — does a pure-SSM keep the
@@ -144,7 +144,7 @@ GT-vs-pred overlay videos + large-car contact sheet.
 ---
 
 ## Cross-references
-- Accuracy + ERF: `docs/Stage15_results_comparison.md`
-- Plan: `docs/superpowers/plans/2026-07-15-stage16-pillars-visuals.md`
-- EventSSM references: Stage 8 (`docs/Stage8_results_comparison.md`), Stage 9 (`docs/Stage9_TwoRegime_Results.md`), Stage 10 (`docs/superpowers/plans/2026-07-10-stage10-efficiency-benchmark.md`)
+- Accuracy + ERF: `docs/results/Stage15_results_comparison.md`
+- Plan: `docs/plans/2026-07-15-stage16-pillars-visuals.md`
+- EventSSM references: Stage 8 (`docs/results/Stage8_results_comparison.md`), Stage 9 (`docs/results/Stage9_TwoRegime_Results.md`), Stage 10 (`docs/plans/2026-07-10-stage10-efficiency-benchmark.md`)
 - Deferred: PureSSM shrink study (memory `puressm-shrink-option`)

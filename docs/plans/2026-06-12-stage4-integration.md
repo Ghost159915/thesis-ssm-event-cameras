@@ -17,7 +17,7 @@
 **Tech Stack:** PyTorch, `mamba-ssm` (CUDA), torchvision ResNet-18, OmegaConf/Hydra, pytest, the RVT codebase under
 `external/ssms_event_cameras/RVT`.
 
-**Spec:** `docs/superpowers/specs/2026-06-12-stage4-integration-design.md`.
+**Spec:** `docs/specs/2026-06-12-stage4-integration-design.md`.
 
 ---
 
@@ -502,7 +502,7 @@ git commit -m "feat(stage4): synthetic full-model integration smoke + proof tabl
 ## Task 6: Full regression + Stage-4 doc status
 
 **Files:**
-- Modify: `stages/Stage_04_Integration.md` (flip status to done), `code/event_ssm/proofs/proof_backbone.py` (print note)
+- Modify: `docs/roadmap/Stage_04_Integration.md` (flip status to done), `code/event_ssm/proofs/proof_backbone.py` (print note)
 
 - [ ] **Step 1: Run the full suite to confirm no regressions**
 
@@ -521,14 +521,14 @@ docstring/comment to say "per-stage feature `(L,B,c,h,w)`" (no behavioural chang
 
 - [ ] **Step 3: Mark Stage 4 done in the plan doc**
 
-In `stages/Stage_04_Integration.md`, change the STATUS banner to note the full-model smoke passed and the backbone
+In `docs/roadmap/Stage_04_Integration.md`, change the STATUS banner to note the full-model smoke passed and the backbone
 is RVT-contract-compatible (features `(L,B,c,h,w)`, dim0=B None-free states); β still deferred to Stage 6.
 
 - [ ] **Step 4: Commit**
 
 ```bash
 cd /home/ghost/Desktop/thesis-ssm-event-cameras
-git add stages/Stage_04_Integration.md code/event_ssm/proofs/proof_backbone.py
+git add docs/roadmap/Stage_04_Integration.md code/event_ssm/proofs/proof_backbone.py
 git commit -m "docs(stage4): mark integration complete; backbone is RVT-contract-compatible"
 ```
 
@@ -536,6 +536,6 @@ git commit -m "docs(stage4): mark integration complete; backbone is RVT-contract
 
 ## Notes / Out of Scope
 - **β (cross-clip training state)** is deferred to Stage 6 — training zero-inits per clip via the `(B,1)` placeholder.
-  Documented in the spec §Unit 6 and `stages/Stage_04_Integration.md`.
+  Documented in the spec §Unit 6 and `docs/roadmap/Stage_04_Integration.md`.
 - Real Gen1 data / overfit (Stage 5), short training (Stage 6), full Hydra training entrypoint wiring + SLURM (Stage 6/7).
 - After code changes land, optionally run `graphify update .` to refresh the knowledge graph (AST-only).

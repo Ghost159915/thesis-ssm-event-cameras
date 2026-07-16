@@ -8,7 +8,7 @@
 
 **Tech Stack:** Bash launchers, Hydra/OmegaConf config composition, PyTorch-Lightning (RVT), `mamba-ssm` (Blackwell `sm_120`), conda env `events_signals`.
 
-**Spec:** `docs/superpowers/specs/2026-06-17-local-midrun-design.md`
+**Spec:** `docs/specs/2026-06-17-local-midrun-design.md`
 
 **Verification note:** Tasks 1–2 verify offline (no GPU, no training) — pure bash for the override list, a Hydra `--cfg job` compose-and-exit for the launcher. Per terminal policy the *user* runs the actual training; these checks are config-only and safe for the implementer to run.
 
@@ -19,7 +19,7 @@
 - **Modify** `code/event_ssm/scripts/stage6_overrides.sh` — add `MAX_EPOCHS` / `VAL_EVERY` / `VAL_FRAC` / `GROUP_NAME` env knobs (defaults reproduce today's short run exactly); wire `validation.limit_val_batches`.
 - **Create** `code/event_ssm/scripts/stage7_midrun_local.sh` — mid-run launcher (full data, 100k steps, val/ckpt every 10k, optional `STAGE7_RESUME`).
 - **Create** `code/event_ssm/scripts/STAGE7_MIDRUN_RUN.md` — launch + resume + monitoring doc.
-- **Modify** `stages/Stage_07_Full_Training.md` — one-line as-built header pointing at the drop-in path.
+- **Modify** `docs/roadmap/Stage_07_Full_Training.md` — one-line as-built header pointing at the drop-in path.
 
 ---
 
@@ -307,7 +307,7 @@ git commit -m "docs(stage7): local mid-run launch + resume + monitoring checklis
 ## Task 4: Reconcile the stale Stage-7 doc
 
 **Files:**
-- Modify: `stages/Stage_07_Full_Training.md`
+- Modify: `docs/roadmap/Stage_07_Full_Training.md`
 
 - [ ] **Step 1: Insert an as-built header**
 
@@ -318,7 +318,7 @@ line (i.e. before `## Overview`):
 > **As-built note (2026-06-17):** the standalone `train.py --config gen1_full.yaml` / epoch-based
 > design described below is **legacy**. The as-built path reuses RVT's `train.py` UNMODIFIED via the
 > `code/event_ssm/scripts/stage7_midrun_local.sh` launcher (step-based OneCycle, Hydra config) — see
-> `docs/superpowers/specs/2026-06-17-local-midrun-design.md` and
+> `docs/specs/2026-06-17-local-midrun-design.md` and
 > `code/event_ssm/scripts/STAGE7_MIDRUN_RUN.md`. The local card is for the *mid-run* signal; the full
 > 400k-step run is destined for Katana. This doc is retained for the protocol rationale
 > (hyperparameters, expected-mAP ranges, checkpoint strategy) only.
@@ -331,14 +331,14 @@ line (i.e. before `## Overview`):
 Run:
 ```bash
 cd /home/ghost/Desktop/thesis-ssm-event-cameras
-grep -n "As-built note (2026-06-17)" stages/Stage_07_Full_Training.md
+grep -n "As-built note (2026-06-17)" docs/roadmap/Stage_07_Full_Training.md
 ```
 Expected: one match near the top of the file.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add stages/Stage_07_Full_Training.md
+git add docs/roadmap/Stage_07_Full_Training.md
 git commit -m "docs(stage7): flag legacy Stage-7 doc, point at as-built drop-in path"
 ```
 

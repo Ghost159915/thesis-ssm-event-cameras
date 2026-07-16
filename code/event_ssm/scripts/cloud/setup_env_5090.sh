@@ -235,7 +235,7 @@ assert cc == (12, 0), f'expected sm_120 (12, 0) -- got {cc}'
 print('mamba_ssm:', mamba_ssm.__version__)
 print('causal_conv1d:', causal_conv1d.__version__)
 "
-# Stage-11 kernel-import one-liner (docs/superpowers/plans/2026-07-11-stage11-puressm-backbone.md:56)
+# Stage-11 kernel-import one-liner (docs/plans/2026-07-11-stage11-puressm-backbone.md:56)
 "$PY" -c "from mamba_ssm.ops.triton.ssd_combined import mamba_chunk_scan_combined, ssd_chunk_scan_combined_ref; from mamba_ssm.ops.triton.layernorm_gated import RMSNorm; from causal_conv1d import causal_conv1d_fn; print('kernel imports ok')"
 echo -n "hf: "
 "$HF" version

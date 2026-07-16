@@ -1,6 +1,6 @@
 # Stage 11 — PureSSM BiMamba Spatial Backbone: Build Notes
 
-**Date:** 2026-07-11 · **Branch:** `stage11-puressm-backbone` (base `00e987c`) · **Plan:** `docs/superpowers/plans/2026-07-11-stage11-puressm-backbone.md` · **Spec:** `docs/superpowers/specs/2026-07-11-puressm-backbone-design.md`
+**Date:** 2026-07-11 · **Branch:** `stage11-puressm-backbone` (base `00e987c`) · **Plan:** `docs/plans/2026-07-11-stage11-puressm-backbone.md` · **Spec:** `docs/specs/2026-07-11-puressm-backbone-design.md`
 
 ## What was built
 

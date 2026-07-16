@@ -4,7 +4,7 @@
 
 **Goal:** Prove PureSSM trains stably on full Gen1 (25k-step short run, val/AP in the 0.10–0.15 band) while establishing the complete cloud pipeline — dataset upload, env transplant, rental checklist, monitoring, checkpoint retrieval — in one consolidated sweep (user decision 2026-07-11: no piecemeal setup).
 
-**Architecture:** Two agent-built code deliverables (a hook-based training monitor for per-stage feature norms + NaN watch, and a cloud launcher wrapper reusing the Stage-7 script pattern unchanged), plus a user-executed runbook (`docs/Cloud_Runbook_5090.md`) covering the one-time Hugging Face dataset upload and the vast.ai/RunPod rental flow. Training recipe stays byte-identical to the locked 400k recipe except `MAX_STEPS=25000` (the Stage-6 short-run precedent).
+**Architecture:** Two agent-built code deliverables (a hook-based training monitor for per-stage feature norms + NaN watch, and a cloud launcher wrapper reusing the Stage-7 script pattern unchanged), plus a user-executed runbook (`docs/runbooks/Cloud_Runbook_5090.md`) covering the one-time Hugging Face dataset upload and the vast.ai/RunPod rental flow. Training recipe stays byte-identical to the locked 400k recipe except `MAX_STEPS=25000` (the Stage-6 short-run precedent).
 
 **Tech Stack:** RTX 5090 32 GB rental (sm_120 — same arch as local, zero kernel mismatch), Hugging Face Hub private dataset repo (`hf` CLI), tmux + W&B online monitoring, the existing stage6/7 launcher chain (`stage6_train.py` + `stage6_overrides.sh`), forward hooks + wandb for monitors.
 
@@ -24,7 +24,7 @@
 - **Terminal policy:** agents write code/scripts and run unit tests; ALL cloud actions (account, upload, rental, launches) and any local GPU run are USER-executed from runbook commands.
 - Upload scope: `data/gen1_raw/gen1/train` (58 GB) + `val` (15 GB) ONLY — test (20 GB) never leaves the local machine (eval stays local; thesis efficiency pillar is local-hardware-specific).
 - Env on the instance: torch 2.11.0+cu128 wheels + `requirements_5070ti_lock.txt` + mamba-ssm 2.3.2.post1/causal-conv1d 1.6.2.post1 built `--no-deps --no-build-isolation` (sm_120 — identical to local; the two Blackwell fixes from the MVP memory apply: `torchdata==0.9.0`, `TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1`).
-- NEVER pip install locally. NEVER commit red. Conventional commits, no assistant names. Never commit the user's pending files (`PLAN_FIXES_FOR_CLAUDE.md`, `docs/DeepResearch_Loihi_SpikingSSM.md`, `docs/Katana_Migration_GapAnalysis.md`).
+- NEVER pip install locally. NEVER commit red. Conventional commits, no assistant names. Never commit the user's pending files (`PLAN_FIXES_FOR_CLAUDE.md`, `docs/research/DeepResearch_Loihi_SpikingSSM.md`, `docs/research/Katana_Migration_GapAnalysis.md`).
 - Exit gate (roadmap Stage-13 row): 25k run completes on the rented 5090; val/AP ≈ 0.10–0.15 band at comparable steps (Stage-6 EventSSM precedent: 0.125); no NaN/instability; monitor curves show no Mamba-R norm blow-up; cloud logistics proven end-to-end (upload→rent→train→retrieve ckpt→terminate).
 
 ## File Structure
@@ -37,7 +37,7 @@ code/event_ssm/scripts/cloud/setup_env_5090.sh    # CREATE: idempotent instance 
 code/event_ssm/scripts/cloud/pull_dataset.sh      # CREATE: hf download train+val onto instance
 code/event_ssm/scripts/cloud/upload_dataset_once.sh # CREATE: LOCAL one-time upload helper (user-run)
 code/event_ssm/scripts/stage13_cloud_short.sh     # CREATE: thin wrapper over the stage7 launcher pattern
-docs/Cloud_Runbook_5090.md                        # CREATE: the user's end-to-end checklist
+docs/runbooks/Cloud_Runbook_5090.md                        # CREATE: the user's end-to-end checklist
 ```
 
 ---
@@ -186,7 +186,7 @@ def attach_spatial_norm_monitor(backbone, every_n: int = 200):
 
 ### Task 3: The runbook (user's end-to-end checklist)
 
-**Files:** Create `docs/Cloud_Runbook_5090.md`
+**Files:** Create `docs/runbooks/Cloud_Runbook_5090.md`
 
 Numbered, copy-paste-ready sections, each with expected output and rough duration: **(0)** decisions table (from this plan's header) with the defaults pre-selected; **(1)** one-time local prep: HF account → `hf auth login` → `CONFIRM=1 HF_REPO=<user>/gen1-rvt-preproc bash code/event_ssm/scripts/cloud/upload_dataset_once.sh` (58+15 GB; hours, resumable) → `git push origin main`; **(2)** rental checklist: RTX 5090 32 GB, on-demand (NOT interruptible), ≥8 vCPU / ≥48 GB RAM (6 dataloader workers ~3.6 GB RSS each — Stage-7 OOM history), ≥150 GB disk, CUDA ≥12.8 image, price sanity ~$0.35–0.60/hr; **(3)** instance session: ssh → `tmux new -s train` → clone repo → `bash code/event_ssm/scripts/cloud/setup_env_5090.sh` (~20 min) → `HF_REPO=... bash code/event_ssm/scripts/cloud/pull_dataset.sh` (~15–30 min) → `WANDB_API_KEY=... bash code/event_ssm/scripts/stage13_cloud_short.sh` (~3–5 h for 25k steps; watch W&B + the `[monitor]` lines); **(4)** retrieval: `scp` the best/last ckpt to local `results/stage13_cloud/ckpts/`, verify `sha256sum` both sides, THEN terminate the instance; **(5)** teardown checks (nothing billed, dataset repo persists for Stage 14). Cost worksheet: expect $2–5 total for the short run.
 
@@ -198,7 +198,7 @@ Commit: `docs(stage13): cloud runbook — one-sweep setup checklist (upload, ren
 
 - [ ] User executes runbook sections 1–4 (agent support: I hand each command block at the right moment and interpret pasted output; any failure → systematic-debugging before retrying).
 - [ ] Gate check: run completes; val/AP at 25k in the 0.10–0.15 band (Stage-6 EventSSM: 0.125 — parity here means the from-scratch spatial swap learns at a comparable rate); monitor norms stable (no unbounded growth); no NaN.
-- [ ] Close-out: `docs/Stage13_cloud_notes.md` (numbers, wall-time, cost, any surprises), CLAUDE.md status line, ledger, final whole-branch review, merge on user instruction. Stage 14 (the 400k run) then reuses the exact same runbook with `MAX_STEPS=400000` and `VAL_EVERY=10000` — no new setup.
+- [ ] Close-out: `docs/notes/Stage13_cloud_notes.md` (numbers, wall-time, cost, any surprises), CLAUDE.md status line, ledger, final whole-branch review, merge on user instruction. Stage 14 (the 400k run) then reuses the exact same runbook with `MAX_STEPS=400000` and `VAL_EVERY=10000` — no new setup.
 
 ---
 

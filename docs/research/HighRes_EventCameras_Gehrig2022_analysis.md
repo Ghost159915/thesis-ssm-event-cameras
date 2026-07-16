@@ -1,6 +1,6 @@
 # Paper Analysis — Gehrig & Scaramuzza (2022), *"Are High-Resolution Event Cameras Really Needed?"*
 
-**Local PDF:** `papers_correct/01_event_cameras/Gehrig_2022_HighResolutionEventCameras_arXiv.pdf` · project page:
+**Local PDF:** `thesis/references/papers/01_event_cameras/Gehrig_2022_HighResolutionEventCameras_arXiv.pdf` · project page:
 https://uzh-rpg.github.io/eres/ · **Not previously in the library** (added 2026-07-16).
 **Why it matters here:** it is the definitive study of the event-camera *resolution* trade-off — directly relevant to
 the thesis's 1Mpx-augmentation decision, and it plugs into the PureSSM **rate-robustness** contribution.

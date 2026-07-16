@@ -1,7 +1,7 @@
 # Stage 9 — Temporal Generalisation: What We're Proving, Why, and How
 
 **Thesis B | MMAN4952 | UNSW Sydney | Benas Vaiciulis** · 2026-06-19
-*(Conceptual rationale + data-sourcing findings. Plan itself unchanged — see `stages/Stage_09_Temporal_Generalisation.md`.)*
+*(Conceptual rationale + data-sourcing findings. Plan itself unchanged — see `docs/roadmap/Stage_09_Temporal_Generalisation.md`.)*
 
 ---
 

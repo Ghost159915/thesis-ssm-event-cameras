@@ -16,8 +16,8 @@ verified S5-RVT detection stack (neck, head, losses, data pipeline, Lightning lo
 verbatim and selected by Hydra config. **Approach A**: the backbone natively returns RVT-shaped
 features and RVT-compatible states (no adapter shim, no baseline edits).
 
-Plan: `docs/superpowers/plans/2026-06-12-stage4-integration.md` (6 tasks, TDD).
-Spec: `docs/superpowers/specs/2026-06-12-stage4-integration-design.md`.
+Plan: `docs/plans/2026-06-12-stage4-integration.md` (6 tasks, TDD).
+Spec: `docs/specs/2026-06-12-stage4-integration-design.md`.
 
 ---
 
@@ -37,7 +37,7 @@ Spec: `docs/superpowers/specs/2026-06-12-stage4-integration-design.md`.
 | `code/event_ssm/backbone/resnet_mamba.py` | (a) per-stage features now returned as `(L, B, c, h, w)` (RVT indexes `v[tidx]`), not `(L*B, …)`. (b) Added `_state_to_bmajor`/`_state_from_bmajor` helpers; states are now `None`-free with **batch as dim 0** so RVT's `RNNStates.recursive_detach`/`recursive_reset` work. (c) `self.training` branch: train zero-inits temporal state per clip and emits a `(B,1)` placeholder (β deferred); eval carries + converts real `(conv, ssm)` state. |
 | `code/event_ssm/integration/register.py` | `register_resnet_mamba()` now also patches the **detector module's** already-bound `build_recurrent_backbone` name (robust to import order — `YoloXDetector` did a `from … import build_recurrent_backbone` local bind). |
 | `code/event_ssm/tests/test_resnet_mamba.py` | Shape asserts updated to `(L,B,…)`; integration test indexes `feats[k][0]`; +3 contract tests. |
-| `stages/Stage_04_Integration.md` | STATUS → COMPLETE; contract doc fixed to `(L,B,…)` + dim0=B states; recorded the stage-1-temporal finding (below). |
+| `docs/roadmap/Stage_04_Integration.md` | STATUS → COMPLETE; contract doc fixed to `(L,B,…)` + dim0=B states; recorded the stage-1-temporal finding (below). |
 | `code/event_ssm/proofs/proof_backbone.py` | Docstring notes the `(L,B,c,h,w)` / dim0=B contract. |
 
 ## 4. What was REMOVED

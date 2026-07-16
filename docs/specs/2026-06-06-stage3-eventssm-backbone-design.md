@@ -2,7 +2,7 @@
 **Thesis B | MMAN4952 | UNSW Sydney | Benas Vaiciulis | 2026-06-06**
 Status: approved design (brainstorming). Drives the implementation plan and the subagent build.
 
-Authoritative inputs (ground truth): `design_specification.md`, `architecture_blueprint.md` (rev.2), `codebase_audit.md`, `yolox_head_interface.md`. Where the `stages/Stage_03a` / `Stage_03c` docs conflict with these, **the locked specs win** (the stage docs predate the Stage-2 code audit and describe the rejected after-FPN / spatial-scan design).
+Authoritative inputs (ground truth): `design_specification.md`, `architecture_blueprint.md` (rev.2), `codebase_audit.md`, `yolox_head_interface.md`. Where the `docs/roadmap/Stage_03a` / `Stage_03c` docs conflict with these, **the locked specs win** (the stage docs predate the Stage-2 code audit and describe the rejected after-FPN / spatial-scan design).
 
 ---
 
@@ -46,7 +46,7 @@ code/event_ssm/
     resnet_mamba.yaml        # Hydra model config (derived from baseline gen1 base)
   proofs/                    # scripts that emit the per-unit visual artifacts -> proofs/out/*.png
   tests/                     # pytest unit tests (shape/grad/state)
-docs/superpowers/specs/2026-06-06-stage3-eventssm-backbone-design.md   # this file
+docs/specs/2026-06-06-stage3-eventssm-backbone-design.md   # this file
 ```
 
 RVT integration: it runs with CWD=`external/ssms_event_cameras/RVT`. We make `code/event_ssm` importable (PYTHONPATH or `pip install -e code/`) and have `register.py` add our class to `build_recurrent_backbone`. The small edit to RVT's builder is captured as a tracked patch (`code/event_ssm/integration/rvt_register.patch`) so it is reproducible despite living in the ignored tree.

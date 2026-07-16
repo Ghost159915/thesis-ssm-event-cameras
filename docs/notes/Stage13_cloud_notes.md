@@ -1,6 +1,6 @@
 # Stage 13 — Cloud Short Run (rented RTX 5090): Notes
 
-**Date:** 2026-07-12 · **Branch:** `stage13-cloud-short` (base `3c927bb`) · **Plan:** `docs/superpowers/plans/2026-07-12-stage13-cloud-short-run.md`
+**Date:** 2026-07-12 · **Branch:** `stage13-cloud-short` (base `3c927bb`) · **Plan:** `docs/plans/2026-07-12-stage13-cloud-short-run.md`
 
 Goal: a 25k-step PureSSM training run on a rented RTX 5090 32 GB (vast.ai) — the rehearsal for the
 Stage-14 400k run. Same `sm_120` compute capability as the local 5070 Ti ⇒ the locked cu128 stack and
@@ -31,7 +31,7 @@ source-built Mamba kernels transfer without a rebuild recipe change.
     `exec`s the same `stage7_midrun_local.sh` used for every local run (same OOM/resume/Hydra fixes).
 - **`stage7_midrun_local.sh` parameterized** (`REPO`, `CONDA_SH`, `WANDB_MODE` now respects a pre-set
   value) — byte-identical behavior for existing local callers, reviewer-verified.
-- **`docs/Cloud_Runbook_5090.md`** — the beginner end-to-end checklist (user has never used cloud
+- **`docs/runbooks/Cloud_Runbook_5090.md`** — the beginner end-to-end checklist (user has never used cloud
   compute): Section 0 concepts → 1 local prep (HF login, dataset upload, git push, instance tokens,
   W&B) → 2 renting on vast.ai (filters, price sanity) → 3 on-instance (SSH, tmux, clone, bootstrap,
   pre-flight dry-run, dataset pull, launch) → 4 monitor/retrieve checkpoints → 5 terminate, plus a

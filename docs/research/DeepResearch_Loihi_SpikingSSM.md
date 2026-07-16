@@ -5,7 +5,7 @@
 
 **Source grading used throughout:** **[PR]** peer-reviewed (named venue) · **[WS]** workshop · **[PRE]** preprint (arXiv, no confirmed venue) · **[V]** vendor / marketing · **[W]** community/secondary reference. Every accuracy/energy figure is annotated *measured* vs *theoretical (operation-count estimate)*.
 
-**Companion docs:** `docs/SSSMDetector_Loihi_opportunity.md` (strategic options), `docs/Spiking_PureSSM_litreview_deepdive.md` (math deep-dive), `docs/spiking_ssm_references.md` (master `.bib` staging). This report **supersedes** the Gen1 spiking-detection numbers in those docs where they conflict — see the metric-discipline warning in §5.1.
+**Companion docs:** `docs/research/SSSMDetector_Loihi_opportunity.md` (strategic options), `docs/research/Spiking_PureSSM_litreview_deepdive.md` (math deep-dive), `docs/research/spiking_ssm_references.md` (master `.bib` staging). This report **supersedes** the Gen1 spiking-detection numbers in those docs where they conflict — see the metric-discipline warning in §5.1.
 
 ---
 

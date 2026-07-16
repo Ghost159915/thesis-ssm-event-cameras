@@ -10,7 +10,7 @@ head + SimOTA loss + **real Gen1 data pipeline** + **real PyTorch-Lightning `Mod
 **learn** and is **numerically healthy**, before any real training (Stage 6). A model that cannot memorise a
 handful of real samples is broken; this stage catches that for the cost of minutes, not GPU-days.
 
-This stage also **reconciles the stale `stages/Stage_05_Smoke_Testing.md`** (which still describes the
+This stage also **reconciles the stale `docs/roadmap/Stage_05_Smoke_Testing.md`** (which still describes the
 superseded standalone `EventSSMDetector`: 10-channel input, `model.reset_state(...)`, Focal/GIoU loss) to the
 as-built drop-in design (20-channel stacked histogram, `LstmStates` contract, **SimOTA** loss, real `Module`).
 
@@ -83,7 +83,7 @@ Each unit is an independent, runnable script/module under `code/event_ssm/`.
 - Writes rows into `results/smoke_test/smoke_results.md`.
 
 ### Unit 5 — Doc reconcile + report
-- Reconcile `stages/Stage_05_Smoke_Testing.md` to the drop-in design (20-ch, `LstmStates`, SimOTA, real
+- Reconcile `docs/roadmap/Stage_05_Smoke_Testing.md` to the drop-in design (20-ch, `LstmStates`, SimOTA, real
   `Module`); keep the 4-test structure; fix the success criteria to match the as-built model.
 - Code review of the Stage-5 changes; `reports/Stage_05_Smoke_Report.md`.
 
@@ -126,6 +126,6 @@ No new `pytest` unit tests are required for Stage 5 (it is an integration/smoke 
 - `data/gen1_smoke/` builder; smoke harness; overfit + health proof scripts.
 - `results/smoke_test/`: `smoke_results.md` (overfit reduction, grad-flow PASS, VRAM@bs4, latency) +
   `overfit_loss_curve.png`.
-- Reconciled `stages/Stage_05_Smoke_Testing.md`; `reports/Stage_05_Smoke_Report.md`.
+- Reconciled `docs/roadmap/Stage_05_Smoke_Testing.md`; `reports/Stage_05_Smoke_Report.md`.
 - **Success:** overfit loss reduction ≥ 3× with no NaN; all detection-path params get gradients; VRAM < 10 GB
   @ bs 4; eval-step latency reported vs ~12 ms baseline; `pytest` stays 20/20.

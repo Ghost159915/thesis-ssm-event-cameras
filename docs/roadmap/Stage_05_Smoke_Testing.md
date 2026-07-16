@@ -29,8 +29,8 @@
 > - Health probes → `code/event_ssm/proofs/smoke_health.py` (grad-flow / VRAM / eval-step latency)
 > - Harness → `code/event_ssm/integration/{smoke_harness,register,make_smoke_dataset}.py`
 > - Outputs → `results/smoke_test/{overfit_loss_curve.png, smoke_results.md}`
-> - Spec / plan / report → `docs/superpowers/specs/2026-06-12-stage5-smoke-design.md`,
->   `docs/superpowers/plans/2026-06-12-stage5-smoke.md`, `reports/Stage_05_Smoke_Report.md`
+> - Spec / plan / report → `docs/specs/2026-06-12-stage5-smoke-design.md`,
+>   `docs/plans/2026-06-12-stage5-smoke.md`, `reports/Stage_05_Smoke_Report.md`
 >
 > **Results achieved (RTX 5070 Ti, bf16):** overfit clears the ≥3× gate with margin — **≈4–5×
 > across runs** (stochastic init, no seed; e.g. 23.4 → 4.7 = 5.0×, and 19.0 → 4.9 = 3.9×), monotonic,

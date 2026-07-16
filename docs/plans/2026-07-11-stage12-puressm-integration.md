@@ -15,7 +15,7 @@
 - Spec §3 registration contract: dispatch key `backbone_cfg.name == "PureSSM"`; temporal blocks only on `in_stages` [2,3,4]; padding multiple-of-32 → in_res_hw (256,320) for Gen1.
 - Spatial hyperparameters (spec §4.2/§4.3, locked): depths (2,2,8,2), spatial d_state 16, drop_path_rate 0.1, temporal d_state 64 — config keys: `depths`, `spatial_d_state`, `drop_path_rate`, `checkpoint_blocks` (default False).
 - **Terminal policy:** implementer agents may run unit tests and one ≤10-epoch mini-smoke; the OFFICIAL 150-epoch overfit run is executed by the USER (command handed over, output pasted back).
-- NEVER pip install. NEVER commit red. Conventional commits, no assistant names. Never commit: `PLAN_FIXES_FOR_CLAUDE.md`, `docs/DeepResearch_Loihi_SpikingSSM.md`, `docs/Katana_Migration_GapAnalysis.md`.
+- NEVER pip install. NEVER commit red. Conventional commits, no assistant names. Never commit: `PLAN_FIXES_FOR_CLAUDE.md`, `docs/research/DeepResearch_Loihi_SpikingSSM.md`, `docs/research/Katana_Migration_GapAnalysis.md`.
 - Exit gate (roadmap Stage-12 row): Hydra-selected PureSSM overfits one real batch ≥3× loss reduction, no NaN; integration tests green; full suite green.
 
 ## File Structure
@@ -355,12 +355,12 @@ git commit -m "feat(stage12): PureSSM overfit smoke PASS — <reduction>x loss r
 ### Task 4: Stage close-out
 
 **Files:**
-- Modify: `CLAUDE.md` (Stage-12 status appended to the Stage-11 sentence in Next Immediate Steps item 1), `docs/Stage11_build_notes.md` untouched — create `docs/Stage12_integration_notes.md` (short: what was wired, smoke numbers, curve reference)
+- Modify: `CLAUDE.md` (Stage-12 status appended to the Stage-11 sentence in Next Immediate Steps item 1), `docs/notes/Stage11_build_notes.md` untouched — create `docs/notes/Stage12_integration_notes.md` (short: what was wired, smoke numbers, curve reference)
 - Run: `graphify update .`
 
 - [ ] **Step 1:** Full suite: `$PY -m pytest code/event_ssm/tests/ -q` → everything green (87 pre-existing + 5 new = 92 expected, 1 gpu-deselected).
-- [ ] **Step 2:** Write `docs/Stage12_integration_notes.md` (½ page: dispatch mechanism, config pair paths, symlink record pointer, smoke reduction number + PNG path, any deviations).
-- [ ] **Step 3:** CLAUDE.md: append to the Stage-11 status sentence: `" **Stage 12 (integration+smoke) COMPLETE (<date>):** PureSSM selectable via model=rnndet +experiment/gen1=puressm; overfit smoke <reduction>x PASS; notes docs/Stage12_integration_notes.md."` Also update the test-count line `87 pass` → `92 pass`.
+- [ ] **Step 2:** Write `docs/notes/Stage12_integration_notes.md` (½ page: dispatch mechanism, config pair paths, symlink record pointer, smoke reduction number + PNG path, any deviations).
+- [ ] **Step 3:** CLAUDE.md: append to the Stage-11 status sentence: `" **Stage 12 (integration+smoke) COMPLETE (<date>):** PureSSM selectable via model=rnndet +experiment/gen1=puressm; overfit smoke <reduction>x PASS; notes docs/notes/Stage12_integration_notes.md."` Also update the test-count line `87 pass` → `92 pass`.
 - [ ] **Step 4:** `graphify update .`
 - [ ] **Step 5:** Commit: `docs(stage12): close-out — integration notes, status, suite 92 green`
 - [ ] **Step 6:** Final whole-branch review (controller dispatches; superpowers:requesting-code-review template) → fix wave if needed → superpowers:verification-before-completion → merge to main per user instruction (superpowers:finishing-a-development-branch).

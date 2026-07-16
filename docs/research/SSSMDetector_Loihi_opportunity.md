@@ -131,7 +131,7 @@ Doing **all four models fully benchmarked** in 10 weeks is ambitious but not imp
 
 > **BibTeX note (per thesis standards):** author lists for [4], [5], [6] should be verified and completed from the arXiv records before entry into the thesis `.bib` (avoid `and others`; protect acronyms in titles, e.g. `{StereoSpike}`, `{SNN}`, `{Loihi}`).
 >
-> **Full reference library:** `docs/spiking_ssm_references.md` (all session papers, full titles/authors/arXiv IDs/code). **Technical deep-dive + math:** `docs/Spiking_PureSSM_litreview_deepdive.md`.
+> **Full reference library:** `docs/research/spiking_ssm_references.md` (all session papers, full titles/authors/arXiv IDs/code). **Technical deep-dive + math:** `docs/research/Spiking_PureSSM_litreview_deepdive.md`.
 
 ---
 
@@ -172,4 +172,4 @@ SSSMDetector could be a standalone thesis (a strength — it signals independent
 >
 > [Benas]
 
-*(Adapt freely — see `docs/Spiking_PureSSM_litreview_deepdive.md` and `docs/spiking_ssm_references.md` for the backing detail to attach or cite.)*
+*(Adapt freely — see `docs/research/Spiking_PureSSM_litreview_deepdive.md` and `docs/research/spiking_ssm_references.md` for the backing detail to attach or cite.)*

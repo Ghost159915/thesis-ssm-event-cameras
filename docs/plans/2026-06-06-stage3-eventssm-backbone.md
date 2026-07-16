@@ -8,7 +8,7 @@
 
 **Tech Stack:** PyTorch 2.11+cu128, torchvision ResNet-18, `mamba-ssm==2.3.2.post1` + `causal-conv1d==1.6.2.post1` (Blackwell sm_120), pytest, matplotlib (proof figures). Env: conda `events_signals`.
 
-**Authoritative specs:** `docs/superpowers/specs/2026-06-06-stage3-eventssm-backbone-design.md`, `architecture_blueprint.md` (rev.2), `yolox_head_interface.md`, `codebase_audit.md`.
+**Authoritative specs:** `docs/specs/2026-06-06-stage3-eventssm-backbone-design.md`, `architecture_blueprint.md` (rev.2), `yolox_head_interface.md`, `codebase_audit.md`.
 
 **Conventions for every task:**
 - Python interpreter / pytest: `PY=/home/ghost/miniforge3/envs/events_signals/bin/python` ; run tests with `$PY -m pytest`.

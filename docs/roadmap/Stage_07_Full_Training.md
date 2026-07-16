@@ -6,7 +6,7 @@
 > **As-built note (2026-06-17):** the standalone `train.py --config gen1_full.yaml` / epoch-based
 > design described below is **legacy**. The as-built path reuses RVT's `train.py` UNMODIFIED via the
 > `code/event_ssm/scripts/stage7_midrun_local.sh` launcher (step-based OneCycle, Hydra config) — see
-> `docs/superpowers/specs/2026-06-17-local-midrun-design.md` and
+> `docs/specs/2026-06-17-local-midrun-design.md` and
 > `code/event_ssm/scripts/STAGE7_MIDRUN_RUN.md`. The local card is for the *mid-run* signal; the full
 > 400k-step run is destined for Katana. This doc is retained for the protocol rationale
 > (hyperparameters, expected-mAP ranges, checkpoint strategy) only.

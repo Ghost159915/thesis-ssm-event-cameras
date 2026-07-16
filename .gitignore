@@ -81,3 +81,6 @@ graphify-out/
 
 # never-commit scratch (planning notes for Claude)
 PLAN_FIXES_FOR_CLAUDE.md
+
+# research-paper PDFs (bulk; organisation lives on disk, cited via thesis/latex/references.bib)
+thesis/references/papers/

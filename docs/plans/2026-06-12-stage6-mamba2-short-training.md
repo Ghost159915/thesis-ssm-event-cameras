@@ -8,7 +8,7 @@
 
 **Tech Stack:** PyTorch, `mamba-ssm==2.3.2.post1` (`Mamba2`, `mamba_chunk_scan_combined`), `causal_conv1d`, einops, the reused RVT (`external/ssms_event_cameras/RVT`) PAFPN/YOLOX/Lightning stack, Hydra, Prophesee Gen1, RTX 5070 Ti (`events_signals` env), Katana SLURM.
 
-**Spec:** `docs/superpowers/specs/2026-06-12-stage6-mamba2-short-training-design.md`.
+**Spec:** `docs/specs/2026-06-12-stage6-mamba2-short-training-design.md`.
 
 **Env / test invocation (all tasks):**
 ```bash

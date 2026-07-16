@@ -294,7 +294,7 @@ night/overexposure, so PEOD fills a real gap.
 | **Next** | **1Mpx augmentation (resolution × robustness study)** | ▶ planned |
 | Later | PEOD conditions leg · eTraM domain-shift · Loihi spiking fork | ○ optional |
 
-**Source docs:** Stage 8 `docs/Stage8_results_comparison.md` · Stage 9 `docs/Stage9_TwoRegime_Results.md`
+**Source docs:** Stage 8 `docs/results/Stage8_results_comparison.md` · Stage 9 `docs/results/Stage9_TwoRegime_Results.md`
 (+ `Stage9_Zubic_methodology_verdict.md`) · Stage 10 (efficiency harness) · Stage 15
-`docs/Stage15_results_comparison.md` · Stage 16 `docs/Stage16_results.md` · dataset/resolution research
+`docs/results/Stage15_results_comparison.md` · Stage 16 `docs/results/Stage16_results.md` · dataset/resolution research
 `docs/research/`.

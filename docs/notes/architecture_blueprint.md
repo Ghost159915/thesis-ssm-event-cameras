@@ -122,4 +122,4 @@ Comparable to S5-RVT/RVT-B (~18.5M, MaxViT). Efficiency claim = architecture (co
 - [x] Interface contracts (backbone `get_stage_dims/strides`, Mamba, PAFPN, head)
 - [x] Even-dim padding confirms no odd-dimension FPN issue
 - [x] Candidate cells 1680 confirmed
-- [ ] Figure regenerated to interleaved layout & exported to `Thesis_Plan/architecture_blueprint.pdf`
+- [ ] Figure regenerated to interleaved layout & exported to `thesis/diagrams/architecture_blueprint.pdf`

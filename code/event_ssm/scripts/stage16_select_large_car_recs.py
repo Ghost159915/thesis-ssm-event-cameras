@@ -2,7 +2,7 @@
 """Stage-16 Slice D — select large-car test recordings for GT-vs-prediction qualitative viz.
 
 The Stage-8 headline gap is almost entirely large-object (EventSSM AP_L -6.0 vs baseline;
-AP_S/AP_M near parity — see docs/Stage8_results_comparison.md). This selector finds the Gen1
+AP_S/AP_M near parity — see docs/results/Stage8_results_comparison.md). This selector finds the Gen1
 test recordings that best exercise that failure mode: sequences with the most "large car"
 GT instances, so the qualitative figure shows exactly the class/scale the AP_L number is about.
 

@@ -314,7 +314,7 @@ here — errata ISSUE-03.)
 
 - Annotated architecture diagram (all shapes labelled)
 - Interface contract table
-- Saved to `Thesis_Plan/architecture_blueprint.pdf`
+- Saved to `thesis/diagrams/architecture_blueprint.pdf`
 
 ## Success Criteria
 

@@ -61,7 +61,7 @@ PureSSM probe estimates (Stage 11, un-benchmarked): eager 39.5 Hz; fixed-state g
 - Create: `code/event_ssm/scripts/stage16_select_large_car_recs.py` (rank test recs by large-car area)
 - Modify: `code/event_ssm/scripts/stage9_render_event_video.py` (overlay predicted boxes + `track_id` smoothing)
 - Create: `code/event_ssm/scripts/stage16_render_gt_vs_pred.sh` (driver → videos + contact sheet)
-- Create: `docs/Stage16_results.md` (efficiency + robustness tables, graph column, visual links)
+- Create: `docs/results/Stage16_results.md` (efficiency + robustness tables, graph column, visual links)
 
 ---
 
@@ -195,7 +195,7 @@ Expected: `bench_results_smoke.json` with a `models.puressm` block containing `p
 bash code/event_ssm/scripts/stage10_run_local.sh --models all
 python code/event_ssm/scripts/stage10_report.py
 ```
-Expected: `results/stage10/bench_results.json` with all three models; report prints a 3-model latency/energy/FLOPs/state table. Record PureSSM's p50 ms / Hz / J-per-frame / state-KB for `docs/Stage16_results.md`.
+Expected: `results/stage10/bench_results.json` with all three models; report prints a 3-model latency/energy/FLOPs/state table. Record PureSSM's p50 ms / Hz / J-per-frame / state-KB for `docs/results/Stage16_results.md`.
 
 ---
 
@@ -465,7 +465,7 @@ Expected: JSON has `latency.graph` for eventssm+puressm; report shows the labele
 conda run -n events_signals python -c "import eventcv as ecv; d = ecv.load('data/gen1_stage9/_vidprobe/17-04-04_11-00-13_cut_15_122500000_182500000_td.dat'); print(type(d))"
 ```
 Expected: prints a numpy-backed object; no torch/cuda import errors. Confirm `python -c "import torch; print(torch.__version__)"` still prints `2.11.0+cu128` (install did not disturb the stack).
-- [ ] **Step 3: Commit a note** (no code yet) — record the install in `docs/Stage16_results.md` (created in Task 12).
+- [ ] **Step 3: Commit a note** (no code yet) — record the install in `docs/results/Stage16_results.md` (created in Task 12).
 
 ### Task 10: Per-frame prediction dump (both models)
 
@@ -504,15 +504,15 @@ Expected: `results/stage16/preds/{eventssm,puressm}/*.npy`. (Exact env/arg wirin
 **Files:**
 - Modify: `code/event_ssm/scripts/stage9_render_event_video.py` (add `--pred` overlay + `track_id` hold-smoothing)
 - Create: `code/event_ssm/scripts/stage16_render_gt_vs_pred.sh`
-- Create: `docs/Stage16_results.md`
+- Create: `docs/results/Stage16_results.md`
 
 - [ ] **Step 1: Extend the renderer** — add `--pred PATH` (loads a Task-10 `.npy` prediction array; overlays predicted boxes in a distinct style, e.g. dashed / different colour, with confidence text) alongside the existing `--boxes` GT overlay; add `--smooth` (hold each GT/pred box by `track_id` between the 4 Hz label updates so boxes track objects without flicker — the first deferred TODO). Keep existing GT-only behaviour when `--pred` absent.
 - [ ] **Step 2: Test the box-hold logic on CPU** (`tests/test_render_smoothing.py`): given sparse per-`track_id` boxes, assert the hold fills intermediate frames up to the 250 ms window. Run pytest → PASS.
 - [ ] **Step 3: Write the driver `stage16_render_gt_vs_pred.sh`** — for each recording in `results/stage16/large_car_recs.txt`, call the renderer with the raw `.dat.h5` + GT `_bbox.npy` + both models' pred `.npy`, `--montage`, output to `results/stage16/`. Produces a GT-vs-pred `.mp4` per rec + an 8-frame contact-sheet `.png` per rec.
 - [ ] **Step 4: USER runs the renderer** (CPU/GPU-light — cv2 only, no model): `bash code/event_ssm/scripts/stage16_render_gt_vs_pred.sh` → `results/stage16/*_gt_vs_pred.mp4` + `*_montage.png` for the ≥10 large-car recs.
 - [ ] **Step 5: Assemble a large-car contact sheet** — stitch the per-rec montages into one `results/stage16/large_car_contact_sheet.png` (extend the existing `--montage` hstack/vstack mechanism, or a small stitch step in the driver).
-- [ ] **Step 6: Write `docs/Stage16_results.md`** — the efficiency table (Slice A + the graph column from Slice C), the two-regime robustness table + curves (Slice B), and links to the EventCV videos/contact sheet, each with a one-paragraph interpretation vs EventSSM/baseline. Mirror the structure of `docs/Stage15_results_comparison.md`.
-- [ ] **Step 7: Commit** — `git add code/event_ssm/scripts/stage9_render_event_video.py code/event_ssm/scripts/stage16_render_gt_vs_pred.sh docs/Stage16_results.md code/event_ssm/tests/test_render_smoothing.py results/stage16/ && git commit -m "feat(stage16): GT-vs-pred large-car visuals + Stage-16 results doc"`
+- [ ] **Step 6: Write `docs/results/Stage16_results.md`** — the efficiency table (Slice A + the graph column from Slice C), the two-regime robustness table + curves (Slice B), and links to the EventCV videos/contact sheet, each with a one-paragraph interpretation vs EventSSM/baseline. Mirror the structure of `docs/results/Stage15_results_comparison.md`.
+- [ ] **Step 7: Commit** — `git add code/event_ssm/scripts/stage9_render_event_video.py code/event_ssm/scripts/stage16_render_gt_vs_pred.sh docs/results/Stage16_results.md code/event_ssm/tests/test_render_smoothing.py results/stage16/ && git commit -m "feat(stage16): GT-vs-pred large-car visuals + Stage-16 results doc"`
 
 ---
 
@@ -536,7 +536,7 @@ Expected: `results/stage16/preds/{eventssm,puressm}/*.npy`. (Exact env/arg wirin
 
 ## Execution Handoff
 
-Plan complete and saved to `docs/superpowers/plans/2026-07-15-stage16-pillars-visuals.md`. Two execution options:
+Plan complete and saved to `docs/plans/2026-07-15-stage16-pillars-visuals.md`. Two execution options:
 
 **1. Subagent-Driven (recommended)** — I dispatch a fresh subagent per task, review between tasks, fast iteration. Best for the many small mechanical tasks here (Slices A, B, D) with tight review on the risky Slice C.
 

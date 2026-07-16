@@ -18,8 +18,8 @@ single real batch is fundamentally broken (gradient, loss, or wiring fault). Sta
 Lightning `Module` and the **real** Hydra-composed `train` config (the same path Stage 6 will use), not
 a hand-rolled loop, so a pass here de-risks the whole training stack.
 
-Spec: `docs/superpowers/specs/2026-06-12-stage5-smoke-design.md`.
-Plan: `docs/superpowers/plans/2026-06-12-stage5-smoke.md` (6 tasks).
+Spec: `docs/specs/2026-06-12-stage5-smoke-design.md`.
+Plan: `docs/plans/2026-06-12-stage5-smoke.md` (6 tasks).
 
 ---
 
@@ -40,7 +40,7 @@ Plan: `docs/superpowers/plans/2026-06-12-stage5-smoke.md` (6 tasks).
 | File | Change |
 |---|---|
 | `code/event_ssm/integration/register.py` | Refactored into `register_backbone_builder()` + `register_config_modifier()` + `register_resnet_mamba()`. The new config-modifier patch makes the stock (MaxViTRNN-only) `dynamically_modify_train_config` handle our backbone: sets `backbone.in_res_hw` (multiple-of-32 padding) and injects `head.num_classes`, dispatching on `name=="rnndet" and backbone=="ResNetMamba"`, falling through to `orig` otherwise. Also replicates the stock **SLURM_JOB_ID** bookkeeping (added in review) so Stage-6 SLURM runs keep `config.slurm_job_id`. |
-| `stages/Stage_05_Smoke_Testing.md` | Reconciled the stale standalone-`EventSSMDetector` plan to the as-built drop-in design: STATUS banner, a stale-vs-as-built fact table (20-ch input, `RNNStates`/`LstmStates` contract, SimOTA + IoU `1−iou²`, real `YoloXDetector`/`Module`), and a filled results table. Inline pedagogical code kept; proof scripts are authoritative. |
+| `docs/roadmap/Stage_05_Smoke_Testing.md` | Reconciled the stale standalone-`EventSSMDetector` plan to the as-built drop-in design: STATUS banner, a stale-vs-as-built fact table (20-ch input, `RNNStates`/`LstmStates` contract, SimOTA + IoU `1−iou²`, real `YoloXDetector`/`Module`), and a filled results table. Inline pedagogical code kept; proof scripts are authoritative. |
 
 ## 4. What was REMOVED
 

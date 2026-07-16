@@ -16,7 +16,7 @@ checks grad-flow / VRAM / latency. No baseline files edited.
 **Tech Stack:** PyTorch, PyTorch-Lightning, Hydra/OmegaConf, mamba-ssm (CUDA), the RVT codebase under
 `external/ssms_event_cameras/RVT`, matplotlib.
 
-**Spec:** `docs/superpowers/specs/2026-06-12-stage5-smoke-design.md`.
+**Spec:** `docs/specs/2026-06-12-stage5-smoke-design.md`.
 
 ---
 
@@ -26,7 +26,7 @@ checks grad-flow / VRAM / latency. No baseline files edited.
 - **Create** `code/event_ssm/integration/smoke_harness.py` — `setup_paths()`, `register`, `compose_smoke_config()`.
 - **Create** `code/event_ssm/proofs/smoke_overfit.py` — load-one-batch check + overfit + loss curve.
 - **Create** `code/event_ssm/proofs/smoke_health.py` — grad-flow + VRAM sweep + eval-step latency.
-- **Modify** `stages/Stage_05_Smoke_Testing.md` — reconcile to the drop-in design.
+- **Modify** `docs/roadmap/Stage_05_Smoke_Testing.md` — reconcile to the drop-in design.
 - **Output** `results/smoke_test/{overfit_loss_curve.png, smoke_results.md}`.
 
 ---
@@ -401,7 +401,7 @@ git commit -m "feat(stage5): health probes (grad-flow + VRAM sweep + eval-step l
 
 ## Task 5: Reconcile the Stage 5 doc
 
-**Files:** Modify `stages/Stage_05_Smoke_Testing.md`
+**Files:** Modify `docs/roadmap/Stage_05_Smoke_Testing.md`
 
 - [ ] **Step 1: Replace the stale sections** — change the standalone-`EventSSMDetector` framing to the
   drop-in design: input is **20-channel** stacked histogram (not 10); state via the **`LstmStates`** contract
@@ -414,7 +414,7 @@ git commit -m "feat(stage5): health probes (grad-flow + VRAM sweep + eval-step l
 
 ```bash
 cd /home/ghost/Desktop/thesis-ssm-event-cameras
-git add stages/Stage_05_Smoke_Testing.md
+git add docs/roadmap/Stage_05_Smoke_Testing.md
 git commit -m "docs(stage5): reconcile smoke-testing doc to the drop-in design (20-ch, LstmStates, SimOTA)"
 ```
 

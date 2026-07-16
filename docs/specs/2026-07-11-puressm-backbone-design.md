@@ -155,7 +155,7 @@ Visual proof: `results/stage16/` videos + a contact-sheet figure of large-car ca
 | **15 — Evaluation** | 8 | Gen1 test AP + size-stratified + per-class; interpretation via §1 bands; trained ERF | Results table + verdict vs pre-registered bands |
 | **16 — Pillars + visuals** | 9+10 | Stage-9 two-regime re-eval row; Stage-10 bench re-run row (MAMBA_STEP_SCALE unset; ~5 min); U6 EventCV unit; upgrade-lever decision (cross-scan stages 3–4) if headroom and accuracy warrants | Three pillar artifacts + videos/figures shipped |
 
-Each stage gets its own plan in `docs/superpowers/plans/` (subagent-driven development), written when the stage starts; Stage 11's plan is written now.
+Each stage gets its own plan in `docs/plans/` (subagent-driven development), written when the stage starts; Stage 11's plan is written now.
 
 ---
 

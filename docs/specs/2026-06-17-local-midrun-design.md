@@ -121,7 +121,7 @@ from where it stopped.
   launch, knobs table, resume one-liner, artifact locations, and the monitoring checklist
   (total loss + cls/obj/iou sub-losses, OneCycle LR, grad-norm, peak VRAM, it/s, the rough
   val-mAP curve). Per terminal policy: **the user runs it**; paste results back for curve plots.
-- One-line "as-built path" header on `stages/Stage_07_Full_Training.md` flagging that its standalone
+- One-line "as-built path" header on `docs/roadmap/Stage_07_Full_Training.md` flagging that its standalone
   `train.py --config gen1_full.yaml` / epochs design is legacy; the as-built path is the drop-in RVT
   launcher described here.
 

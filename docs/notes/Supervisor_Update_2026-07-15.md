@@ -80,4 +80,4 @@ The whole design is a **controlled ablation**: every model is a *spatial* block 
 
 ---
 
-*Supporting detail if useful: `docs/Stage15_results_comparison.md` (accuracy + receptive-field figure), `docs/Stage8_results_comparison.md` (EventSSM), Stage-9 robustness and Stage-10 efficiency docs. All results reproducible via the `code/event_ssm/scripts/stage*_*.sh` runners.*
+*Supporting detail if useful: `docs/results/Stage15_results_comparison.md` (accuracy + receptive-field figure), `docs/results/Stage8_results_comparison.md` (EventSSM), Stage-9 robustness and Stage-10 efficiency docs. All results reproducible via the `code/event_ssm/scripts/stage*_*.sh` runners.*

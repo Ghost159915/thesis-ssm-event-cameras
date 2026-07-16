@@ -3,7 +3,7 @@
 
 **Thesis B | MMAN4952 | UNSW Sydney | Benas Vaiciulis** · **Date:** 2026-06-18
 
-> **Purpose.** A rigorous review + design pathway for turning **PureSSMDetector** (pure-SSM spatial + Mamba temporal) into a **spiking** detector ("Spiking-PureSSMDetector" / **SSSMDetector**) deployable on neuromorphic hardware (Intel Loihi). Covers (i) the formal SSM↔SNN mathematical matching, (ii) the structured-spiking-SSM literature, (iii) the event-SNN-detection literature, (iv) the novelty gap, (v) a concrete implementation roadmap from where we are now. Companion to `docs/SSSMDetector_Loihi_opportunity.md`.
+> **Purpose.** A rigorous review + design pathway for turning **PureSSMDetector** (pure-SSM spatial + Mamba temporal) into a **spiking** detector ("Spiking-PureSSMDetector" / **SSSMDetector**) deployable on neuromorphic hardware (Intel Loihi). Covers (i) the formal SSM↔SNN mathematical matching, (ii) the structured-spiking-SSM literature, (iii) the event-SNN-detection literature, (iv) the novelty gap, (v) a concrete implementation roadmap from where we are now. Companion to `docs/research/SSSMDetector_Loihi_opportunity.md`.
 
 ---
 

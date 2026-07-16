@@ -1,6 +1,6 @@
 # Stage 9 — Temporal Generalisation: Two-Regime Results (chapter draft)
 
-**Status:** results final (2026-07-11) · 19 evaluations · figures: `results/stage9/stage9_degradation_curve.{png,pdf}`, `results/stage9/stage9_truerate_curve.{png,pdf}` · tables: `degradation_table.csv`, `truerate_table.csv` · method provenance: `docs/Stage9_Zubic_methodology_verdict.md` (incl. Addenda 1–2)
+**Status:** results final (2026-07-11) · 19 evaluations · figures: `results/stage9/stage9_degradation_curve.{png,pdf}`, `results/stage9/stage9_truerate_curve.{png,pdf}` · tables: `degradation_table.csv`, `truerate_table.csv` · method provenance: `docs/notes/Stage9_Zubic_methodology_verdict.md` (incl. Addenda 1–2)
 
 ---
 
@@ -131,4 +131,4 @@ compensation only — training-time rate augmentation is untested and remains pl
 - Figure (regime 1): degradation + falsified probes — `stage9_degradation_curve.pdf`
 - Figure (regime 2): four measured curves against both published reference points — `stage9_truerate_curve.pdf`
 - Tables: `degradation_table.csv`, `truerate_table.csv`
-- Method/patch provenance: `docs/patches/README.md`; full audit trail in `docs/Stage9_Zubic_methodology_verdict.md`
+- Method/patch provenance: `docs/patches/README.md`; full audit trail in `docs/notes/Stage9_Zubic_methodology_verdict.md`

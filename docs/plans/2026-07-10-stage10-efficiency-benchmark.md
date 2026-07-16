@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build the Stage-10 efficiency-benchmark harness (spec: `docs/superpowers/specs/2026-07-10-stage10-efficiency-design.md`): a one-shot GPU orchestrator that measures params/FLOPs/latency/VRAM/energy for EventSSMDetector and the S5-RVT baseline into one JSON, plus a CPU reporter that renders the efficiency table and two figures.
+**Goal:** Build the Stage-10 efficiency-benchmark harness (spec: `docs/specs/2026-07-10-stage10-efficiency-design.md`): a one-shot GPU orchestrator that measures params/FLOPs/latency/VRAM/energy for EventSSMDetector and the S5-RVT baseline into one JSON, plus a CPU reporter that renders the efficiency table and two figures.
 
 **Architecture:** Measure/report split. `code/event_ssm/benchmark/` holds construction (`bench_models.py`) and measurement primitives (`bench_metrics.py`); `code/event_ssm/scripts/` holds the GPU orchestrator, CPU reporter, and guarded launcher. Data flows one way: models+clip → measurements → `results/stage10/bench_results.json` → tables/figures.
 

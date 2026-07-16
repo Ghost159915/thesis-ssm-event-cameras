@@ -5,7 +5,7 @@
 > every task independently reviewed; 60 tests). Citable run sha `561554b`: ours 14.25 ms p50 / 70 Hz
 > vs baseline 19.67 ms / 51 Hz; 0.40 vs 0.73 J/frame; state 144 MB vs 4.7 MB/stream (31x).
 > **Authoritative artefacts:** `results/stage10/efficiency_table.md` + figures;
-> runbook `code/event_ssm/scripts/STAGE10_RUN_CHECKLIST.md`; spec/plan in `docs/superpowers/`.
+> runbook `code/event_ssm/scripts/STAGE10_RUN_CHECKLIST.md`; spec/plan in `docs/{plans,specs}/`.
 > Notes vs this plan doc: input is 20-ch (not 10); the code sketches below reference a superseded
 > standalone class; the "1000x attention FLOPs" claim is wrong (MaxViT windowed attention is linear)
 > and measured reality is nuanced: ours has MORE GFLOPs yet is faster (utilization), mAP/GFLOP favors

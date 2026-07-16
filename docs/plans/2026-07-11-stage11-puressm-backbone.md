@@ -8,7 +8,7 @@
 
 **Tech Stack:** PyTorch 2.11.0+cu128 (Blackwell sm_120), mamba-ssm 2.3.2.post1 (`mamba_chunk_scan_combined`, `RMSNormGated`), causal-conv1d 1.6.2.post1, einops 0.8.2, pytest, matplotlib.
 
-**Authoritative spec:** `docs/superpowers/specs/2026-07-11-puressm-backbone-design.md`
+**Authoritative spec:** `docs/specs/2026-07-11-puressm-backbone-design.md`
 
 ## Global Constraints
 
@@ -1030,7 +1030,7 @@ git commit -m "feat(stage11): U5 untrained ERF figure — BiMamba global support
 ### Task 8: Stage close-out
 
 **Files:**
-- Create: `docs/Stage11_build_notes.md`
+- Create: `docs/notes/Stage11_build_notes.md`
 - Modify: `CLAUDE.md` (status bullet), `graphify-out/` (via `graphify update .`)
 
 - [ ] **Step 1: Full suite + proofs inventory**
@@ -1038,7 +1038,7 @@ git commit -m "feat(stage11): U5 untrained ERF figure — BiMamba global support
 Run: `$PY -m pytest code/event_ssm/tests/ -v`
 Expected: everything passes (pre-existing 60 + ~13 new). Then `ls code/event_ssm/proofs/out/ | grep -E "u[1235]"` — expect the 5 Stage-11 artifacts.
 
-- [ ] **Step 2: Write `docs/Stage11_build_notes.md`** — probe numbers, final depths/params, any non-obvious fixes made during the tasks (document-changes convention), links to the four proof artifacts.
+- [ ] **Step 2: Write `docs/notes/Stage11_build_notes.md`** — probe numbers, final depths/params, any non-obvious fixes made during the tasks (document-changes convention), links to the four proof artifacts.
 
 - [ ] **Step 3: Run `graphify update .`** (keep the knowledge graph current per repo rules).
 
@@ -1049,7 +1049,7 @@ Use superpowers:requesting-code-review (fresh-eyes review of the branch diff), t
 - [ ] **Step 5: Commit close-out**
 
 ```bash
-git add docs/Stage11_build_notes.md CLAUDE.md graphify-out/
+git add docs/notes/Stage11_build_notes.md CLAUDE.md graphify-out/
 git commit -m "docs(stage11): build notes, probe numbers, status update — Stage 11 complete"
 ```
 
