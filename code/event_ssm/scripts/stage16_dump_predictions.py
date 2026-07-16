@@ -42,6 +42,7 @@ sys.path.insert(0, str(REPO / "code"))          # event_ssm.*
 sys.path.insert(0, str(REPO / "external/ssms_event_cameras/RVT"))  # models.*, config.* (bench_models needs them)
 
 from event_ssm.benchmark.bench_models import build_model  # noqa: E402
+from event_ssm.benchmark.bench_clip import PAD_H, PAD_W, pad_to_network_shape  # noqa: E402
 
 EVR_REL = "event_representations_v2/stacked_histogram_dt=50_nbins=10"
 TEST_ROOT = REPO / "data/gen1_raw/gen1/test"
@@ -50,7 +51,6 @@ DEFAULT_RECS_FILE = REPO / "results/stage16/large_car_recs.txt"
 
 # Stage-16 pred schema (shared with the renderer's --pred loader): one record per input frame.
 PRED_DTYPE = [("t_us", "<i8"), ("boxes", "O")]  # boxes: float32 (N, 6) = x, y, w, h, class_id, conf
-PAD_H, PAD_W = 256, 320  # zero-padded network input (matches bench_clip.py / the RVT eval feed)
 
 
 def iter_rec_frames(rec: str, device: torch.device, root: Path = TEST_ROOT):
@@ -71,12 +71,18 @@ def iter_rec_frames(rec: str, device: torch.device, root: Path = TEST_ROOT):
     with h5py.File(d / "event_representations.h5", "r") as f:
         key = "data" if "data" in f else list(f.keys())[0]
         dset = f[key]                                      # (n, 20, 240, 304) uint8, lazy on disk
-        n, c, h, w = dset.shape
+        n, c, _, _ = dset.shape          # h, w no longer needed locally -- pad_to_network_shape reads them off src
         assert len(t_us) == n, f"{rec}: {len(t_us)} timestamps vs {n} frames"
         buf = torch.zeros(1, c, PAD_H, PAD_W, device=device)   # reused padded (B=1) input buffer
         for i in range(n):
-            buf.zero_()
-            buf[0, :, :h, :w] = torch.from_numpy(np.asarray(dset[i], dtype=np.float32)).to(device)
+            # No buf.zero_() here: the content region [:h, :w] below is fully overwritten every
+            # frame and the pad margin is never written, so it stays zero from the initial
+            # torch.zeros() above (Minor-9). pad_to_network_shape (bench_clip.py) is the same
+            # top-left zero-pad load_bench_clip uses for its whole-clip batch (Minor-7, DRY);
+            # buf[0] is a view into buf's storage so this stays the same reused, allocation-free
+            # buffer across frames.
+            frame_i = torch.from_numpy(np.asarray(dset[i], dtype=np.float32)).to(device)
+            pad_to_network_shape(buf[0], frame_i)
             yield int(t_us[i]), buf
 
 
