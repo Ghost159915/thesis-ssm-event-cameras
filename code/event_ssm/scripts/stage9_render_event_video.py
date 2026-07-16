@@ -217,7 +217,7 @@ def main() -> None:
 
     montage_frames = []
     montage_idx = set(np.linspace(0, n_frames - 1, 8).astype(int).tolist()) if args.montage else set()
-    for i, (idx, t0_us, t1_us, n_ev, img) in enumerate(frames):
+    for i, (_, t0_us, _, n_ev, img) in enumerate(frames):
         if gt_held is not None:
             for bb in gt_held[i].values():
                 col, lbl = CLS.get(int(bb["class_id"]), ((90, 90, 90), "?"))
@@ -236,7 +236,17 @@ def main() -> None:
     print(f"[render] wrote {out}  ({out.stat().st_size / 1e6:.1f} MB)", flush=True)
 
     if args.montage and montage_frames:
-        rows = [np.hstack(montage_frames[k:k + 4]) for k in range(0, len(montage_frames), 4)]
+        # Minor-6: montage_idx can yield fewer than 8 unique frames on short clips (linspace
+        # dedup via `set()`), so the last row is not always a full 4 wide -- np.vstack then raises
+        # a width-mismatch ValueError. Pad the final row with blank frames to 4 columns before
+        # stacking; the .mp4 write above already happened and is unaffected by this padding.
+        blank = np.zeros_like(montage_frames[0])
+        rows = []
+        for k in range(0, len(montage_frames), 4):
+            chunk = montage_frames[k:k + 4]
+            if len(chunk) < 4:
+                chunk = chunk + [blank] * (4 - len(chunk))
+            rows.append(np.hstack(chunk))
         sheet = np.vstack(rows)
         mp = out.with_name(out.stem + "_montage.png")
         cv2.imwrite(str(mp), sheet)
