@@ -154,7 +154,7 @@ fi
 # 6. Repo dependency lock (everything except torch -- --no-deps so it can never clobber cu128 torch;
 #    see the events_signals --no-deps rule: a plain `pip install` here has upgraded torch/CUDA before)
 # -----------------------------------------------------------------------------
-LOCK_FILE="$REPO/requirements_5070ti_lock.txt"
+LOCK_FILE="$REPO/env/requirements_5070ti_lock.txt"
 LOCK_STAMP="$CONDA_PREFIX/.stage13_lock_installed"
 if [[ ! -f "$LOCK_STAMP" ]]; then
   # The lock is a full `pip freeze` of the local events_signals env, which carries non-PyPI packages
