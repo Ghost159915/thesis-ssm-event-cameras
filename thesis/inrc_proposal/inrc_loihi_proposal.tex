@@ -67,7 +67,9 @@ The case is specific, not generic --- three measured properties of our detector 
   \item \textbf{Event sparsity is wasted on a GPU but rewarded on Loihi 2.} We measured that our model's sparse,
   event-driven input gives \emph{no} speed-up on GPU --- dense kernels process idle pixels anyway. On Loihi 2's
   event-driven substrate, idle pixels cost no energy, so the sparsity we cannot exploit on a GPU becomes a direct
-  advantage. This is the clearest reason the same network is better served by neuromorphic hardware.
+  advantage --- indeed, the foundational 1\,Mpx event-detection paper names neuromorphic hardware as precisely the
+  route to exploit the sparsity its own dense pipeline wastes~[4]. This is the clearest reason the same network is
+  better served by neuromorphic hardware.
   \item \textbf{Rate-robustness $+$ leanness suit the flight envelope.} PureSSM keeps $69.7\%$ of its accuracy under
   a true $10\times$ event-rate change, so a \emph{single} deployed network handles the variable event rates of flight
   without retraining. Combined with its leanness and event-driven execution, this is what brings a GPU cost of
@@ -108,6 +110,8 @@ and an open Lava implementation.
 [1] S.\,M. Meyer \emph{et al.}, ``A Diagonal Structured State Space Model on Loihi 2 for Efficient Streaming Sequence
 Processing,'' \emph{IEEE NICE}, 2025 (arXiv:2409.15022).\hspace{0.6em}
 [2] N. Zubi\'c \emph{et al.}, ``State Space Models for Event Cameras,'' \emph{CVPR}, 2024.\hspace{0.6em}
-[3] M. Davies \emph{et al.}, ``Advancing Neuromorphic Computing with Loihi,'' \emph{Proc. IEEE}, 2021.\par}
+[3] M. Davies \emph{et al.}, ``Advancing Neuromorphic Computing with Loihi,'' \emph{Proc. IEEE}, 2021.\hspace{0.6em}
+[4] E. Perot, P. de Tournemire, D. Nitti, J. Masci, and A. Sironi, ``Learning to Detect Objects with a 1 Megapixel
+Event Camera,'' \emph{NeurIPS}, 2020.\par}
 
 \end{document}
