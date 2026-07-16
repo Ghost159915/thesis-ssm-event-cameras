@@ -32,3 +32,8 @@ def test_state_carrying_replay_matches_eager():
     torch.testing.assert_close(graphed[0], eager[0], rtol=5e-2, atol=5e-2)
     # ... and outputs must DIFFER across steps => state is genuinely carried, not frozen at capture.
     assert not torch.allclose(graphed[0], graphed[1])
+    # ... and EVERY replayed step must match the eager reference at that same step -- not just
+    # step 0. A broken/absent state-carry (e.g. the graph silently replaying from a frozen or
+    # zeroed state every call) would still satisfy the two checks above but diverge here.
+    for k in range(len(frames)):
+        torch.testing.assert_close(graphed[k], eager[k], rtol=5e-2, atol=5e-2)
