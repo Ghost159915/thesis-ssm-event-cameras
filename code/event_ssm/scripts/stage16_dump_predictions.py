@@ -66,6 +66,8 @@ def iter_rec_frames(rec: str, device: torch.device, root: Path = TEST_ROOT):
     import h5py, hdf5plugin  # noqa: F401  (registers the blosc filter for h5py)
     d = root / rec / EVR_REL
     t_us = np.load(d / "timestamps_us.npy").astype(np.int64)
+    if t_us.ndim == 2:      # Gen1 stores (n, 2) = [t_start, t_end] per frame; the window START aligns
+        t_us = t_us[:, 0]   # 1:1 with the renderer's frame grid (both recording-local, 0-based, 50 ms)
     with h5py.File(d / "event_representations.h5", "r") as f:
         key = "data" if "data" in f else list(f.keys())[0]
         dset = f[key]                                      # (n, 20, 240, 304) uint8, lazy on disk
