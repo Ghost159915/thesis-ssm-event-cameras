@@ -4,7 +4,7 @@ import torch
 
 
 def test_block_shape_row_and_col(device):
-    from event_ssm.spatial import BiMamba2DBlock
+    from event_ssm.models.puressm import BiMamba2DBlock
     torch.manual_seed(0)
     for axis in ("row", "col"):
         blk = BiMamba2DBlock(64, axis=axis).to(device)
@@ -13,7 +13,7 @@ def test_block_shape_row_and_col(device):
 
 
 def test_block_rejects_bad_axis():
-    from event_ssm.spatial import BiMamba2DBlock
+    from event_ssm.models.puressm import BiMamba2DBlock
     with pytest.raises(AssertionError):
         BiMamba2DBlock(64, axis="diag")
 
@@ -21,7 +21,7 @@ def test_block_rejects_bad_axis():
 def test_dwconv_zero_init_starts_as_identity_mix(device):
     # local-mix residual is zero-initialised -> at init the block output equals
     # the pure scan path's output (dwconv contributes exactly nothing)
-    from event_ssm.spatial import BiMamba2DBlock
+    from event_ssm.models.puressm import BiMamba2DBlock
     torch.manual_seed(0)
     blk = BiMamba2DBlock(64, axis="row").to(device)
     assert blk.dwconv.weight.abs().sum() == 0 and blk.dwconv.bias.abs().sum() == 0
@@ -33,7 +33,7 @@ def test_col_axis_mixes_along_columns(device):
     # NOTE: the perturbation must NOT be uniform across channels — the block is
     # pre-norm, and a uniform all-channel shift is in LayerNorm's null space
     # (the scan would see identical input and off-site effects would be exactly 0).
-    from event_ssm.spatial import BiMamba2DBlock
+    from event_ssm.models.puressm import BiMamba2DBlock
     torch.manual_seed(0)
     blk = BiMamba2DBlock(64, axis="col").to(device).eval()
     x = torch.randn(1, 64, 16, 20, device=device)
@@ -47,14 +47,14 @@ def test_col_axis_mixes_along_columns(device):
 
 
 def _stages(device, **kw):
-    from event_ssm.spatial import BiMambaSpatialStages
+    from event_ssm.models.puressm import BiMambaSpatialStages
     torch.manual_seed(0)
     return BiMambaSpatialStages(**kw).to(device)
 
 
 def test_duck_type_matches_resnet_spatial(device):
-    from event_ssm.backbone.resnet_spatial import ResNetSpatialStages
-    from event_ssm.spatial import BiMambaSpatialStages
+    from event_ssm.models.eventssm.resnet_spatial import ResNetSpatialStages
+    from event_ssm.models.puressm import BiMambaSpatialStages
     assert BiMambaSpatialStages.stage_dims == ResNetSpatialStages.stage_dims
     assert BiMambaSpatialStages.strides == ResNetSpatialStages.strides
 
@@ -99,7 +99,7 @@ def test_no_batchnorm_anywhere(device):
 
 def test_backbone_accepts_injected_spatial(device):
     from event_ssm.backbone.resnet_mamba import ResNetMambaBackbone
-    from event_ssm.spatial import BiMambaSpatialStages
+    from event_ssm.models.puressm import BiMambaSpatialStages
     torch.manual_seed(0)
     bb = ResNetMambaBackbone(spatial=BiMambaSpatialStages()).to(device)
     x = torch.randn(2, 1, 20, 256, 320, device=device)     # (L=2, B=1)
@@ -119,7 +119,7 @@ def test_backbone_accepts_injected_spatial(device):
 
 def test_backbone_state_carry_streaming(device):
     from event_ssm.backbone.resnet_mamba import ResNetMambaBackbone
-    from event_ssm.spatial import BiMambaSpatialStages
+    from event_ssm.models.puressm import BiMambaSpatialStages
     torch.manual_seed(0)
     bb = ResNetMambaBackbone(spatial=BiMambaSpatialStages()).to(device).eval()
     x = torch.randn(1, 1, 20, 256, 320, device=device)
@@ -132,13 +132,13 @@ def test_backbone_state_carry_streaming(device):
 def test_default_backbone_unchanged(device):
     # regression guard: default construction still builds ResNetSpatialStages
     from event_ssm.backbone.resnet_mamba import ResNetMambaBackbone
-    from event_ssm.backbone.resnet_spatial import ResNetSpatialStages
+    from event_ssm.models.eventssm.resnet_spatial import ResNetSpatialStages
     bb = ResNetMambaBackbone(pretrained=False)
     assert isinstance(bb.spatial, ResNetSpatialStages)
 
 
 def test_checkpoint_blocks_output_and_grad_parity(device):
-    from event_ssm.spatial import BiMambaSpatialStages
+    from event_ssm.models.puressm import BiMambaSpatialStages
     torch.manual_seed(0)
     m = BiMambaSpatialStages(drop_path_rate=0.0).to(device).train()
     x = torch.randn(2, 20, 256, 320, device=device)
@@ -156,7 +156,7 @@ def test_checkpoint_blocks_output_and_grad_parity(device):
 
 
 def test_checkpoint_flag_inert_in_eval(device):
-    from event_ssm.spatial import BiMambaSpatialStages
+    from event_ssm.models.puressm import BiMambaSpatialStages
     torch.manual_seed(0)
     m = BiMambaSpatialStages().to(device).eval()
     x = torch.randn(1, 20, 256, 320, device=device)
@@ -170,7 +170,7 @@ def test_checkpoint_flag_inert_in_eval(device):
 def test_checkpoint_kwarg_engages_recompute(device):
     """Constructor kwarg is wired AND checkpointing genuinely engages (call-count spy)."""
     from unittest import mock
-    from event_ssm.spatial import BiMambaSpatialStages
+    from event_ssm.models.puressm import BiMambaSpatialStages
     torch.manual_seed(0)
     x = torch.randn(1, 20, 256, 320, device=device)
 

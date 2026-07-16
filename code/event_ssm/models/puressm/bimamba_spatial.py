@@ -1,5 +1,5 @@
 """BiMambaSpatialStages (Stage 11, spec §4): fully-pure 4-stage BiMamba pyramid.
-Duck-type drop-in for ResNetSpatialStages (backbone/resnet_spatial.py): same stage_dims,
+Duck-type drop-in for ResNetSpatialStages (models/eventssm/resnet_spatial.py): same stage_dims,
 strides, and forward contract, so ResNetMambaBackbone's temporal path, state handling,
 and the RVT wiring need zero changes. Stateless: runs on time-folded (L*B) frames.
 
@@ -10,7 +10,7 @@ import torch
 import torch.nn as nn
 import torch.utils.checkpoint
 
-from event_ssm.spatial.bimamba_block import BiMamba2DBlock, LayerNorm2d
+from event_ssm.models.puressm.bimamba_block import BiMamba2DBlock, LayerNorm2d
 
 
 class BiMambaSpatialStages(nn.Module):

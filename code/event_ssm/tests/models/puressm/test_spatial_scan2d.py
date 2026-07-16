@@ -4,7 +4,7 @@ import torch
 
 
 def _make(d_model=64, device="cuda", dtype=torch.float32):
-    from event_ssm.spatial import BiMamba1DScan
+    from event_ssm.models.puressm import BiMamba1DScan
     torch.manual_seed(0)
     return BiMamba1DScan(d_model=d_model).to(device=device, dtype=dtype)
 
@@ -180,7 +180,7 @@ def test_bf16_autocast_no_nan(device):
 
 def test_batched_path_matches_reference_directions(device):
     # the batched single-kernel forward must equal the two-call reference path
-    from event_ssm.spatial import BiMamba1DScan
+    from event_ssm.models.puressm import BiMamba1DScan
     for d_model, s in ((64, 5120), (128, 1280), (256, 320), (512, 80)):
         torch.manual_seed(0)
         m = BiMamba1DScan(d_model=d_model).to(device)
@@ -196,7 +196,7 @@ def test_batched_path_matches_reference_directions(device):
 
 
 def test_batched_path_gradients_both_directions(device):
-    from event_ssm.spatial import BiMamba1DScan
+    from event_ssm.models.puressm import BiMamba1DScan
     m = BiMamba1DScan(64).to(device)
     m(torch.randn(2, 96, 64, device=device)).square().mean().backward()
     for tag in ("fwd", "bwd"):

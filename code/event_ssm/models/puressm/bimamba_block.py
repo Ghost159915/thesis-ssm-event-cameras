@@ -4,7 +4,7 @@ axes across blocks — Mamba-ND finding). timm is absent from this env: DropPath
 import torch.nn as nn
 from einops import rearrange
 
-from event_ssm.spatial._scan2d import BiMamba1DScan
+from event_ssm.models.puressm._scan2d import BiMamba1DScan
 
 
 class DropPath(nn.Module):

@@ -1,5 +1,5 @@
 import torch, pytest
-from event_ssm.backbone.resnet_spatial import ResNetSpatialStages
+from event_ssm.models.eventssm.resnet_spatial import ResNetSpatialStages
 
 def test_shapes(device):
     m = ResNetSpatialStages(in_channels=20, pretrained=False).to(device).eval()

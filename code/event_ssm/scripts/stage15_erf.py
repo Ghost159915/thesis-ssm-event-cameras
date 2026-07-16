@@ -34,8 +34,8 @@ import torch
 
 REPO = pathlib.Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO / "code"))
-from event_ssm.backbone.resnet_spatial import ResNetSpatialStages  # noqa: E402
-from event_ssm.spatial import BiMambaSpatialStages  # noqa: E402
+from event_ssm.models.eventssm.resnet_spatial import ResNetSpatialStages  # noqa: E402
+from event_ssm.models.puressm import BiMambaSpatialStages  # noqa: E402
 
 OUT = REPO / "code" / "event_ssm" / "proofs" / "out"
 OUT.mkdir(parents=True, exist_ok=True)

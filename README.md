@@ -18,7 +18,11 @@ thesis-shaped synthesis (motivation → method → all result pillars → discus
 ## Repository map
 
 ```
-code/event_ssm/   the detector: backbone · spatial (BiMamba) · temporal (Mamba) · integration · benchmark · viz · configs · scripts · tests · proofs
+code/event_ssm/   the detector:
+  ├─ models/{eventssm,puressm}/   the two contributions' spatial backbones (ResNet-18 conv | BiMamba SSM)
+  ├─ backbone/                    shared recurrent skeleton (ResNetMamba, hosts spatial mixer + temporal)
+  ├─ temporal/                    Mamba temporal path — shared by both models
+  └─ integration · benchmark · viz · configs · scripts · tests/{models/{eventssm,puressm}, core} · proofs
 env/              conda/pip lockfiles (Blackwell sm_120, cu128)
 docs/             all prose — see docs/README.md for the full index
   ├─ roadmap/       stage-by-stage narrative (Stage_00 … Stage_16) + stage reports
