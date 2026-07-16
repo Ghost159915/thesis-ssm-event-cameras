@@ -1,16 +1,22 @@
-# EventSSMDetector — Stage Files Index
+# Roadmap — Stage Files Index
 **Thesis B | MMAN4952 | UNSW Sydney | Benas Vaiciulis**
+
+The stage-by-stage narrative of the whole investigation: **EventSSMDetector = Stages 0–10**, **PureSSMDetector =
+Stages 11–16**. Both investigations are **complete**. Each file is a self-contained record of one stage (Stages
+0–10 were written as forward plans; Stages 11–16 are written as completed-stage records with the real results and
+pointers to the authoritative plan/spec/results/notes docs).
 
 ---
 
 ## How to Use These Files
 
-Each file is a self-contained plan for one stage of the EventSSMDetector implementation.
-When working with Claude on a specific stage, share that stage's file as context.
+When working with Claude on a specific stage, share that stage's file as context. For the cross-cutting synthesis,
+see `docs/results/Thesis_Progress_Writeup.md`.
 
 **System legend:**
 - 🍎 = Mac (planning, documentation)
-- 🐧 = Linux PC with RTX 5070 Ti (implementation, training)
+- 🐧 = Linux PC with RTX 5070 Ti (implementation, evaluation)
+- ☁️ = rented RTX 5090 (cloud training, Stages 13–14)
 
 ---
 
@@ -18,22 +24,29 @@ When working with Claude on a specific stage, share that stage's file as context
 
 | File | Stage | System | Est. Time | Status |
 |---|---|---|---|---|
-| `Stage_00_Design_Lock_In.md` | Design decisions (backbone, head, temporal module) | 🍎 | 1–2 days | ☐ |
-| `Stage_01_Architecture_Blueprint.md` | Tensor shape diagram for all components | 🍎 | 1 day | ☐ |
-| `Stage_02_Codebase_Audit.md` | File inventory, mamba-ssm install, baseline verify | 🐧 | 0.5–1 day | ☐ |
-| `Stage_03a_ResNet18_Backbone.md` | Modified ResNet-18 with 10-channel input | 🐧 | 1–2 days | ☐ |
-| `Stage_03b_FPN.md` | Feature Pyramid Network | 🐧 | 1 day | ☐ |
-| `Stage_03c_Mamba_Temporal.md` | Mamba temporal module (most complex) | 🐧 | 2–4 days | ☐ |
-| `Stage_03d_Detection_Head.md` | YOLOX head verification | 🐧 | 0.5 day | ☐ |
-| `Stage_04_Integration.md` | Wire all components, state management | 🐧 | 3–5 days | ☐ |
-| `Stage_05_Smoke_Testing.md` | Overfit test, gradients, memory, speed | 🐧 | 2–3 days | ☐ |
-| `Stage_06_Short_Training.md` | 20 epochs on 10% Gen1, preliminary results | 🐧 | 1–3 hrs compute | ☐ |
-| `Stage_07_Full_Training.md` | 100 epochs full Gen1, primary result | 🐧 | 12–24 hrs compute | ☐ |
-| `Stage_08_Evaluation.md` | Test set evaluation, comparison table | 🐧 | 2–3 days | ☐ |
-| `Stage_09_Temporal_Generalisation.md` | Variable rate evaluation (0.25×–4×) | 🐧 | 1–2 days | ☐ |
-| `Stage_10_Efficiency_Benchmarking.md` | Params, FLOPs, latency, VRAM | 🐧 | 1–2 days | ☐ |
+| `Stage_00_Design_Lock_In.md` | Design decisions (backbone, head, temporal module) | 🍎 | 1–2 days | ✅ |
+| `Stage_01_Architecture_Blueprint.md` | Tensor shape diagram for all components | 🍎 | 1 day | ✅ |
+| `Stage_02_Codebase_Audit.md` | File inventory, mamba-ssm install, baseline verify | 🐧 | 0.5–1 day | ✅ |
+| `Stage_03a_ResNet18_Backbone.md` | Modified ResNet-18 with 10-channel input | 🐧 | 1–2 days | ✅ |
+| `Stage_03b_FPN.md` | Feature Pyramid Network | 🐧 | 1 day | ✅ |
+| `Stage_03c_Mamba_Temporal.md` | Mamba temporal module (most complex) | 🐧 | 2–4 days | ✅ |
+| `Stage_03d_Detection_Head.md` | YOLOX head verification | 🐧 | 0.5 day | ✅ |
+| `Stage_04_Integration.md` | Wire all components, state management | 🐧 | 3–5 days | ✅ |
+| `Stage_05_Smoke_Testing.md` | Overfit test, gradients, memory, speed | 🐧 | 2–3 days | ✅ |
+| `Stage_06_Short_Training.md` | 20 epochs on 10% Gen1, preliminary results | 🐧 | 1–3 hrs compute | ✅ |
+| `Stage_07_Full_Training.md` | 100 epochs full Gen1, primary result | 🐧 | 12–24 hrs compute | ✅ |
+| `Stage_08_Evaluation.md` | Test set evaluation, comparison table | 🐧 | 2–3 days | ✅ |
+| `Stage_09_Temporal_Generalisation.md` | Variable rate evaluation (0.25×–4×) | 🐧 | 1–2 days | ✅ |
+| `Stage_10_Efficiency_Benchmarking.md` | Params, FLOPs, latency, VRAM | 🐧 | 1–2 days | ✅ |
+| — *EventSSM complete (test/AP 46.2)* — | — | — | — | — |
+| `Stage_11_PureSSM_Backbone.md` | BiMamba spatial backbone build (8.38 M, 27 tests) | 🐧 | — | ✅ |
+| `Stage_12_PureSSM_Integration.md` | Hydra-selectable + overfit smoke (6.0× PASS) | 🐧 | — | ✅ |
+| `Stage_13_PureSSM_Cloud_Short_Run.md` | 25k sanity run (val/AP 0.351, flow de-risked) | ☁️ | — | ✅ |
+| `Stage_14_PureSSM_Full_Training.md` | 400k full run (best val/AP 0.48 @ 310k, ~27 h) | ☁️ | — | ✅ |
+| `Stage_15_PureSSM_Evaluation.md` | Gen1 test eval (test/AP 46.43, **AP_L +2.95**) | 🐧 | — | ✅ |
+| `Stage_16_PureSSM_Pillars_and_Visuals.md` | Efficiency + robustness + CUDA-graph + videos | 🐧 | — | ✅ |
 
-**Total estimated time:** 6–8 weeks
+**Total estimated time:** 6–8 weeks (both models now complete)
 
 ---
 
