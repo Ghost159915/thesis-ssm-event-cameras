@@ -225,6 +225,16 @@ def measure_model(kind: str, device, clip, smoke: bool, graph: bool = False) -> 
                 "p50_ms": p50, "hz": 1000.0 / p50 if p50 > 0 else float("inf"),
                 "protocol": "cuda-graph-replay", "state_semantics": "carried",
                 "mean_ms": lat_graph["mean_ms"], "p95_ms": lat_graph["p95_ms"], "iters": lat_graph["iters"]}
+            # Free the captured graph + static buffers immediately: the CUDAGraph and its static
+            # input/state/output buffers otherwise stay RESIDENT for the rest of measure_model and
+            # inflate the VRAM section below (Important-1). Dropping every reference to the replay
+            # closure (which alone keeps the CUDAGraph object and its static buffers alive) lets
+            # empty_cache() actually return that pool to the driver; reset_peak_memory_stats then
+            # clears the peak so vram.inference_mb/train_mb come out identical whether or not
+            # --graph was passed.
+            del replay, step_graph, gidx, lat_graph
+            torch.cuda.empty_cache()
+            torch.cuda.reset_peak_memory_stats(device)
         else:
             out["latency"]["graph"] = {"captured": False,
                 "reason": "S5 baseline uses stock-RVT state machinery; not covered by the ours state-carry contract"}
