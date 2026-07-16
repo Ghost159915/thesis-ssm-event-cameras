@@ -20,7 +20,7 @@ import torch.nn.functional as F
 
 REPO = pathlib.Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO / "code"))
-from event_ssm.spatial import BiMamba1DScan  # noqa: E402
+from event_ssm.models.puressm import BiMamba1DScan  # noqa: E402
 from mamba_ssm.ops.triton.ssd_combined import (mamba_chunk_scan_combined,  # noqa: E402
                                                ssd_chunk_scan_combined_ref)
 

@@ -2,7 +2,7 @@
 import pathlib, torch, matplotlib; matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from torchvision.utils import make_grid
-from event_ssm.backbone.resnet_spatial import ResNetSpatialStages, _avg_projection_conv1
+from event_ssm.models.eventssm.resnet_spatial import ResNetSpatialStages, _avg_projection_conv1
 from torchvision.models import resnet18, ResNet18_Weights
 
 OUT = pathlib.Path(__file__).parent / "out"; OUT.mkdir(parents=True, exist_ok=True)

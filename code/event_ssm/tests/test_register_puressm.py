@@ -20,7 +20,7 @@ def _puressm_cfg(**kw):
 def test_builder_dispatch_puressm(device):
     _register()
     import models.detection.recurrent_backbone as rb
-    from event_ssm.spatial import BiMambaSpatialStages
+    from event_ssm.models.puressm import BiMambaSpatialStages
     bb = rb.build_recurrent_backbone(_puressm_cfg())
     assert isinstance(bb.spatial, BiMambaSpatialStages)
     assert bb.spatial.depths == (2, 2, 8, 2)
@@ -40,7 +40,7 @@ def test_builder_config_keys_flow(device):
 def test_resnet_mamba_branch_unaffected(device):
     _register()
     import models.detection.recurrent_backbone as rb
-    from event_ssm.backbone.resnet_spatial import ResNetSpatialStages
+    from event_ssm.models.eventssm.resnet_spatial import ResNetSpatialStages
     cfg = OmegaConf.create(dict(name="ResNetMamba", input_channels=20, pretrained=False,
                                 d_state=64, num_layers_per_stage=1, in_stages=[2, 3, 4]))
     bb = rb.build_recurrent_backbone(cfg)

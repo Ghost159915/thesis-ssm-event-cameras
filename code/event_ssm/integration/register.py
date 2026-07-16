@@ -36,7 +36,7 @@ def register_backbone_builder():
         if backbone_cfg.name == "PureSSM":
             # Stage 12: fully-pure spatial BiMamba injected into the same recurrent skeleton.
             # Temporal path/config identical to ResNetMamba (controlled experiment, spec §3).
-            from event_ssm.spatial import BiMambaSpatialStages
+            from event_ssm.models.puressm import BiMambaSpatialStages
             in_stages = backbone_cfg.get("in_stages", None)
             temporal_stages = tuple(in_stages) if in_stages is not None else (2, 3, 4)
             spatial = BiMambaSpatialStages(

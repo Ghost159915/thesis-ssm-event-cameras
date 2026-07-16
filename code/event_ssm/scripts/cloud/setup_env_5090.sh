@@ -154,7 +154,7 @@ fi
 # 6. Repo dependency lock (everything except torch -- --no-deps so it can never clobber cu128 torch;
 #    see the events_signals --no-deps rule: a plain `pip install` here has upgraded torch/CUDA before)
 # -----------------------------------------------------------------------------
-LOCK_FILE="$REPO/requirements_5070ti_lock.txt"
+LOCK_FILE="$REPO/env/requirements_5070ti_lock.txt"
 LOCK_STAMP="$CONDA_PREFIX/.stage13_lock_installed"
 if [[ ! -f "$LOCK_STAMP" ]]; then
   # The lock is a full `pip freeze` of the local events_signals env, which carries non-PyPI packages
@@ -235,7 +235,7 @@ assert cc == (12, 0), f'expected sm_120 (12, 0) -- got {cc}'
 print('mamba_ssm:', mamba_ssm.__version__)
 print('causal_conv1d:', causal_conv1d.__version__)
 "
-# Stage-11 kernel-import one-liner (docs/superpowers/plans/2026-07-11-stage11-puressm-backbone.md:56)
+# Stage-11 kernel-import one-liner (docs/plans/2026-07-11-stage11-puressm-backbone.md:56)
 "$PY" -c "from mamba_ssm.ops.triton.ssd_combined import mamba_chunk_scan_combined, ssd_chunk_scan_combined_ref; from mamba_ssm.ops.triton.layernorm_gated import RMSNorm; from causal_conv1d import causal_conv1d_fn; print('kernel imports ok')"
 echo -n "hf: "
 "$HF" version

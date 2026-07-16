@@ -2,7 +2,7 @@ from typing import Optional
 
 import torch
 import torch.nn as nn
-from event_ssm.backbone.resnet_spatial import ResNetSpatialStages
+from event_ssm.models.eventssm.resnet_spatial import ResNetSpatialStages
 from event_ssm.temporal.mamba_temporal import MambaTemporalBlock
 
 
