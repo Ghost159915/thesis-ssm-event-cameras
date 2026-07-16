@@ -32,8 +32,10 @@ RVT = REPO / "external/ssms_event_cameras/RVT"
 CKPTS = {
     "eventssm": RVT / "RVT/8zotrwjw/checkpoints/epoch=003-step=320000-val_AP=0.46.ckpt",
     "baseline": REPO / "checkpoints/gen1_base.ckpt",
+    "puressm": REPO / "results/stage14_cloud/ckpts/epoch=002-step=310000-val_AP=0.48.ckpt",
 }
-EXPERIMENT = {"eventssm": "+experiment/gen1=resnet_mamba", "baseline": "+experiment/gen1=base.yaml"}
+EXPERIMENT = {"eventssm": "+experiment/gen1=resnet_mamba", "baseline": "+experiment/gen1=base.yaml",
+              "puressm": "+experiment/gen1=puressm"}
 # fixed 256x320 input, strides 4/8/16/32 -> per-stage token grids (asserted against the backbone)
 STAGE_TOKENS = [(64, 80), (32, 40), (16, 20), (8, 10)]
 
@@ -167,7 +169,7 @@ class BenchModel:
 
 def build_model(kind: str, device: torch.device, load_ckpt: bool = True) -> BenchModel:
     assert kind in CKPTS, kind
-    if kind == "eventssm":
+    if kind in ("eventssm", "puressm"):
         from event_ssm.integration.register import register_resnet_mamba
         register_resnet_mamba()
     cfg = compose_cfg(kind)

@@ -35,6 +35,16 @@ def test_build_baseline_cpu_construct_and_load():
     assert len(th) == 4 and all(t["kind"] == "s5" for t in th)       # S5 on all 4 stages
 
 
+def test_build_puressm_cpu_construct_and_load():
+    bm = build_model("puressm", device=torch.device("cpu"), load_ckpt=True)
+    pb = bm.param_breakdown()
+    assert 8 < pb["total"] < 30                       # pure-SSM backbone; spatial ~8.4 M
+    assert {"backbone_spatial", "backbone_temporal", "neck", "head", "total"} <= set(pb)
+    th = bm.temporal_hparams()
+    assert len(th) == 3 and all(t["kind"] == "mamba2" for t in th)   # temporal identical to EventSSM
+    assert bm.num_classes == 2 and 0 < bm.conf < 1
+
+
 @GPU
 def test_full_step_runs_on_gpu():
     dev = torch.device("cuda")

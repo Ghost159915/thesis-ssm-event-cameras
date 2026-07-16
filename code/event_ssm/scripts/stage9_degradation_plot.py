@@ -34,11 +34,12 @@ OUT = REPO / "results/stage9"
 # dt(ms) -> frequency multiplier (stride fixed at 50 ms; only the accumulation window changes)
 RATES = [200, 100, 50, 25, 12]
 MULT = {200: 0.25, 100: 0.5, 50: 1.0, 25: 2.0, 12: 4.0}
-MODELS = {"eventssm": "EventSSM (ours, Mamba)", "baseline": "S5-RVT (baseline)"}
+MODELS = {"eventssm": "EventSSM (ours, Mamba)", "baseline": "S5-RVT (baseline)",
+          "puressm": "PureSSM (ours, BiMamba)"}
 
 # palette: hue = model (validated pair), chrome = ink/grid tokens; dash carries compensation
-HUE = {"eventssm": "#2a78d6", "baseline": "#1baf7a"}
-MARKER = {"eventssm": "o", "baseline": "s"}
+HUE = {"eventssm": "#2a78d6", "baseline": "#1baf7a", "puressm": "#d67a2a"}
+MARKER = {"eventssm": "o", "baseline": "s", "puressm": "^"}
 INK, INK2, MUTED, GRID = "#0b0b0b", "#52514e", "#898781", "#e1e0d9"
 
 
@@ -99,9 +100,12 @@ def main():
     ss_all = {k: discover_ss(k) for k in MODELS}
     conv = args.convention if args.convention == "none" else pick_convention(ss_all, args.convention)
 
-    peak = {k: ap[k][50] for k in MODELS}  # 1x = dt 50 ms (comp@1x is byte-identical by design)
-    for k, v in peak.items():
-        assert v is not None, f"missing 1x (dt=50) no-comp log for {k} — cannot normalise"
+    # 1x = dt 50 ms (comp@1x is byte-identical by design); models without a 1x log are omitted
+    # from the figure rather than crashing (e.g. puressm before its sweep has been run).
+    peak = {k: ap[k][50] for k in MODELS if ap[k][50] is not None}
+    absent = [k for k in MODELS if k not in peak]
+    if absent:
+        print(f"[skip] no 1x (dt=50) no-comp log for {absent} — omitting from the figure (run its sweep first)")
 
     # compensated curve = the on-convention point per rate; everything else = probe extras
     comp, probes = {k: {} for k in MODELS}, []
@@ -124,29 +128,42 @@ def main():
 
     # ---- percentage deviation from each model's own 1x peak ----
     dev = {k: {dt: 100.0 * (ap[k][dt] - peak[k]) / peak[k]
-               for dt in RATES if ap[k][dt] is not None} for k in MODELS}
+               for dt in RATES if ap[k][dt] is not None} for k in peak}
     cdev = {k: {dt: 100.0 * (comp[k][dt] - peak[k]) / peak[k]
-                for dt in RATES if dt in comp[k]} for k in MODELS}
+                for dt in RATES if dt in comp[k]} for k in peak}
 
     conv_desc = {'up': 'step_scale = 50/window', 'down': 'step_scale = window/50',
                  'none': 'none (all compensated evals shown as probes)'}[conv]
-    print(f"\n1x peak AP   ours={peak['eventssm']:.4f}   base={peak['baseline']:.4f}   "
-          f"[comp convention: {conv_desc}]\n")
-    hdr = (f"{'mult':>6} {'dt':>4} {'ours_AP':>8} {'base_AP':>8} {'ours_dev%':>10} {'base_dev%':>10} "
-           f"{'ours_comp':>10} {'base_comp':>10} {'comp_dev%o':>10} {'comp_dev%b':>10}")
-    print(hdr)
-    print("-" * len(hdr))
-    fmt = lambda v, w, pct=False: (f"{v:>+{w}.2f}" if pct else f"{v:>{w}.4f}") if v is not None else " " * (w - 1) + "—"
-    for dt in RATES:
-        print(f"{MULT[dt]:>5.2f}x {dt:>4} {fmt(ap['eventssm'][dt], 8)} {fmt(ap['baseline'][dt], 8)} "
-              f"{fmt(dev['eventssm'].get(dt), 10, True)} {fmt(dev['baseline'].get(dt), 10, True)} "
-              f"{fmt(comp['eventssm'].get(dt), 10)} {fmt(comp['baseline'].get(dt), 10)} "
-              f"{fmt(cdev['eventssm'].get(dt), 10, True)} {fmt(cdev['baseline'].get(dt), 10, True)}")
+    # Minor-4: the printed table + CSV both index peak['eventssm']/peak['baseline'] directly (and,
+    # via dev/cdev, those two keys are only guaranteed present once the SAME key is in peak) -- a
+    # missing eventssm/baseline dt=50 log must skip these blocks cleanly rather than KeyError,
+    # matching the graceful-skip comment above (figures still render whatever models ARE present).
+    have_core = "eventssm" in peak and "baseline" in peak
+    if have_core:
+        print(f"\n1x peak AP   ours={peak['eventssm']:.4f}   base={peak['baseline']:.4f}   "
+              f"[comp convention: {conv_desc}]\n")
+        hdr = (f"{'mult':>6} {'dt':>4} {'ours_AP':>8} {'base_AP':>8} {'ours_dev%':>10} {'base_dev%':>10} "
+               f"{'ours_comp':>10} {'base_comp':>10} {'comp_dev%o':>10} {'comp_dev%b':>10}")
+        print(hdr)
+        print("-" * len(hdr))
+        fmt = lambda v, w, pct=False: (f"{v:>+{w}.2f}" if pct else f"{v:>{w}.4f}") if v is not None else " " * (w - 1) + "—"
+        for dt in RATES:
+            print(f"{MULT[dt]:>5.2f}x {dt:>4} {fmt(ap['eventssm'][dt], 8)} {fmt(ap['baseline'][dt], 8)} "
+                  f"{fmt(dev['eventssm'].get(dt), 10, True)} {fmt(dev['baseline'].get(dt), 10, True)} "
+                  f"{fmt(comp['eventssm'].get(dt), 10)} {fmt(comp['baseline'].get(dt), 10)} "
+                  f"{fmt(cdev['eventssm'].get(dt), 10, True)} {fmt(cdev['baseline'].get(dt), 10, True)}")
+    else:
+        print(f"\n[skip] table needs both eventssm and baseline 1x (dt=50) logs; missing "
+              f"{[k for k in ('eventssm', 'baseline') if k not in peak]} -- printed table skipped.")
 
+    # Minor-5: restrict the aggregate to the two models it actually reports on (ours vs baseline).
+    # A partially-swept puressm gave rows['puressm']=[] which made all(rows.values()) False and
+    # SUPPRESSED this block even when eventssm+baseline were complete -- so only build/require
+    # those two keys, and only when both are actually in peak.
     off = [dt for dt in RATES if dt != 50]
     for label, d in (("no-comp", dev), ("Δt-comp", cdev)):
-        rows = {k: [d[k][dt] for dt in off if dt in d[k]] for k in MODELS}
-        if all(rows.values()):
+        rows = {k: [d[k][dt] for dt in off if dt in d[k]] for k in ("eventssm", "baseline") if k in peak}
+        if "eventssm" in rows and "baseline" in rows and all(rows.values()):
             mo = sum(map(abs, rows["eventssm"])) / len(rows["eventssm"])
             mb = sum(map(abs, rows["baseline"])) / len(rows["baseline"])
             print(f"\n--- {label} aggregate over {len(rows['eventssm'])}/{len(rows['baseline'])} off-training rates ---")
@@ -155,17 +172,21 @@ def main():
 
     # ---- CSV (same file, extended columns) ----
     OUT.mkdir(parents=True, exist_ok=True)
-    with open(OUT / "degradation_table.csv", "w", newline="") as f:
-        w = csv.writer(f)
-        w.writerow(["mult", "dt_ms", "ours_AP", "base_AP", "ours_dev_pct", "base_dev_pct",
-                    "ours_comp_AP", "base_comp_AP", "ours_comp_dev_pct", "base_comp_dev_pct",
-                    "comp_convention"])
-        g = lambda v, n=4: f"{v:.{n}f}" if v is not None else ""
-        for dt in RATES:
-            w.writerow([MULT[dt], dt, g(ap["eventssm"][dt]), g(ap["baseline"][dt]),
-                        g(dev["eventssm"].get(dt), 2), g(dev["baseline"].get(dt), 2),
-                        g(comp["eventssm"].get(dt)), g(comp["baseline"].get(dt)),
-                        g(cdev["eventssm"].get(dt), 2), g(cdev["baseline"].get(dt), 2), conv])
+    if have_core:
+        with open(OUT / "degradation_table.csv", "w", newline="") as f:
+            w = csv.writer(f)
+            w.writerow(["mult", "dt_ms", "ours_AP", "base_AP", "ours_dev_pct", "base_dev_pct",
+                        "ours_comp_AP", "base_comp_AP", "ours_comp_dev_pct", "base_comp_dev_pct",
+                        "comp_convention"])
+            g = lambda v, n=4: f"{v:.{n}f}" if v is not None else ""
+            for dt in RATES:
+                w.writerow([MULT[dt], dt, g(ap["eventssm"][dt]), g(ap["baseline"][dt]),
+                            g(dev["eventssm"].get(dt), 2), g(dev["baseline"].get(dt), 2),
+                            g(comp["eventssm"].get(dt)), g(comp["baseline"].get(dt)),
+                            g(cdev["eventssm"].get(dt), 2), g(cdev["baseline"].get(dt), 2), conv])
+    else:
+        print(f"[skip] degradation_table.csv not written; missing "
+              f"{[k for k in ('eventssm', 'baseline') if k not in peak]}")
 
     # ---- figures ----
     import matplotlib
@@ -192,7 +213,7 @@ def main():
             axis.annotate(f"{ys[-1]:.1f}", (xs[-1], ys[-1]), textcoords="offset points",
                           xytext=(9, -3), fontsize=8.5, color=INK2)
 
-    for k in MODELS:
+    for k in peak:
         series(a1, k, {dt: v for dt, v in ap[k].items() if v is not None}, True, False)
         series(a1, k, comp[k], True, True)
         series(a2, k, dev[k], False, False)

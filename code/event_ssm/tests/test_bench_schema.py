@@ -43,3 +43,10 @@ def test_validate_flags_missing():
     d = _minimal(); del d["models"]["eventssm"]["vram"]
     problems = s10.validate_results(d)
     assert problems and "vram" in problems[0]
+
+
+def test_test_ap_has_puressm():
+    # `event_ssm.scripts` has no __init__.py (not an importable package), so this reuses the
+    # module already loaded by file path at the top of this test file (s10) rather than a
+    # `from event_ssm.scripts.stage10_benchmark import TEST_AP` package import.
+    assert s10.TEST_AP.get("puressm") == 0.4643

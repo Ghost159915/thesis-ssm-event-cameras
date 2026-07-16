@@ -11,6 +11,23 @@ DEFAULT_ROOT = REPO / "data/gen1_raw/gen1/test"
 DEFAULT_CACHE = REPO / "results/stage10/bench_clip.pt"
 EVR = "event_representations_v2/stacked_histogram_dt=50_nbins=10/event_representations.h5"
 KEY = "data"   # confirmed against the real file in Task-4 discovery
+PAD_H, PAD_W = 256, 320  # Gen1 stacked-histogram frames (20, 240, 304) zero-padded network input
+
+
+def pad_to_network_shape(dst: torch.Tensor, src: torch.Tensor) -> torch.Tensor:
+    """Top-left zero-pad `src`'s trailing (H, W) into `dst`'s corresponding top-left region, in
+    place, and return `dst`. `dst` must already be zero everywhere else (e.g. fresh from
+    `torch.zeros`, or a reused buffer whose margin was never written); every leading dim must
+    already match between `src` and `dst`, only the trailing (H, W) differ (`dst` >= `src` there).
+
+    One shared implementation of the Gen1 240x304 -> 256x320 pad step (DRY) -- used by
+    `load_bench_clip` below (whole-clip batch) and
+    `scripts/stage16_dump_predictions.py:iter_rec_frames` (per-frame reused buffer), which
+    previously duplicated this same top-left assignment.
+    """
+    h, w = src.shape[-2], src.shape[-1]
+    dst[..., :h, :w] = src
+    return dst
 
 
 def load_bench_clip(n_frames: int = 64, root=None, cache=None, skip: int = 100) -> torch.Tensor:
@@ -28,8 +45,8 @@ def load_bench_clip(n_frames: int = 64, root=None, cache=None, skip: int = 100) 
         assert f[key].shape[0] >= skip + n_frames, f"sequence too short: {f[key].shape}"
         arr = f[key][skip:skip + n_frames]                        # (n, 20, 240, 304) uint8
     t = torch.from_numpy(arr).float()
-    clip = torch.zeros(n_frames, t.shape[1], 256, 320)
-    clip[:, :, :240, :304] = t
+    clip = torch.zeros(n_frames, t.shape[1], PAD_H, PAD_W)
+    pad_to_network_shape(clip, t)
     cache.parent.mkdir(parents=True, exist_ok=True)
     torch.save({"clip": clip, "src": str(h5)}, cache)
     return clip

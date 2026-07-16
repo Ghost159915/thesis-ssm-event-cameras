@@ -59,7 +59,11 @@ def mamba2_scan_time(layer: Mamba2, x: torch.Tensor, state=None, step_scale: flo
     # correct for any L>=1, incl. L=1 streaming. detach: TBPTT boundary -- the carried context is a
     # constant in the next window's graph; gradients within this window still flow through xBC
     # (matches RVT's RNNStates.detach).
-    new_conv = xBC_ext[:, -(d_conv - 1):].detach()
+    # .clone() materializes own storage (Slice C): the pre-clone slice is a VIEW into xBC_ext, a
+    # transient allocated inside the step; a captured CUDA graph would alias that memory and the next
+    # replay overwrites it, corrupting the carried conv-state. Owning storage is byte-identical on the
+    # default (non-graph) path -- .clone() copies values, changes ownership only, not numbers.
+    new_conv = xBC_ext[:, -(d_conv - 1):].detach().clone()
     xBC_t = rearrange(xBC_ext, "n l d -> n d l")
     if causal_conv1d_fn is not None:
         conv_out = causal_conv1d_fn(

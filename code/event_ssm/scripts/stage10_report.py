@@ -7,22 +7,26 @@ import json
 import pathlib
 
 REPO = pathlib.Path(__file__).resolve().parents[3]
-HUE = {"eventssm": "#2a78d6", "baseline": "#1baf7a"}
-LABEL = {"eventssm": "EventSSM (ours, Mamba)", "baseline": "S5-RVT (baseline)"}
+HUE = {"eventssm": "#2a78d6", "baseline": "#1baf7a", "puressm": "#d67a2a"}
+LABEL = {"eventssm": "EventSSM (ours, Mamba)", "baseline": "S5-RVT (baseline)",
+         "puressm": "PureSSM (ours, BiMamba)"}
 INK, INK2, MUTED, GRID = "#0b0b0b", "#52514e", "#898781", "#e1e0d9"
 
 
 def _add_baseline_ratios(rows: list) -> None:
-    """Ours-vs-baseline ratio column (Important-1). Convention: >1 always favours 'ours'
-    (eventssm) -- baseline/ours for latency and J/frame (lower-is-better metrics, so ratio>1
-    means ours is faster/leaner), ours/baseline for Hz (higher-is-better, so ratio>1 means ours
-    has more throughput). Populated on the 'ours' row only; every row gets the key (None if no
-    baseline to compare against) so the CSV DictWriter sees a consistent field set."""
+    """Every-non-baseline-model-vs-baseline ratio column (Important-1; generalized so any
+    'ours' model -- eventssm, puressm, and whatever comes after -- gets a ratio, not just the
+    literal 'eventssm'). Convention: >1 always favours the non-baseline model -- baseline/model
+    for latency and J/frame (lower-is-better metrics, so ratio>1 means the model is faster/
+    leaner), model/baseline for Hz (higher-is-better, so ratio>1 means the model has more
+    throughput). Populated on every non-baseline row that has a baseline to compare against;
+    every row still gets the key (None if no comparison is possible) so the CSV DictWriter sees
+    a consistent field set."""
     by_model = {r["model"]: r for r in rows}
     for r in rows:
         r["vs_baseline"] = None
-    ours, base = by_model.get("eventssm"), by_model.get("baseline")
-    if not (ours and base):
+    base = by_model.get("baseline")
+    if base is None:
         return
 
     def _ratio(num, den):
@@ -31,13 +35,16 @@ def _add_baseline_ratios(rows: list) -> None:
         except (TypeError, ZeroDivisionError):
             return None
 
-    lat_r = _ratio(base["lat_full_p50_ms"], ours["lat_full_p50_ms"])
-    hz_r = _ratio(ours["hz_full"], base["hz_full"])
-    j_r = _ratio(base["j_per_frame"], ours["j_per_frame"])
-    parts = [f"{v:.2f}× {label}" for v, label in
-             ((lat_r, "lat"), (hz_r, "Hz"), (j_r, "J/frame")) if v is not None]
-    if parts:
-        ours["vs_baseline"] = " / ".join(parts)
+    for r in rows:
+        if r["model"] == "baseline":
+            continue
+        lat_r = _ratio(base["lat_full_p50_ms"], r["lat_full_p50_ms"])
+        hz_r = _ratio(r["hz_full"], base["hz_full"])
+        j_r = _ratio(base["j_per_frame"], r["j_per_frame"])
+        parts = [f"{v:.2f}× {label}" for v, label in
+                 ((lat_r, "lat"), (hz_r, "Hz"), (j_r, "J/frame")) if v is not None]
+        if parts:
+            r["vs_baseline"] = " / ".join(parts)
 
 
 def _rows(d: dict) -> list:
