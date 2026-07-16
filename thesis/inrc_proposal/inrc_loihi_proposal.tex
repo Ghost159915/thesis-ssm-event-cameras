@@ -1,0 +1,113 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[a4paper, margin=0.85in]{geometry}
+\usepackage{amsmath, amssymb}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{enumitem}
+\usepackage{ragged2e}
+\usepackage[colorlinks=true, linkcolor=black, urlcolor=blue, citecolor=blue]{hyperref}
+\usepackage{titlesec}
+\titlespacing*{\section}{0pt}{6pt}{3pt}
+\titleformat{\section}{\normalfont\large\bfseries}{\thesection.}{0.5em}{}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{4pt}
+\newcolumntype{Y}{>{\RaggedRight\arraybackslash}X}
+\pagestyle{empty}
+
+\begin{document}
+
+\begin{center}
+{\large\bfseries A Spiking State-Space Detector for Event-Based Micro-UAV Perception on Intel Loihi 2}\\[3pt]
+\small Dr Will Midgley (PI) \& Benas Vaiciulis (student researcher) \,$\cdot$\, UNSW Sydney \,$\cdot$\,
+Framework: Lava \,$\cdot$\, INRC Research Member (student added to PI project)
+\end{center}
+\vspace{-2pt}
+\hrule
+\vspace{4pt}
+
+\textbf{Objective.} Develop a \emph{spiking diagonal state-space} object detector for event cameras and map it onto
+\textbf{Intel Loihi 2} (via Lava), targeting the size-weight-and-power (SWaP) budget of micro-UAVs. The work extends
+a \emph{completed} thesis in which we built and benchmarked two original state-space (SSM) event detectors on the
+Prophesee Gen1 benchmark.
+
+%---------------------------------------------------------------
+\section{Current results (completed)}
+We reproduced the S5-RVT baseline exactly (Gen1 test AP $=47.7$) and built two original detectors as
+\emph{controlled} backbone swaps into that verified pipeline --- identical neck, head, loss, data, and evaluator, so
+only the backbone's spatial mixer changes. \textbf{EventSSM} uses ResNet-18 conv $+$ Mamba temporal recurrence;
+\textbf{PureSSM} uses a pure bidirectional-Mamba spatial mixer $+$ the same temporal path. The pure state-space
+model is the smallest, most compute-efficient, and most rate-robust of the three (table below).
+
+\begin{table}[h]
+\centering\small
+\setlength{\tabcolsep}{5pt}
+\begin{tabularx}{\textwidth}{@{}Y c c c@{}}
+\toprule
+\textbf{Metric (Gen1)} & \textbf{S5-RVT} & \textbf{EventSSM} & \textbf{PureSSM (pure SSM)} \\
+\midrule
+Test AP (COCO)                 & 47.7 & 46.2 & 46.4 \\
+Parameters                     & 18.2\,M & 19.2\,M & \textbf{16.3\,M (smallest)} \\
+FLOPs \,/\, mAP-per-GFLOP      & 11.9\,G / 4.01 & 13.6\,G / 3.41 & \textbf{10.1\,G / 4.59 (most efficient)} \\
+True $10\times$ rate retention & 62.2\,\% & 63.0\,\% & \textbf{69.7\,\% (most rate-robust)} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+%---------------------------------------------------------------
+\section{Why Loihi 2 benefits \emph{this} model}
+The case is specific, not generic --- three measured properties of our detector each map to a concrete Loihi 2 gain:
+\begin{enumerate}[leftmargin=1.4em, itemsep=2pt, topsep=2pt]
+  \item \textbf{The temporal core is a diagonal linear recurrence} $x_k=\bar{A}x_{k-1}+\bar{B}u_k,\;y_k=Cx_k$ ---
+  a bank of independent scalar states that maps \emph{natively} onto Loihi 2's programmable per-neuron dynamics.
+  Meyer \emph{et al.} (2024) mapped exactly this class (S4D) to Loihi 2 and measured ${\sim}1000\times$ lower energy
+  and ${\sim}75\times$ lower latency than an NVIDIA Jetson Orin Nano for streaming inference~[1].
+  \item \textbf{Event sparsity is wasted on a GPU but rewarded on Loihi 2.} We measured that our model's sparse,
+  event-driven input gives \emph{no} speed-up on GPU --- dense kernels process idle pixels anyway. On Loihi 2's
+  event-driven substrate, idle pixels cost no energy, so the sparsity we cannot exploit on a GPU becomes a direct
+  advantage. This is the clearest reason the same network is better served by neuromorphic hardware.
+  \item \textbf{Rate-robustness $+$ leanness suit the flight envelope.} PureSSM keeps $69.7\%$ of its accuracy under
+  a true $10\times$ event-rate change, so a \emph{single} deployed network handles the variable event rates of flight
+  without retraining. Combined with its leanness and event-driven execution, this is what brings a GPU cost of
+  ${\sim}0.65$\,J/frame toward the milliwatt envelope a sub-250\,g UAV can actually carry --- a budget no desktop GPU
+  or embedded Jetson meets.
+\end{enumerate}
+
+%---------------------------------------------------------------
+\section{Approach and plan}
+We target a \textbf{fixed-$\Delta t$ diagonal S5/S4D recurrence}: Mamba's input-dependent $\Delta t$ is the one part
+that does not map to Loihi 2's fixed per-neuron microcode, and our two-regime study already quantified the small,
+bounded accuracy cost of dropping it. We implement the block and a lightweight event front-end in \textbf{Lava},
+validate numerical equivalence against the PyTorch reference, and benchmark on the Neuromorphic Research Cloud
+(vLab) before requesting on-chip hardware --- following Intel's guidance to design locally first.
+
+\vspace{-2pt}
+\begin{center}\small
+\begin{tabularx}{\textwidth}{@{}l Y@{}}
+\toprule
+\textbf{M1} (wk 1--4) & Reimplement a diagonal-SSM cell in Lava; unit-test vs the PyTorch reference. \\
+\textbf{M2} (wk 5--10) & Fixed-$\Delta t$ spiking temporal block $+$ event front-end; Gen1 accuracy in simulation. \\
+\textbf{M3} (wk 11--16) & vLab benchmark: accuracy, energy, and latency vs GPU/embedded baselines. \\
+\textbf{M4} (gated on M3) & On-chip validation on Loihi 2 (Kapoho Point); energy--accuracy--latency study; publication. \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\textbf{Readiness (Intel checklist).} Working detector, full reproducible pipeline, and a calibrated
+energy/latency/FLOP benchmark harness are \emph{complete}; the immediate next step is the spiking model in Lava
+(M1--M2), and a positive vLab result (M3) triggers any hardware request. \textbf{Expected outcome:} the first
+spiking state-space object detector for event cameras on Loihi 2, with an energy--accuracy--latency characterisation
+and an open Lava implementation.
+
+%---------------------------------------------------------------
+\vspace{2pt}
+{\footnotesize
+\textbf{References.}
+[1] S.\,M. Meyer \emph{et al.}, ``A Diagonal Structured State Space Model on Loihi 2 for Efficient Streaming Sequence
+Processing,'' \emph{IEEE NICE}, 2025 (arXiv:2409.15022).\hspace{0.6em}
+[2] N. Zubi\'c \emph{et al.}, ``State Space Models for Event Cameras,'' \emph{CVPR}, 2024.\hspace{0.6em}
+[3] M. Davies \emph{et al.}, ``Advancing Neuromorphic Computing with Loihi,'' \emph{Proc. IEEE}, 2021.\par}
+
+\end{document}
