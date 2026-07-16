@@ -53,25 +53,29 @@ PRED_DTYPE = [("t_us", "<i8"), ("boxes", "O")]  # boxes: float32 (N, 6) = x, y, 
 PAD_H, PAD_W = 256, 320  # zero-padded network input (matches bench_clip.py / the RVT eval feed)
 
 
-def load_rec_frames(rec: str, root: Path = TEST_ROOT):
-    """Read one test recording's frozen stacked-histogram frames + their timestamps.
+def iter_rec_frames(rec: str, device: torch.device, root: Path = TEST_ROOT):
+    """Stream one recording's frozen stacked-histogram frames ONE AT A TIME (memory-safe).
 
-    Returns ``(frames, t_us)``: ``frames`` a ``float32 (n, 20, 256, 320)`` zero-padded tensor
-    (240x304 -> 256x320, identical to ``bench_clip.py``'s padding), ``t_us`` an ``int64 (n,)``
-    array of each frame's representation timestamp (microseconds, same time base as the raw
-    events / GT ``_bbox.npy`` ``ts`` field for this recording).
-    """
-    import h5py, hdf5plugin  # noqa: F401  (hdf5plugin registers the blosc filter for h5py)
+    Yields ``(t_us_i, frame)`` where ``frame`` is a ``float32 (1, 20, 256, 320)`` zero-padded GPU
+    tensor — the B=1 shape ``BenchModel.full_step`` expects (matches the Stage-10 benchmark's
+    ``frames[i:i+1]`` feed). Reads the HDF5 lazily per-frame so a 60 s / ~1200-frame recording never
+    materialises the whole ~8-16 GB float32 stack in RAM (the eager ``f[key][:].float()`` +
+    full-padded copy OOM-killed the process). ``t_us`` shares the raw-event / GT ``_bbox.npy`` time
+    base for this recording. The ``(1, …)`` buffer is reused across frames (``full_step`` consumes it
+    under ``no_grad`` before the next fill, so reuse is safe and allocation-free)."""
+    import h5py, hdf5plugin  # noqa: F401  (registers the blosc filter for h5py)
     d = root / rec / EVR_REL
+    t_us = np.load(d / "timestamps_us.npy").astype(np.int64)
     with h5py.File(d / "event_representations.h5", "r") as f:
         key = "data" if "data" in f else list(f.keys())[0]
-        arr = f[key][:]                                    # (n, 20, 240, 304) uint8
-    t_us = np.load(d / "timestamps_us.npy").astype(np.int64)
-    assert len(t_us) == arr.shape[0], f"{rec}: {len(t_us)} timestamps vs {arr.shape[0]} frames"
-    t = torch.from_numpy(arr).float()
-    frames = torch.zeros(t.shape[0], t.shape[1], PAD_H, PAD_W)
-    frames[:, :, :arr.shape[2], :arr.shape[3]] = t
-    return frames, t_us
+        dset = f[key]                                      # (n, 20, 240, 304) uint8, lazy on disk
+        n, c, h, w = dset.shape
+        assert len(t_us) == n, f"{rec}: {len(t_us)} timestamps vs {n} frames"
+        buf = torch.zeros(1, c, PAD_H, PAD_W, device=device)   # reused padded (B=1) input buffer
+        for i in range(n):
+            buf.zero_()
+            buf[0, :, :h, :w] = torch.from_numpy(np.asarray(dset[i], dtype=np.float32)).to(device)
+            yield int(t_us[i]), buf
 
 
 def dets_to_boxes(dets_i) -> np.ndarray:
@@ -92,14 +96,11 @@ def dets_to_boxes(dets_i) -> np.ndarray:
 
 
 def dump_recording(bm, rec: str, out_dir: Path, device: torch.device) -> Path:
-    frames, t_us = load_rec_frames(rec)
     state = None
     records = []
-    for i in range(frames.shape[0]):
-        frame = frames[i].to(device)
-        dets, state = bm.full_step(frame, state)
-        boxes = dets_to_boxes(dets[0])
-        records.append((int(t_us[i]), boxes))
+    for t_us_i, frame in iter_rec_frames(rec, device):
+        dets, state = bm.full_step(frame, state)           # (1,20,256,320) -> benchmark contract
+        records.append((t_us_i, dets_to_boxes(dets[0])))
 
     out = np.empty(len(records), dtype=PRED_DTYPE)
     for i, (t, boxes) in enumerate(records):
