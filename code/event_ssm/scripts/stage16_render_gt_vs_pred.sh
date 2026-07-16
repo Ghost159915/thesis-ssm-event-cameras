@@ -49,8 +49,9 @@ while IFS= read -r rec; do
     out_mp4="$OUT/${rec}__${model}_gt_vs_pred.mp4"
     echo
     echo "=== $rec / $model ==="
+    case "$model" in eventssm) disp="EventSSM";; puressm) disp="PureSSM";; baseline) disp="S5-RVT";; *) disp="$model";; esac
     python "$RENDER" "$dat" \
-      --boxes --pred "$pred" --smooth --montage \
+      --boxes --pred "$pred" --smooth --montage --label "$disp" \
       --frame-dt-ms 33 --fps 30 --upscale 2 \
       --out "$out_mp4"
     n_rendered=$((n_rendered + 1))

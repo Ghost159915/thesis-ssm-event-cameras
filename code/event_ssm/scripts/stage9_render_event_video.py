@@ -155,6 +155,8 @@ def main() -> None:
     ap.add_argument("--smooth", action="store_true",
                      help="hold each GT box by track_id between the 4 Hz label updates (no-flicker); "
                           "without this flag GT uses the original single-latest-timestamp lookup")
+    ap.add_argument("--label", default="", help="text burned into the top-right of every frame "
+                                                "(e.g. the model name 'PureSSM') so the video self-identifies")
     args = ap.parse_args()
 
     in_path = Path(args.input)
@@ -229,6 +231,11 @@ def main() -> None:
         tsec = t0_us / 1e6
         cv2.putText(img, f"t={tsec:5.2f}s  dt={args.frame_dt_ms:.0f}ms  {n_ev:5d} ev",
                     (6, 18), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
+        if args.label:  # burn the model name (top-right, boxed) so the video self-identifies
+            (tw, th), _ = cv2.getTextSize(args.label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
+            lx, ly = GEN1_W * us - tw - 8, 22
+            cv2.rectangle(img, (lx - 4, ly - th - 4), (lx + tw + 4, ly + 4), (255, 255, 255), -1)
+            cv2.putText(img, args.label, (lx, ly), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2, cv2.LINE_AA)
         vw.write(img)
         if i in montage_idx:
             montage_frames.append(img.copy())
