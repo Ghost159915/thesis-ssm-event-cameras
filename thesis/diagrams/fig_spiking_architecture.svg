@@ -1,0 +1,137 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1300" height="1300" viewBox="0 0 1300 1300">
+<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#475569"/></marker></defs>
+<rect width="1300" height="1300" fill="#ffffff"/>
+<text x="650.0" y="40" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="21" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="middle">Spiking SSM detector: where it sits, and how it differs from PureSSM</text>
+<text x="650.0" y="63" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="14" font-weight="normal" font-style="normal" fill="#475569" text-anchor="middle">All four models share one frozen pipeline; only the backbone changes.</text>
+<text x="40" y="105" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="20" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="start">a</text>
+<text x="66" y="105" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="17" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="start">Shared detector pipeline</text>
+<rect x="40" y="140" width="96" height="56" rx="7" fill="#fff" stroke="#94a3b8" stroke-width="1.4"/>
+<text x="88.0" y="164" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="middle">events</text>
+<text x="88.0" y="182" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" font-style="normal" fill="#475569" text-anchor="middle">async DVS</text>
+<line x1="140" y1="168" x2="168" y2="168" stroke="#475569" stroke-width="1.8" marker-end="url(#ah)"/>
+<rect x="172" y="140" width="150" height="56" rx="7" fill="#fff" stroke="#94a3b8" stroke-width="1.4"/>
+<text x="247.0" y="164" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="middle">stacked histogram</text>
+<text x="247.0" y="182" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" font-style="normal" fill="#475569" text-anchor="middle">20 x 240 x 304</text>
+<line x1="324" y1="168" x2="352" y2="168" stroke="#475569" stroke-width="1.8" marker-end="url(#ah)"/>
+<rect x="356" y="124" width="462" height="88" rx="9" fill="#fbfdff" stroke="#0f172a" stroke-width="2.0"/>
+<text x="587" y="144" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="middle">BACKBONE  (4 stages)</text>
+<text x="587" y="163" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="11.5" font-weight="italic" font-style="normal" fill="#475569" text-anchor="middle">the only part that differs between models</text>
+<text x="587" y="181" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#475569" text-anchor="middle">dims 64 / 128 / 256 / 512      strides 4 / 8 / 16 / 32</text>
+<text x="587" y="199" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#475569" text-anchor="middle">FPN consumes stages 2, 3, 4  (strides 8 / 16 / 32)</text>
+<line x1="822" y1="168" x2="850" y2="168" stroke="#475569" stroke-width="1.8" marker-end="url(#ah)"/>
+<rect x="854" y="140" width="118" height="56" rx="7" fill="#f1f5f9" stroke="#475569" stroke-width="1.4"/>
+<text x="913.0" y="164" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="middle">YOLO-PAFPN</text>
+<text x="913.0" y="182" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" font-style="normal" fill="#475569" text-anchor="middle">neck</text>
+<line x1="976" y1="168" x2="1004" y2="168" stroke="#475569" stroke-width="1.8" marker-end="url(#ah)"/>
+<rect x="1008" y="140" width="118" height="56" rx="7" fill="#f1f5f9" stroke="#475569" stroke-width="1.4"/>
+<text x="1067.0" y="164" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="middle">YOLOX head</text>
+<text x="1067.0" y="182" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" font-style="normal" fill="#475569" text-anchor="middle">cls + box</text>
+<line x1="1130" y1="168" x2="1158" y2="168" stroke="#475569" stroke-width="1.8" marker-end="url(#ah)"/>
+<rect x="1162" y="140" width="98" height="56" rx="7" fill="#fff" stroke="#94a3b8" stroke-width="1.4"/>
+<text x="1211.0" y="164" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="middle">detections</text>
+<text x="1211.0" y="182" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" font-style="normal" fill="#475569" text-anchor="middle">car / ped</text>
+<line x1="854" y1="210" x2="1126" y2="210" stroke="#475569" stroke-width="1.4"/>
+<line x1="854" y1="210" x2="854" y2="202" stroke="#475569" stroke-width="1.4"/>
+<line x1="1126" y1="210" x2="1126" y2="202" stroke="#475569" stroke-width="1.4"/>
+<text x="990" y="228" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" font-style="normal" fill="#475569" text-anchor="middle">FROZEN - identical in all four models</text>
+<text x="990" y="244" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="11" font-weight="italic" font-style="normal" fill="#475569" text-anchor="middle">(also: loss, Gen1 data pipeline, evaluator, training recipe)</text>
+<line x1="430" y1="212" x2="320" y2="278" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="4 3"/>
+<line x1="744" y1="212" x2="1100" y2="278" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="4 3"/>
+<rect x="290" y="282" width="840" height="250" rx="10" fill="#fcfcfd" stroke="#94a3b8" stroke-width="1.6" stroke-dasharray="6 4"/>
+<text x="710" y="306" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="middle">inside one backbone stage - two orthogonal mixing axes</text>
+<rect x="320" y="324" width="350" height="86" rx="8" fill="#dbeafe" stroke="#1d4ed8" stroke-width="2.0"/>
+<text x="495" y="348" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="15" font-weight="bold" font-style="normal" fill="#1d4ed8" text-anchor="middle">SPATIAL mixer</text>
+<text x="495" y="368" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="12" font-weight="normal" font-style="normal" fill="#0f172a" text-anchor="middle">mixes across H, W  -  within ONE frame</text>
+<text x="495" y="386" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" font-style="normal" fill="#475569" text-anchor="middle">(L·B, C, H, W)   time folded into batch</text>
+<text x="495" y="402" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="10.5" font-weight="italic" font-style="normal" fill="#475569" text-anchor="middle">stateless  ·  may be bidirectional (space is not causal)</text>
+<line x1="674" y1="366" x2="706" y2="366" stroke="#475569" stroke-width="1.8" marker-end="url(#ah)"/>
+<rect x="710" y="324" width="350" height="86" rx="8" fill="#fef3c7" stroke="#b45309" stroke-width="2.0"/>
+<text x="885" y="348" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="15" font-weight="bold" font-style="normal" fill="#b45309" text-anchor="middle">TEMPORAL mixer</text>
+<text x="885" y="368" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="12" font-weight="normal" font-style="normal" fill="#0f172a" text-anchor="middle">mixes across time  -  at ONE pixel</text>
+<text x="885" y="386" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" font-style="normal" fill="#475569" text-anchor="middle">(B·H·W, L, C)   space folded into batch</text>
+<text x="885" y="402" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="10.5" font-weight="italic" font-style="normal" fill="#475569" text-anchor="middle">causal  ·  state carried across clips</text>
+<line x1="885" y1="412" x2="885" y2="430" stroke="#6d28d9" stroke-width="1.8" marker-end="url(#ah)"/>
+<rect x="710" y="432" width="350" height="76" rx="8" fill="#ede9fe" stroke="#6d28d9" stroke-width="2.2"/>
+<text x="885" y="456" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="15" font-weight="bold" font-style="normal" fill="#6d28d9" text-anchor="middle">+  LIF spiking readout</text>
+<text x="885" y="476" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="12" font-weight="italic" font-style="normal" fill="#6d28d9" text-anchor="middle">NEW - appended, replaces nothing</text>
+<text x="885" y="496" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="11.5" font-weight="bold" font-style="normal" fill="#6d28d9" text-anchor="middle">continuous in  -&gt;  binary spikes out</text>
+<rect x="320" y="432" width="350" height="76" rx="8" fill="#fff" stroke="#94a3b8" stroke-width="1.3"/>
+<text x="495" y="456" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="bold" font-style="normal" fill="#475569" text-anchor="middle">stage 1 has NO temporal block</text>
+<text x="495" y="475" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#475569" text-anchor="middle">temporal_stages = (2, 3, 4). Stage 1 is not FPN-fed,</text>
+<text x="495" y="492" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#475569" text-anchor="middle">so a block there would be dead parameters.</text>
+<text x="40" y="588" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="20" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="start">b</text>
+<text x="66" y="588" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="17" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="start">What each model changes - the two axes are independent</text>
+<text x="56" y="622" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" font-style="normal" fill="#475569" text-anchor="start">model</text>
+<text x="570" y="622" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" font-style="normal" fill="#1d4ed8" text-anchor="middle">SPATIAL mixer</text>
+<text x="890" y="622" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" font-style="normal" fill="#b45309" text-anchor="middle">TEMPORAL mixer</text>
+<text x="1084" y="622" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" font-style="normal" fill="#475569" text-anchor="middle">Gen1 test mAP</text>
+<line x1="48" y1="632" x2="1256" y2="632" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="56" y="667" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="normal" font-style="normal" fill="#0f172a" text-anchor="start">S5-RVT  (reproduced baseline)</text>
+<rect x="430" y="647" width="280" height="30" rx="6" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="570" y="667" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="13" font-weight="normal" font-style="normal" fill="#0f172a" text-anchor="middle">MaxViT attention</text>
+<rect x="760" y="647" width="260" height="30" rx="6" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="890" y="667" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="13" font-weight="normal" font-style="normal" fill="#0f172a" text-anchor="middle">S5 diagonal SSM</text>
+<text x="1084" y="667" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="middle">47.7</text>
+<text x="56" y="715" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="normal" font-style="normal" fill="#0f172a" text-anchor="start">EventSSM  (Thesis B)</text>
+<rect x="430" y="695" width="280" height="30" rx="6" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="570" y="715" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="13" font-weight="normal" font-style="normal" fill="#0f172a" text-anchor="middle">ResNet-18 conv</text>
+<rect x="760" y="695" width="260" height="30" rx="6" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="890" y="715" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="13" font-weight="normal" font-style="normal" fill="#0f172a" text-anchor="middle">Mamba-2</text>
+<text x="1084" y="715" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="middle">46.2</text>
+<text x="56" y="763" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="normal" font-style="normal" fill="#0f172a" text-anchor="start">PureSSM  (Thesis B)</text>
+<path d="M 415 756 L 424 762 L 415 768 z" fill="#1d4ed8"/>
+<rect x="430" y="743" width="280" height="30" rx="6" fill="#dbeafe" stroke="#1d4ed8" stroke-width="2.0"/>
+<text x="570" y="763" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" font-style="normal" fill="#1d4ed8" text-anchor="middle">BiMamba scan</text>
+<rect x="760" y="743" width="260" height="30" rx="6" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="890" y="763" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="13" font-weight="normal" font-style="normal" fill="#0f172a" text-anchor="middle">Mamba-2</text>
+<text x="1084" y="763" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="middle">46.4</text>
+<rect x="48" y="785" width="1208" height="42" rx="6" fill="#fbfaff" stroke="#6d28d9" stroke-width="1.6"/>
+<text x="56" y="811" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="13.5" font-weight="bold" font-style="normal" fill="#6d28d9" text-anchor="start">Spiking-SSM  (Thesis C)</text>
+<path d="M 745 804 L 754 810 L 745 816 z" fill="#6d28d9"/>
+<rect x="430" y="791" width="280" height="30" rx="6" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="570" y="811" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="13" font-weight="normal" font-style="normal" fill="#0f172a" text-anchor="middle">BiMamba scan</text>
+<rect x="760" y="791" width="260" height="30" rx="6" fill="#ede9fe" stroke="#6d28d9" stroke-width="2.2"/>
+<text x="890" y="811" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" font-style="normal" fill="#6d28d9" text-anchor="middle">Mamba-2  +  LIF</text>
+<text x="1084" y="811" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="middle">?</text>
+<text x="1200" y="811" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="11.5" font-weight="italic" font-style="normal" fill="#6d28d9" text-anchor="middle">target &gt; 41</text>
+<text x="56" y="868" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="12" font-weight="italic" font-style="normal" fill="#475569" text-anchor="start">PureSSM moved the SPATIAL axis; Spiking-SSM moves the TEMPORAL one - so the spiking block is spatial-agnostic and pairs with either backbone.</text>
+<text x="56" y="888" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="11.5" font-weight="italic" font-style="normal" fill="#475569" text-anchor="start">The caret marks the changed box. S5-RVT is the reproduced published baseline; EventSSM / PureSSM / Spiking-SSM are drop-in backbone swaps into its pipeline. mAP is COCO 0.50:0.95, Gen1 test split.</text>
+<text x="40" y="928" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="20" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="start">c</text>
+<text x="66" y="928" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="17" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="start">The LIF readout - measured from the implementation, not drawn by hand</text>
+<rect x="48" y="954" width="470" height="300" rx="10" fill="#fcfcfd" stroke="#94a3b8" stroke-width="1.6"/>
+<text x="283" y="980" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="13" font-weight="italic" font-style="normal" fill="#475569" text-anchor="middle">per timestep t, at every pixel and channel</text>
+<rect x="70" y="997" width="426" height="46" rx="6" fill="#ffffff" stroke="#b45309" stroke-width="1.5"/>
+<text x="283" y="1016" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="middle">mem  =  beta * mem  +  y[t]</text>
+<text x="283" y="1034" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="11" font-weight="italic" font-style="normal" fill="#475569" text-anchor="middle">leaky integration of the SSM output</text>
+<rect x="70" y="1055" width="426" height="46" rx="6" fill="#ffffff" stroke="#6d28d9" stroke-width="1.5"/>
+<text x="283" y="1074" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="middle">s[t]  =  1  if  mem &gt;= threshold  else 0</text>
+<text x="283" y="1092" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="11" font-weight="italic" font-style="normal" fill="#475569" text-anchor="middle">fire</text>
+<rect x="70" y="1113" width="426" height="46" rx="6" fill="#ffffff" stroke="#6d28d9" stroke-width="1.5"/>
+<text x="283" y="1132" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="middle">mem  =  mem  -  s[t] * threshold</text>
+<text x="283" y="1150" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="11" font-weight="italic" font-style="normal" fill="#475569" text-anchor="middle">reset by subtraction (keeps the residue)</text>
+<text x="283" y="1210" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="middle">forward: a hard step.   backward: arctan surrogate gradient.</text>
+<text x="283" y="1230" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="11" font-weight="italic" font-style="normal" fill="#475569" text-anchor="middle">Without the surrogate the derivative is zero almost everywhere</text>
+<text x="283" y="1245" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="11" font-weight="italic" font-style="normal" fill="#475569" text-anchor="middle">and nothing downstream of the spike can train.</text>
+<rect x="548" y="954" width="708" height="300" rx="10" fill="#fcfcfd" stroke="#94a3b8" stroke-width="1.6"/>
+<text x="902" y="980" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="middle">membrane potential integrating the Mamba-2 output</text>
+<line x1="574" y1="1144.0" x2="1212" y2="1144.0" stroke="#475569" stroke-width="1.4"/>
+<line x1="574" y1="1144.0" x2="574" y2="998" stroke="#475569" stroke-width="1.4"/>
+<line x1="574" y1="1057.103448275862" x2="1212" y2="1057.103448275862" stroke="#6d28d9" stroke-width="1.6" stroke-dasharray="6 4"/>
+<text x="582" y="1048.103448275862" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="11" font-weight="bold" font-style="normal" fill="#6d28d9" text-anchor="start">threshold</text>
+<text x="566" y="1149.0" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#475569" text-anchor="end">0</text>
+<polyline points="592.0,1104.9 637.8,1063.0 683.7,1049.1 683.7,1136.0 729.5,1083.3 775.4,1031.6 775.4,1118.5 821.2,1100.6 867.1,1094.0 912.9,1051.1 912.9,1138.0 958.8,1081.6 1004.6,1056.2 1004.6,1143.1 1050.5,1125.8 1096.3,1083.4 1142.2,1039.5 1142.2,1126.4 1188.0,1098.6" fill="none" stroke="#b45309" stroke-width="2.4" stroke-linejoin="round"/>
+<circle cx="683.7" cy="1049.1" r="4.2" fill="#6d28d9"/>
+<line x1="683.6923076923077" y1="1158" x2="683.6923076923077" y2="1182" stroke="#6d28d9" stroke-width="3.2"/>
+<circle cx="775.4" cy="1031.6" r="4.2" fill="#6d28d9"/>
+<line x1="775.3846153846154" y1="1158" x2="775.3846153846154" y2="1182" stroke="#6d28d9" stroke-width="3.2"/>
+<circle cx="912.9" cy="1051.1" r="4.2" fill="#6d28d9"/>
+<line x1="912.9230769230769" y1="1158" x2="912.9230769230769" y2="1182" stroke="#6d28d9" stroke-width="3.2"/>
+<circle cx="1004.6" cy="1056.2" r="4.2" fill="#6d28d9"/>
+<line x1="1004.6153846153846" y1="1158" x2="1004.6153846153846" y2="1182" stroke="#6d28d9" stroke-width="3.2"/>
+<circle cx="1142.2" cy="1039.5" r="4.2" fill="#6d28d9"/>
+<line x1="1142.1538461538462" y1="1158" x2="1142.1538461538462" y2="1182" stroke="#6d28d9" stroke-width="3.2"/>
+<text x="574" y="1202" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="11.5" font-weight="bold" font-style="normal" fill="#6d28d9" text-anchor="start">output spikes</text>
+<text x="1212" y="1202" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="11.5" font-weight="italic" font-style="normal" fill="#475569" text-anchor="end">firing rate 0.36</text>
+<text x="902" y="1228" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="11" font-weight="italic" font-style="normal" fill="#475569" text-anchor="middle">Each spike drops the membrane by exactly one threshold: the residue</text>
+<text x="902" y="1243" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="11" font-weight="italic" font-style="normal" fill="#475569" text-anchor="middle">above threshold is carried forward, not discarded.</text>
+</svg>
