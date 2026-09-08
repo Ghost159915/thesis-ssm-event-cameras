@@ -108,12 +108,30 @@ step names already used in `docs/research/Spiking_PureSSM_litreview_deepdive.md`
 | **22 (S-5) — SNN efficiency** | **SOPs** (synaptic ops — *not* MACs), spike sparsity, firing rate, energy estimate under an explicitly stated ANN-MAC vs SNN-SOP model. Stage-10 harness methodology. | Energy model **written out explicitly** with its assumptions — sloppy SNN energy claims are the standard reviewer target (litreview §8 risk 5). |
 | **23 (S-6) — NIR/Loihi PoC** *(stretch)* | Export via **NIR** (`snntorch.export_nir`) → Loihi runtime (Lava or successor SDK); software-simulated run. The INRC artefact. | Attempted **only** if Stages 17–22 are done by ~Week 7. Never load-bearing. |
 
-### Pre-registered expectation (write this down *before* the run)
+### Pre-registered expectation — revised 2026-09-08
 
-Best SNN detector on Gen1 is **SpikSSD at 40.8**; our ANNs sit at 46.2–47.7. A spiking SSM landing **anywhere
-in 38–45** is a good result and a publishable data point. Landing **above ~41** would beat the SNN state of the
-art on this dataset. Committing to this band in advance is what makes the outcome a finding rather than a
-post-hoc rationalisation — the same discipline used for the PureSSM bands in Stage 15.
+⚠️ **The earlier version of this section set a target of ">41, beating SNN SOTA". That was wrong and is
+withdrawn.** Two reasons, the second more serious than the first:
+
+1. It is optimistic — beating the SNN state of the art on a first attempt, with one 400k run and no
+   hyperparameter search, would be remarkable.
+2. **It is not a like-for-like comparison.** Choice C is a *hybrid*: only the temporal readout spikes, and
+   the BiMamba spatial backbone stays full-precision ANN. SpikeDet, SpikeYOLO and EMS-YOLO are all
+   **full-spike** architectures. Landing at 42 and claiming we beat SNN SOTA would be overclaiming — a
+   mostly-ANN network beating fully-spiking ones — and any examiner or reviewer would catch it. Landing at
+   36 would read as failure when it is not. The leaderboard axis is wrong in *both* directions.
+
+**Pre-register the structure of the result instead.** Before the run, commit to:
+
+* **`analog` ≈ 46.4** (PureSSM's number). This is a *diagnostic*: if the control arm does not land there,
+  the integration is broken, not the science. Run it first.
+* **Ordering `analog ≥ graded > spike`.**
+* **Report both gaps** — analog→graded (the cost of *sparsity*) and graded→spike (the cost of
+  *binarisation*) — whatever their magnitude, including if they are larger than hoped.
+
+**The decomposition is the contribution.** No published SNN detector paper can report what spiking cost it,
+because none has a non-spiking twin trained in an identical pipeline. We do. The absolute mAP is context for
+the reader, not the claim being made.
 
 ---
 

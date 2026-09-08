@@ -187,6 +187,68 @@ Stage-20 lever if training stalls, not a free win.
 
 Everything else is a sanity check, not an experiment.
 
+---
+
+## Novelty positioning — hybrid vs full-spike (decided 2026-09-08)
+
+**Question raised:** should the spiking model be made *fully* spiking, so the work does not resemble
+already-published models and pipelines?
+
+**Decision: keep it hybrid (choice C).** Going full-spike would make the work **more** derivative, not less.
+
+### Why
+
+* A full-spike detector on Gen1 is exactly what **SpikeYOLO, SpikeDet/SpikSSD and EMS-YOLO already are.**
+  Going full-spike enters their leaderboard, on their axis, with a different backbone — an incremental
+  contribution, competing against groups who have iterated for years, on one training run.
+* The unoccupied intersection identified in our own lit review (`Spiking_PureSSM_litreview_deepdive.md` §5)
+  is a spiking **structured SSM for event detection** — and that is unoccupied *either way*: structured
+  spiking SSMs exist only on speech/LM tasks; a spiking Mamba exists only for video grounding; the Gen1 SNN
+  detectors all use spiking CNNs or ViTs. **Full-spike buys no novelty and costs a great deal of risk.**
+* The bidirectional **spatial** scan is genuinely hard to spike: spikes are causal events in time, and that
+  scan's axis is not time (litreview §8, risk 3).
+
+### The reframe — the hybrid IS the idea, not a compromise
+
+The design principle is: **spike the axis that is actually time.**
+
+Prior full-spike detectors must introduce an *artificial* timestep dimension — SpikeYOLO runs `T=5`, i.e.
+5× the compute. We ride the clip-time unroll that already exists in the temporal block and pay a **zero**
+timestep multiplier. No other detector can make that argument, because no other detector starts from a
+temporal SSM. **State this explicitly in the thesis** — it converts a scoping decision into a claim.
+
+### Three additions that would sharpen the novelty (ranked)
+
+1. **Does spiking preserve rate-robustness?** — *highest value, cheapest, schedule it.*
+   We own the most rate-robust detector measured (69.7 % retention at true 10×, Stage 16). **Nobody has
+   asked whether spiking preserves or destroys that.** It connects the Thesis-B contribution directly to the
+   spiking work, and the harness already exists (Stage 9/16 two-regime) — marginal cost is *evaluation only,
+   no extra training*. A positive result is a strong argument for neuromorphic flight, where event rates
+   vary constantly; a negative result is an equally publishable finding about spiking temporal models.
+   **Do not leave this as a good intention — give it a stage and an exit gate.**
+
+2. **The stage ladder as an experiment, not just de-risking.**
+   Spike stage 4 only → 3–4 → all three. This measures *where in the hierarchy* spiking hurts (early
+   features vs late semantics). It doubles as the Week-4 safety net, so it costs nothing not already
+   budgeted.
+
+3. **SSM-specific energy accounting.**
+   Standard SNN energy models assume a MAC→accumulate conversion for conv and linear layers; an SSM scan has
+   a different operation mix. Getting that accounting right — and stating the model explicitly — is a small
+   methodological contribution, and loose energy accounting is the standard reviewer target
+   (litreview §8, risk 5).
+
+### The claim to defend
+
+Not *"another SNN detector"*, but:
+
+> what spiking **costs** a state-space detector, measured under controlled conditions nobody else has
+> established, decomposed into the cost of *sparsity* and the cost of *binarisation*, with a design
+> principle — spike the temporal axis only — that explains why this model avoids the timestep multiplier
+> every other spiking detector pays.
+
+That is a stronger thesis than a full-spike model that lands at 39.
+
 ## Next — Stage 18
 
 Wire `SpikingSSMBlock` into a backbone as a Hydra-selectable variant. The one piece of real work:

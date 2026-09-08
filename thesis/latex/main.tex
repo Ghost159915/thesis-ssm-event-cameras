@@ -812,8 +812,11 @@ is a dataset limitation worth stating.}
 \label{sec:spiking_results}
 \needsgpu{Stages 20--22. This section is scaffolded so the writing can proceed around it.}
 
-\tbd{Report, in this order: (i) Gen1 test mAP against the pre-registered band --- SNN state of the art
-on this dataset is 40.8, so 38--45 is a good result and above 41 beats it; (ii) the three-readout
+\tbd{Report, in this order: (i) Gen1 test mAP, positioned against the published SNN detectors as
+\emph{context} --- but state explicitly that this model is a \textbf{hybrid} (spiking temporal readout,
+non-spiking spatial backbone) and therefore not a like-for-like competitor to the full-spike architectures
+in Table~\ref{tab:snn_landscape}. Do NOT frame the result as beating or failing to beat SNN SOTA; that axis
+is wrong in both directions. (ii) the three-readout
 decomposition (spike / graded / analog), which separates the cost of sparsity from the cost of
 binarisation --- note that the analog arm should land near 46.4 and therefore doubles as a validation of
 the integration; (iii) firing rate and spike sparsity per stage; (iv) SOPs and the estimated energy,
@@ -918,6 +921,28 @@ and note the Lava archival as a live risk to the toolchain.}
 \subsection{Representation and tokenisation}
 \tbd{Every model here inherits a fixed stacked-histogram tokeniser. Activity-driven tokenisation paired
 with a rate-robust state-space backbone is a ready-made follow-up.}
+
+\subsection{Toward a fully spiking detector}
+\label{subsec:fw_fullspike}
+The detector reported here is a \textbf{hybrid}: the temporal readout spikes, the spatial mixer does not.
+This is a deliberate design choice rather than a limitation of effort --- the governing principle is to
+\emph{spike the axis that is actually time}. Spikes are causal events in time, and the temporal block
+already unrolls over clip time, so the readout adds no timestep dimension; fully spiking detectors must
+introduce an artificial one and pay a multiplicative compute cost for it (SpikeYOLO uses $T=5$).
+
+Extending to a fully spiking model therefore runs into a specific, nameable obstacle rather than a merely
+practical one: the spatial mixer is a \emph{bidirectional} scan whose sequence axis is space, not time.
+A spiking neuron is defined by causal integration along a temporal axis, so ``spiking'' a non-causal spatial
+scan is not well defined without either (i) making the spatial scan unidirectional and treating its
+traversal order as pseudo-time --- which discards the global context that produced this thesis's
+large-object result --- or (ii) adopting a neuron whose state dynamics \emph{are} the structured recurrence,
+so that space and time are handled by one mechanism.
+
+\tbd{Option (ii) is the interesting one and points at the SiLIF line of work; expand this into a short
+paragraph naming the concrete design and the open problem, rather than leaving it as a gesture. Also record
+the two experiments that would most sharpen the present contribution if time had allowed: whether spiking
+preserves the rate-robustness measured in Section~\ref{sec:robustness}, and where in the backbone hierarchy
+spiking costs the most. See \texttt{docs/notes/Stage17\_build\_notes.md}.}
 
 \chapter*{Acknowledgments}
 \addcontentsline{toc}{chapter}{Acknowledgments}
