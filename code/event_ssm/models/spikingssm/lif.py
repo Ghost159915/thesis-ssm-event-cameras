@@ -1,0 +1,132 @@
+"""LIF spiking readout over the TIME axis (Stage 17, Thesis-C plan §3).
+
+This is the "spiking readout" recipe (litreview §6.1 choice A/C): the SSM's linear recurrence
+is left **numerically exact** and only its *output* is passed through a leaky integrate-and-fire
+layer, so inter-block signals become sparse events. Pure PyTorch, CPU-safe, no CUDA kernels —
+it is deliberately separable from the Mamba path so its logic can be unit-tested without a GPU.
+
+Dynamics, per timestep t (reset-by-subtraction, applied in the same step):
+
+    mem[t] = beta * mem[t-1] + x[t]
+    s[t]   = Theta(mem[t] - threshold)
+    mem[t] = mem[t] - s[t] * threshold          (reset="subtract")
+             mem[t] * (1 - s[t])                (reset="zero")
+
+`beta` is stored as a logit and mapped through an **epsilon-squeezed sigmoid**,
+`beta = eps + (1-2*eps)*sigmoid(logit)`, so a *learnable* decay is confined to
+[eps, 1-eps] and the recurrence cannot be trained into divergence. The squeeze is not
+cosmetic: a plain sigmoid saturates to exactly 0.0 or 1.0 in float32 under a large step,
+which silently turns the neuron into either a memoryless unit or a pure integrator. The
+affine rescale is applied *outside* the sigmoid so gradient is preserved everywhere
+(scaled by 1-2*eps) rather than clipped to zero.
+`threshold` is clamped strictly positive for the same reason.
+
+**Shape and state contract** — mirrors `MambaTemporalBlock` so the two compose cleanly:
+    forward(x: (N, L, C), mem: (N, C) | None) -> (out: (N, L, C), mem: (N, C))
+with N = B*H*W (folded spatial locations) and L = time. `mem` is carried across clips exactly
+like the Mamba (conv, ssm) state; dim0 = N keeps it compatible with the backbone's
+`_state_to_bmajor`/`_state_from_bmajor` reshapes at Stage 18.
+
+**Output modes** (an ablation axis, not decoration):
+  * `spike`  — binary {0,1}. The neuromorphic target, and the strictest information bottleneck.
+  * `graded` — s[t] * mem_pre[t]: fires sparsely but carries magnitude. This is the analogue of
+               Loihi 2's graded spikes and of SpikeYOLO's integer-valued (I-LIF) trick, which is
+               what lifted it to SNN SOTA on Gen1 — see the INRC proposal §3.3.
+  * `analog` — the membrane itself, no spiking. The **control arm**: A/B against `spike` measures
+               the exact accuracy cost of spiking, which is the thesis question.
+"""
+import math
+
+import torch
+import torch.nn as nn
+
+from event_ssm.models.spikingssm.surrogate import atan_spike
+
+_OUTPUT_MODES = ("spike", "graded", "analog")
+_RESET_MODES = ("subtract", "zero")
+_MIN_THRESHOLD = 1e-3
+_BETA_EPS = 1e-4          # keeps a learnable beta strictly inside (0,1) even at float32 saturation
+
+
+class LIFReadout(nn.Module):
+    def __init__(self, d_model: int, beta: float = 0.9, threshold: float = 1.0,
+                 alpha: float = 2.0, learn_beta: bool = True, learn_threshold: bool = False,
+                 reset: str = "subtract", output_mode: str = "spike",
+                 detach_reset: bool = True):
+        super().__init__()
+        assert output_mode in _OUTPUT_MODES, f"output_mode must be one of {_OUTPUT_MODES}, got {output_mode!r}"
+        assert reset in _RESET_MODES, f"reset must be one of {_RESET_MODES}, got {reset!r}"
+        assert 0.0 < beta < 1.0, f"beta must lie in (0,1), got {beta}"
+        assert threshold > 0.0, f"threshold must be positive, got {threshold}"
+        self.d_model = d_model
+        self.alpha = alpha
+        self.reset = reset
+        self.output_mode = output_mode
+        # Detaching the reset path stops surrogate-gradient noise from the (discrete) spike
+        # propagating back through the membrane recurrence. Widely used stabiliser
+        # (SpikingJelly `detach_reset`); exposed so the choice is ablatable, not baked in.
+        self.detach_reset = detach_reset
+
+        # invert the epsilon-squeezed sigmoid so `beta` init is exactly the requested value
+        p = (beta - _BETA_EPS) / (1.0 - 2.0 * _BETA_EPS)
+        beta_logit = torch.full((d_model,), math.log(p / (1.0 - p)))
+        thr = torch.full((d_model,), float(threshold))
+        if learn_beta:
+            self.beta_logit = nn.Parameter(beta_logit)
+        else:
+            self.register_buffer("beta_logit", beta_logit)
+        if learn_threshold:
+            self.threshold_raw = nn.Parameter(thr)
+        else:
+            self.register_buffer("threshold_raw", thr)
+
+        # Populated every forward (detached float) so training monitors can watch for the two
+        # failure modes that kill an SNN silently: total silence and saturation.
+        self.last_firing_rate = float("nan")
+
+    @property
+    def beta(self):
+        """Decay, structurally confined to [eps, 1-eps] — see the module docstring."""
+        return _BETA_EPS + (1.0 - 2.0 * _BETA_EPS) * torch.sigmoid(self.beta_logit)
+
+    @property
+    def threshold(self):
+        """Firing threshold, clamped strictly positive."""
+        return self.threshold_raw.clamp(min=_MIN_THRESHOLD)
+
+    def forward(self, x, mem=None):                       # x (N, L, C) -> (N, L, C), mem (N, C)
+        assert x.ndim == 3, f"expected (N, L, C), got {tuple(x.shape)}"
+        n, length, c = x.shape
+        assert c == self.d_model, f"channel dim {c} != d_model {self.d_model}"
+        if mem is None:
+            mem = x.new_zeros(n, c)
+        beta = self.beta.to(x.dtype)
+        thr = self.threshold.to(x.dtype)
+
+        outs, spike_sum = [], x.new_zeros(())
+        for t in range(length):
+            mem = beta * mem + x[:, t]
+            spk = atan_spike(mem - thr, self.alpha)
+            # record the pre-reset membrane: it is what a graded spike would carry
+            mem_pre = mem
+            reset_gate = spk.detach() if self.detach_reset else spk
+            if self.reset == "subtract":
+                mem = mem - reset_gate * thr
+            else:
+                mem = mem * (1.0 - reset_gate)
+            if self.output_mode == "spike":
+                outs.append(spk)
+            elif self.output_mode == "graded":
+                outs.append(spk * mem_pre)
+            else:                                          # analog control arm
+                outs.append(mem_pre)
+            spike_sum = spike_sum + spk.detach().float().mean()
+
+        self.last_firing_rate = float(spike_sum / max(length, 1))
+        return torch.stack(outs, dim=1), mem
+
+    def extra_repr(self):
+        return (f"d_model={self.d_model}, output_mode={self.output_mode}, reset={self.reset}, "
+                f"alpha={self.alpha}, learn_beta={isinstance(self.beta_logit, nn.Parameter)}, "
+                f"learn_threshold={isinstance(self.threshold_raw, nn.Parameter)}, "
+                f"detach_reset={self.detach_reset}")
