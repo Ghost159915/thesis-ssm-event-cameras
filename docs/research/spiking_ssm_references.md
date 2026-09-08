@@ -40,9 +40,9 @@ Master citation list for the spiking-SSM / Loihi thesis direction (companion to 
 
 | Key | Title | Authors | Venue / arXiv | Gen1 mAP@0.5:0.95 | Code |
 |---|---|---|---|---|---|
-| **EMS-YOLO** | Deep Directly-Trained Spiking Neural Networks for Object Detection | Q. Su *et al.* ⚠️verify | ICCV 2023 · arXiv:2307.11411 | 0.267–0.310 | — |
-| **SpikeYOLO** | Integer-Valued Training and Spike-Driven Inference SNN for High-performance and Energy-efficient Object Detection | X. Luo *et al.* (5 auth.) ⚠️verify | ECCV 2024 (Oral/Best-Paper Cand.) · arXiv:2407.20708 | 0.385 | BICLab/SpikeYOLO |
-| **SpikSSD** | SpikSSD: Better Extraction and Fusion for Object Detection with Spiking Neuron Networks | Y. Fan *et al.* ⚠️verify (note: arXiv title may read "SpikeDet") | 2025 · arXiv:2501.15151 | **0.408 (current SNN SOTA)** | yimeng-fan/SpikSSD |
+| **EMS-YOLO** | Deep Directly-Trained Spiking Neural Networks for Object Detection | Q. Su, Y. Chou, Y. Hu, J. Li, S. Mei, Z. Zhang, G. Li ✅verified 2026-09-07 | ICCV 2023 · arXiv:2307.11411 | 0.267–0.310 | — |
+| **SpikeYOLO** | Integer-Valued Training and Spike-Driven Inference SNN for High-performance and Energy-efficient Object Detection | X. Luo, M. Yao, Y. Chou, B. Xu, G. Li ✅verified 2026-09-07 | ECCV 2024 (Oral/Best-Paper Cand.) · arXiv:2407.20708 | 0.385 | BICLab/SpikeYOLO |
+| **SpikSSD** | SpikSSD: Better Extraction and Fusion for Object Detection with Spiking Neuron Networks | Y. Fan *et al.* ✅verified 2026-09-07 — **renamed by authors to "SpikeDet: Better Firing Patterns for Accurate and Energy-Efficient Object Detection with Spiking Neuron Networks"**; cite that title, arXiv:2501.15151 | 2025 · arXiv:2501.15151 | **0.408 (current SNN SOTA)** | yimeng-fan/SpikSSD |
 | EAS-SNN | EAS-SNN: End-to-End Adaptive Sampling and Representation for Event-based Detection with Recurrent SNNs | ⚠️verify | ECCV 2024 · arXiv:2403.12574 | — | — |
 | HybridSpikeViT | Hybrid Spiking Vision Transformer for Object Detection with Event Cameras | ⚠️verify | ICML 2025 · arXiv:2505.07715 | — | — |
 
