@@ -46,15 +46,16 @@ flowchart TB
     X --> SP["Spatial BiMamba stages 1-4 (ANN, bidirectional over space)<br/>fed (L*B, 20, H, W) -> per-stage maps (L*B, c, h, w)"]
     SP --> RS["reshape per stage -> (L, B, c, h, w)"]
     RS --> Q{"stage has a<br/>temporal block?"}
-    Q -- "no (stage 1)" --> PH["features = seq<br/>state placeholder zeros (B, 1)"]
+    Q -- "no (stage 1)" --> PH["features = seq (kept in the dict, but unused by the neck)<br/>state placeholder zeros (B, 1)"]
     Q -- "yes (stages 2, 3, 4)" --> FOLD["MambaTemporalBlock.fold<br/>(L, B, c, h, w) -> (N = B*h*w, L, c)<br/>sequence axis = TIME, one sequence per spatial site"]
     FOLD --> S2{"stage in<br/>spiking_stages?"}
     S2 -- "no" --> MB["MambaTemporalBlock (Mamba-2 chunk scan)<br/>state: list of (conv, ssm), dim0 = N"]
     S2 -- "yes" --> SB["SpikingSSMBlock<br/>Mamba-2 chunk scan (unchanged)<br/>then LIFReadout over L"]
-    SB --> LIF["LIF per site and channel:<br/>mem_t = beta*mem_(t-1) + y_t<br/>s_t = H(mem_t - theta), subtract-reset<br/>out = s_t / s_t*mem_t / mem_t (spike / graded / analog)"]
+    SB --> LIF["LIF per site and channel:<br/>mem_t = beta*mem_(t-1) + y_t<br/>s_t = H(mem_t - theta)<br/>mem_pre = mem_t (value before the reset), then subtract-reset<br/>spike: out = s_t<br/>graded: out = s_t * mem_pre<br/>analog: out = mem_pre (leak and reset still run)"]
     MB --> UF["unfold -> (L, B, c, h, w)"]
     LIF --> UF
-    UF --> FEAT["features dict {2,3,4} -> PAFPN -> YOLOX head (frozen)"]
+    UF --> FEAT["features dict {1..4}; the neck consumes {2,3,4}<br/>-> PAFPN -> YOLOX head (frozen)"]
+    PH -.-> FEAT
 
     subgraph STATE["State carried between clips (RVT RNNStates, dim0 = B)"]
         direction LR
@@ -86,7 +87,7 @@ model group differs from PureSSM.
 |---|---|---|
 | Output-mode decomposition (headline) | `model.backbone.spiking.output_mode={spike,graded,analog}` | `analog` keeps leak and subtract-reset (D9); it is **not** a PureSSM copy. |
 | De-risking ladder | `model.backbone.spiking.spiking_stages=[4]` then `[3,4]` then `[2,3,4]` | Must be a subset of `in_stages` (validated before anything is built). `[2,3,4]` is the default. |
-| Integration null test (no flag needed in training) | `spiking_stages=[]` | Numerically the PureSSM backbone; proven by `test_no_spiking_stages_equals_puressm`. |
+| Integration null test | `model.backbone.spiking.spiking_stages=[]` | A valid override (composes to an empty tuple): no stage spikes, so the model reproduces PureSSM numerically. Proven by `test_no_spiking_stages_equals_puressm` (all-ANN path). It is a wiring check, not an experimental arm. |
 | Energy–accuracy Pareto | `model.backbone.spiking.threshold=<value>` | Higher threshold gives sparser firing, fewer SOPs, lower energy. Do not report a single operating point. |
 | Analog bypass (escape hatch) | `model.backbone.spiking.residual=True` | **Must be reported if used**: it weakens the spiking claim. |
 | Other LIF knobs | `...spiking.{beta,alpha,learn_beta,learn_threshold,reset,detach_reset}` | Forwarded verbatim to `LIFReadout` through `_LIF_KEYS` in `register.py`; each is pinned by a test at a non-default value. A misspelled key under `spiking:` raises `ValueError` (D12). |
@@ -100,7 +101,7 @@ model group differs from PureSSM.
 | Check | Result |
 |---|---|
 | Full default suite, `pytest code/event_ssm/tests/ -q` (repo root) | **166 passed, 25 deselected (gpu-marked), 27 warnings in 75.42 s** — 0 failures (re-run after the D12 fix round; 161 passed in 72.05 s before it). Baseline before Stage 18 was 143 non-GPU tests; 166 − 143 = **23 new non-GPU tests** (lif +5, `test_backbone_cpu` 3, `test_register_spikingssm` 11, `test_spiking_monitor` 4). |
-| Spiking GPU session, `pytest code/event_ssm/tests/models/spikingssm/ -m gpu -q` (RTX 5070 Ti idle at the guard: 2–8 % utilisation, 1.3–1.5 GiB resident, no compute processes listed by `nvidia-smi`) | **22 passed, 49 deselected in 33.42 s** = 9 Stage-17 gpu tests + 13 in `test_backbone_gpu.py` (the 7 tests planned for Task 2 became 13 through parametrisation over output mode and over the ladder, plus the D11 hardening). A second, independent run reproduced **22 passed in 34.58 s**. |
+| Spiking GPU session, `pytest code/event_ssm/tests/models/spikingssm/ -m gpu -q` (RTX 5070 Ti idle at the guard: 4 % utilisation / 1315 MiB before the first run, 2 % / 1534 MiB before the second; no compute processes listed by `nvidia-smi`) | **22 passed, 49 deselected in 33.42 s** = 9 Stage-17 gpu tests + 13 in `test_backbone_gpu.py` (the 7 tests planned for Task 2 became 13 through parametrisation over output mode and over the ladder, plus the D11 hardening). A second, independent run reproduced **22 passed in 34.58 s**. |
 | Spiking package, all tests | 76 collected = 54 non-GPU + 22 GPU. |
 | Frozen packages, `git diff --stat main -- code/event_ssm/models/eventssm code/event_ssm/models/puressm code/event_ssm/temporal code/event_ssm/backbone` | **Empty (exit 0)** — nothing in the frozen model/temporal/backbone code is modified. |
 | Files changed vs `main` under `code/event_ssm/` | Only: `models/spikingssm/{__init__,backbone,lif}.py`, `integration/{register,monitors}.py` (additive), two new config files, and tests under `tests/models/spikingssm/`. Plus `docs/patches/README.md` (symlink recipe). |
@@ -116,7 +117,8 @@ any mAP delta against PureSSM is attributable to the spiking readout.
 ## 4. Problems found and decisions
 
 Format for every item: symptom or question, evidence, root cause or options considered, decision and who made it
-("user" = explicit decision by the thesis author; "plan" = fixed by the agreed Stage-18 plan), consequence, and where it is used in the thesis.
+("user" = explicit decision by the thesis author; "plan" = fixed by the agreed Stage-18 plan; "controller/assistant" = a process choice
+made while executing the plan), consequence, and where it is used in the thesis.
 
 ### D1. Schedule position when Stage 18 started
 
@@ -139,7 +141,8 @@ Format for every item: symptom or question, evidence, root cause or options cons
   attributable to the spiking readout alone. `spiking_stages ⊆ temporal_stages` exposes the de-risking ladder
   (`[4]` → `[3,4]` → `[2,3,4]`) as a single config value; a violating configuration raises `ValueError` before anything is built,
   because a spiking stage with no temporal block would be silently ignored and would mislabel an ablation arm.
-- **Consequence.** The three frozen packages show an empty `git diff` against `main` (§3).
+- **Consequence.** The four frozen paths (`models/eventssm`, `models/puressm`, `temporal`, `backbone/resnet_mamba.py`) show an empty
+  `git diff` against `main` (§3).
 - **Thesis use.** Ch.3 Methodology (architecture of the spiking model; the controlled-ablation argument).
 
 ### D3. Dispatch through an additive branch in `register.py`
@@ -148,7 +151,9 @@ Format for every item: symptom or question, evidence, root cause or options cons
   (b) Zero-edit chaining through a new `spikingssm/register.py` with duplicated train/eval launchers.
 - **Decision (user): (a).** Every existing launcher (training, test evaluation, the Stage-10 benchmark) then works unchanged with
   `+experiment/gen1=spikingssm`; option (b) would have duplicated the launchers and invited recipe drift between models.
-- **Consequence.** This is the only touch to pre-existing harness code; the existing branches are byte-identical.
+- **Consequence.** One of exactly **two** additive edits to pre-existing harness code: this `register.py` dispatch branch (plus the
+  entry in the config-modifier name tuple) and `attach_spiking_monitor` appended to `integration/monitors.py`. The existing branches and
+  functions are unchanged (the ResNetMamba and PureSSM branches are byte-identical).
 - **Thesis use.** Ch.4 Experimental Setup (one harness, four models; why recipe drift is excluded by construction).
 
 ### D4. Plan-mandated duplication governs
@@ -165,8 +170,9 @@ Format for every item: symptom or question, evidence, root cause or options cons
 
 ### D5. Process: branch in place, not a git worktree
 
-- **Decision (plan).** `external/` (RVT) is gitignored and the tests resolve it relative to the repository, so a worktree would not
-  contain it. Work was done on branch `stage18-spikingssm` in the main checkout.
+- **Process choice (controller/assistant; neither the plan nor the user decided this, and the plan never mentions worktrees).**
+  `external/` (RVT) is gitignored and the tests resolve it relative to the repository, so a worktree would not contain it. Work was done
+  on branch `stage18-spikingssm` in the main checkout.
 - **Thesis use.** Reproducibility appendix (environment/tooling note only).
 
 ### D6. Latent Stage-17 bug: `beta == eps` crashed `LIFReadout` construction
@@ -214,7 +220,7 @@ Format for every item: symptom or question, evidence, root cause or options cons
   disabled (`threshold = 1e6`, asserting zero firing). (3) Keep 1e-3 and investigate further.
 - **Decision (user, 2026-10-06): option 2.** The strict case keeps a tight check of the Mamba-state and membrane carry that cannot hide
   behind the fraction allowance. Implemented in commit `986b64e`.
-- **Measured result** (table in §4.1): worst fraction |diff| > 1e-3 is at most 1.6e-4 against a bound of 1e-3; the strict no-spike
+- **Measured result** (commit `986b64e`, GPU 8/8 pass; table in §4.1): worst fraction |diff| > 1e-3 is at most 1.6e-4 against a bound of 1e-3; the strict no-spike
   case reports firing rate exactly 0.0 and max|split − full| of 3.1e-4 / 4.2e-4 / 8.7e-4 against scale-relative allowances of
   5.0e-3 / 4.4e-3 / 4.3e-3 (stages 2/3/4).
 - **Consequence and broader point.** A thresholded model amplifies floating-point noise into discrete flips, so **bit-level equality
@@ -234,17 +240,27 @@ Format for every item: symptom or question, evidence, root cause or options cons
   (3) Defer to Stage 19.
 - **Decision (user, 2026-10-06): option 1; the code is unchanged.**
   - **Integration check** = the `spiking_stages=[]` null test, proven numerically identical to PureSSM
-    (`test_no_spiking_stages_equals_puressm`, `atol = 1e-6` on all four feature maps).
+    (`test_no_spiking_stages_equals_puressm`, `atol = 1e-6` on all four feature maps). The null test covers the all-ANN path only; the
+    spiking-path wiring is verified by the D6 exact-identity test (block ≡ LIF(weight-identical Mamba)) and the streaming/strict
+    state-carry tests (D8, D11).
   - **Results ladder, all arms sharing one membrane:** PureSSM → `analog` (cost of the LIF dynamics: leak plus reset) → `graded`
     (cost of sparsity) → `spike` (cost of binarisation). The expected ordering `analog ≥ graded > spike` stands, and all three gaps are
     reported whatever their size.
-- **Where the reframing was applied:** `CLAUDE.md` pre-registration bullet (a) and (c); `thesis/latex/main.tex` `\tbd` in
-  `sec:spiking_results`; dated inline notes in `docs/plans/2026-09-07-thesis-c-plan.md` and `docs/notes/Stage17_build_notes.md`.
-- **Stale wording, now corrected (comment-only, this commit; see D12).** The `lif.py` module docstring and the inline comment on the
+- **Where the reframing was applied:** `CLAUDE.md` pre-registration bullet (a) and (c); `thesis/latex/main.tex` (`\tbd` in
+  `sec:spiking_results`, the Readout-modes paragraph and the ablation-table row label); dated inline notes in
+  `docs/plans/2026-09-07-thesis-c-plan.md` and `docs/notes/Stage17_build_notes.md`.
+- **Stale wording, now corrected (comment-only, commit `6ea0ed0`).** The `lif.py` module docstring and the inline comment on the
   analog branch ("`analog` … the control arm"), and the `# analog = control arm, should ≈ PureSSM 46.4` comment in
   `configs/spikingssm_yolox/default.yaml:26`, were wrong in the sense of D9 and were rewritten; the behaviour was always as described
   here. The spec/plan quotations of that comment are frozen documents and remain as written. No logic changed; all Stage-17 LIF tests
   pass untouched.
+- **Further stale wording, now updated (this commit).** `thesis/latex/main.tex` §Readout modes (previously "analog ($m_t$, no
+  spiking --- a control arm that isolates the cost of sparsity from the cost of binarisation)") now states the D9 framing, and the
+  ablation-table row label "analog (control)" is now "analog (dense LIF)". `docs/notes/Stage17_build_notes.md` Decision 4
+  ("`analog` ... the control arm — A/B against `spike` measures the exact cost of spiking") carries a dated inline note (history is not
+  rewritten). Not editable under the fix-round rules and still using "control arm": `thesis/inrc_proposal/inrc_loihi_proposal.tex`
+  (l.72–73, "analog (the control arm)") — the INRC proposal should be re-read for this before it is sent. (Its l.80 section title "What is
+  already built (the control arm)" refers to the non-spiking baselines and is unaffected.)
 - **Thesis use.** Ch.3 Methodology (readout modes; what each arm holds fixed), Ch.5 §5.7 results structure (a four-rung ladder with
   three gaps) and Ch.6 Discussion (what "the cost of spiking" decomposes into).
 
@@ -348,12 +364,14 @@ review findings are listed below (D12).
 | Task 3 | A NaN firing rate trips neither SILENT nor SATURATED (NaN comparisons are False); in practice a NaN membrane gives rate 0 and SILENT fires, but `if not (rate >= silence)` would make it explicit | Open — see final review |
 | Task 3 | Monitor boilerplate (cadence guard, W&B try/except) mirrors the spatial monitor | **Parked** (same ruling family as D4: append-only constraint) |
 | Task 3 | No tests for the W&B key format / `commit=False`, boundary rates exactly 0.01 and 0.90, suppression when `spiking_stats` raises, or a repeat at the second cadence tick | Open — see final review |
-| Stage 18 (D9) | Stale "analog = control arm, should ≈ PureSSM 46.4" wording in `lif.py` docstring and `configs/spikingssm_yolox/default.yaml:26` | **Fixed** (comment-only, D12 docs commit) |
+| Stage 18 (D9) | Stale "analog = control arm, should ≈ PureSSM 46.4" wording in `lif.py` docstring and `configs/spikingssm_yolox/default.yaml:26` | **Fixed** (comment-only, commit `6ea0ed0`) |
+| Stage 18 (D9) | Stale "control arm / no spiking" wording for `analog` in `main.tex` (Readout modes paragraph; table row "analog (control)") and in Stage-17 notes Decision 4 | **Fixed** (this commit; Stage-17 notes via a dated inline note) |
+| Stage 18 (D9) | `thesis/inrc_proposal/inrc_loihi_proposal.tex` l.72–73 still calls analog "the control arm" | Open — file outside this fix round's remit; re-read before the proposal is sent |
 | Task 4 | `test_lif_kwargs_flow_from_config` tested beta/alpha/learn_beta/detach_reset only at their defaults | **Fixed** `dc7f56c` (D12) |
 | Task 4 | Unknown keys under `backbone.spiking` silently ignored (typo'd `+...spiking.outptu_mode` ran the default arm) | **Fixed** `dc7f56c` (D12) |
 | Task 4 | `SPIKING_MONITOR` env wiring untested | **Fixed** `dc7f56c` (D12) |
 | Task 4 | A missing `spiking:` block silently uses the `LIFReadout` defaults (all temporal stages spiking, `spike` mode) | Known limitation, kept by decision: the shipped config always carries the block and the behaviour is pinned by `test_missing_spiking_block_uses_defaults` |
-| Task 4 | The widened name tuple in `register_config_modifier` is one 118-character line | Cosmetic, left as is (the Stage-12 one-line style) |
+| Task 4 | The widened name tuple in `register_config_modifier` is one 112-character line (`register.py:132`) | Cosmetic, left as is (the Stage-12 one-line style) |
 | D10 | `main.tex` duplicate labels, `[h!]` float, untracked `supervisor_report/` | Open — outside Stage-18 scope |
 
 ---
@@ -378,7 +396,9 @@ review findings are listed below (D12).
 
 Commit before any result is seen:
 
-1. **Integration is established by the null test**, not by an accuracy number: `spiking_stages=[]` ≡ PureSSM (proven, GPU-tested).
+1. **Integration is established by tests, not by an accuracy number.** The null test, `spiking_stages=[]` ≡ PureSSM (proven, GPU-tested),
+   covers the all-ANN path only; the spiking-path wiring is verified by the D6 exact-identity test (block ≡ LIF(weight-identical Mamba))
+   and the streaming/strict state-carry tests (D8, D11).
 2. **Ladder sharing one membrane:** PureSSM (46.43) → `analog` → `graded` → `spike`. Report **all three gaps**: PureSSM → analog (cost of the
    LIF dynamics, leak and reset), analog → graded (cost of sparsity), graded → spike (cost of binarisation), whatever their size.
 3. **Expected ordering** `analog ≥ graded > spike` still stands.

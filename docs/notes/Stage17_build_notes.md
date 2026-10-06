@@ -38,6 +38,10 @@ and `temporal/` are **untouched** (verified: `git status code/` shows two new di
    target), `graded` (`spk * mem_pre`: the Loihi-2 graded-spike / SpikeYOLO I-LIF analogue, and the
    mitigation for the binary information bottleneck), `analog` (membrane, **the control arm** — A/B
    against `spike` measures the exact cost of spiking, which is the thesis question).
+   > ⚠️ Revised 2026-10-06 (Stage 18, decision D9): `analog` keeps leak + subtract-reset, so it is not a "no spiking" control arm.
+   > It is a dense readout of the *same* membrane: PureSSM→analog = cost of the LIF dynamics, analog→graded = cost of sparsity,
+   > graded→spike = cost of binarisation — see docs/notes/Stage18_integration_notes.md. (The "CONTROL ARM" label in the *output_mode*
+   > snippet under "The full surface" below is revised in the same way.)
 
 5. **`residual=False` by default.** The backbone *replaces* its stage features with the temporal output
    (`backbone/resnet_mamba.py` forward — no residual around the temporal block), so a binary readout

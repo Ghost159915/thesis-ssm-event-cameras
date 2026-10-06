@@ -554,8 +554,11 @@ only the gradient is smoothed.
 \subsection{Readout modes}
 Three readouts are implemented, and comparing them decomposes the cost of spiking rather than merely
 measuring it: \textbf{spike} ($s_t$, binary), \textbf{graded} ($s_t \cdot m_t$, the analogue of Loihi~2
-graded spikes and of SpikeYOLO's integer-valued training), and \textbf{analog} ($m_t$, no spiking ---
-a control arm that isolates the cost of sparsity from the cost of binarisation).
+graded spikes and of SpikeYOLO's integer-valued training), and \textbf{analog} ($m_t$, the
+pre-reset membrane emitted densely). The analog arm shares the spiking membrane --- leak and subtract-reset
+still run --- and differs from graded only in that its readout is dense. The three readouts therefore form a
+ladder above the non-spiking PureSSM: PureSSM$\to$analog measures the cost of the LIF dynamics themselves,
+analog$\to$graded the cost of sparsity, and graded$\to$spike the cost of binarisation.
 
 \section{Evaluation Protocol}
 \label{sec:eval_protocol}
@@ -833,7 +836,7 @@ reviewer target.}
 \toprule
 \textbf{Readout} & \textbf{mAP} & \textbf{Firing rate} & \textbf{SOPs} & \textbf{Energy / frame} \\
 \midrule
-analog (control) & --- & n/a & n/a & --- \\
+analog (dense LIF) & --- & n/a & n/a & --- \\
 graded           & --- & --- & --- & --- \\
 spike (binary)   & --- & --- & --- & --- \\
 \bottomrule
