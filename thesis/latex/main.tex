@@ -345,7 +345,7 @@ Falanga et al. \cite{falanga2019fast} presented a seminal contribution in event-
 
 Sanket et al. \cite{sanket2020evdodgenet} proposed EVDodge, an event-based dodging system tested on UAV platforms. Their approach demonstrated real-time obstacle avoidance using purely event-based perception, showing that the high temporal resolution of event cameras could be directly translated into improved avoidance performance. The system was validated both in simulation and on physical quadrotor platforms, confirming the practical feasibility of event-based avoidance systems. 
 
-More recent work has explored bio-inspired processing pipelines for event-based UAV obstacle avoidance. Li et al. \cite{li2024taming} proposed a neuromorphic processing architecture that integrates event camera data with bio-inspired algorithms running on dedicated neuromorphic hardware, achieving real-time obstacle avoidance with power consumption in the milliwatt range. This approach is particularly relevant for micro UAVs where power budget is a primary constraint. 
+More recent work has explored bio-inspired processing pipelines for event-based UAV obstacle avoidance. Xu et al. \cite{li2024taming} proposed BioDrone, which processes stereo event cameras with a chiasm-inspired pipeline for fast event filtering and obstacle detection and a lateral-geniculate-nucleus-inspired matching algorithm for obstacle localisation, deployed on an FPGA through software--hardware co-design, and reported an obstacle detection rate of 96.1\%. Such co-designed pipelines are particularly relevant for micro UAVs, where the power budget is a primary constraint. 
 
 Despite these advances, each of the surveyed approaches has notable limitations. The visual odometry and motion segmentation methods of Rebecq et al.\ \cite{rebecq2017real} and Falanga et al.\ \cite{falanga2019fast} use handcrafted features and geometric rules rather than learned representations, which limits how well they generalise to new environments. EVDodge \cite{sanket2020evdodgenet}, while shown to work on real hardware, uses a relatively shallow network that has not been tested under challenging conditions such as cluttered scenes or rapidly changing lighting. The neuromorphic approach of Li et al.\ \cite{li2024taming} is attractive for its low power consumption, but depends on specialised hardware that is not yet available at the micro-UAV scale and cannot easily support the kind of spatial feature extraction required for general object detection. Most importantly, none of these methods combine learned deep spatial features with a temporal model that can handle variable event rates, the core gap that this thesis addresses through its SSM-based detection architecture. 
 
@@ -375,6 +375,7 @@ The emergence of neuromorphic processing hardware offers a potential path to eff
 The linear complexity and inherent efficiency of SSM-based architectures position them as strong candidates for deployment on the limited computational resources available on micro UAVs. Unlike transformer-based models that require quadratic memory and computation, SSMs can process long event sequences with predictable and modest resource requirements. Combined with model compression techniques such as quantisation and pruning, SSM architectures may enable real-time object detection on platforms that cannot support transformer or large CNN inference. 
 
 \section{Identification of Research Gaps}
+\label{sec:gaps_thesisA}
 The preceding review reveals several interconnected research gaps that this thesis aims to address: 
 
 Gap 1: Pure selective Mamba for event-based object detection. Existing SSM-based detection methods integrate SSM layers into Transformer backbones \cite{zubic2024state} or employ selective Mamba within sparse-attention hybrid frameworks \cite{yang2025smamba}. In both cases, inter-frame recurrence is maintained via ConvLSTM or SSM hidden state passed across consecutive windows. No prior work has evaluated a fully recurrence-free, convolutional-free selective Mamba architecture for event-based detection, nor conducted a controlled ablation comparing a CNN-SSM hybrid against a pure SSM model under identical loss functions, detection heads, and training protocols. Such a comparison is required to isolate the contribution of the spatial feature extractor from all other architectural variables. 
@@ -393,58 +394,193 @@ These gaps collectively define the research space for this thesis: developing an
 
 \section{Spiking Neural Networks for Event-Based Detection}
 \label{sec:snn_detection}
-Directly-trained spiking neural networks (SNNs) are now an established --- if trailing --- family on
-this exact benchmark, and they are the correct comparison class for the neuromorphic strand of this
-thesis. Table~\ref{tab:snn_landscape} places them against the non-spiking models studied here.
+Directly-trained spiking neural networks (SNNs) are an established family on this benchmark and the
+comparison class for the neuromorphic strand of this thesis. They are trained with surrogate
+gradients~\cite{neftci2019surrogate}: the non-differentiable spike function is kept in the forward pass
+and replaced by a smooth surrogate derivative in the backward pass, which makes back-propagation through
+time applicable to networks of spiking neurons. Table~\ref{tab:snn_landscape} places the spiking detectors
+reported on Gen1 against the non-spiking models of this thesis.
 
 \begin{table}[htbp]
 \centering
-\caption{Object detection on Prophesee Gen1: non-spiking versus directly-trained spiking detectors.
-COCO mAP@[0.50:0.95] on the test split.}
+\small
+\caption{Object detection on Prophesee Gen1, COCO mAP@[0.50:0.95] on the test split. Ranges span the
+reported model sizes. $T\times D$: timesteps $\times$ virtual timesteps of integer-valued training
+($D=1$: binary spikes throughout). SpikeDet is a preprint (version 5, 2026); its first version, under
+the title SpikSSD, reported 40.8.}
 \label{tab:snn_landscape}
-\begin{tabular}{llcc}
+\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}Xccl@{}}
 \toprule
-\textbf{Model} & \textbf{Type} & \textbf{mAP} & \textbf{Venue} \\
+\textbf{Model} & \textbf{Type} & \textbf{$T\times D$} & \textbf{mAP} & \textbf{Venue} \\
 \midrule
-S5-RVT \cite{zubic2024state}                & ANN (SSM)  & 47.7 & CVPR 2024 \\
-EventSSM (this work)                        & ANN (SSM)  & 46.2 & --- \\
-PureSSM (this work)                         & ANN (SSM)  & 46.4 & --- \\
+RVT \cite{gehrig2023recurrent}        & ANN (attention, ConvLSTM) & --- & 47.2 & CVPR 2023 \\
+S5-RVT \cite{zubic2024state}          & ANN (attention, S5)       & --- & 47.7 & CVPR 2024 \\
+SMamba \cite{yang2025smamba}          & ANN (sparse Mamba, ConvLSTM) & --- & 50.4 & AAAI 2025 \\
+EventSSM (this work)                  & ANN (convolution, Mamba-2) & --- & 46.2 & --- \\
+PureSSM (this work)                   & ANN (BiMamba, Mamba-2)    & --- & 46.4 & --- \\
 \midrule
-SpikeDet / SpikSSD                          & SNN & 40.8 & 2025 \\
-SpikeYOLO                                   & SNN & 38.5 & ECCV 2024 \\
-EMS-YOLO                                    & SNN & 26.7--31.0 & ICCV 2023 \\
+HsVT \cite{xu2025hybrid}              & hybrid (spiking temporal block) & --- & 44.9--47.8 & ICML 2025 \\
+SpikeDet \cite{fan2025spikedet}       & SNN, integer-valued       & $5\times1$, $4\times2$ & 46.5--47.6 & preprint \\
+EAS-SNN \cite{wang2024eas}            & SNN, recurrent            & $3$ & 37.2--40.9 & ECCV 2024 \\
+SpikeYOLO \cite{luo2024integer}       & SNN, integer-valued       & $5\times1$, $4\times2$ & 38.5--40.4 & ECCV 2024 \\
+EMS-YOLO \cite{su2023deep}            & SNN                       & $5$ & 26.7--31.0 & ICCV 2023 \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
-The gap between the best spiking detector and the best non-spiking one is roughly 6--7 mAP.
-\tbd{one paragraph: the recovery mechanisms that work in this literature are richer information per
-spike (SpikeYOLO's integer-valued I-LIF) and recurrence (EAS-SNN) --- both of which a state-space
-neuron supplies natively. Cite properly and add the entries to references.bib.}
+Two observations follow. First, the accuracy gap between spiking and non-spiking detectors on Gen1 has
+closed. EMS-YOLO, the first deep directly-trained spiking detector~\cite{su2023deep}, reached 31.0 in 2023,
+16.7~mAP below S5-RVT; the strongest recent spiking detectors, SpikeDet~\cite{fan2025spikedet} and
+HsVT~\cite{xu2025hybrid}, report 47.6 and 47.8, level with S5-RVT and above the own models of this thesis.
+On this benchmark a spiking detector is therefore no longer necessarily a less accurate one, and the case
+for the neuromorphic strand rests on energy and deployment rather than accuracy.
+
+Second, the mechanisms behind that progress are identifiable, and both are native to a state-space neuron.
+\emph{More information per spike:} SpikeYOLO's I-LIF neuron emits integer values in $\{0,\dots,D\}$ during
+training and, at inference, expands each integer into $D$ binary spikes over virtual timesteps, so that
+inference remains spike-driven (binary, accumulate-only) while training sees a multi-bit
+signal~\cite{luo2024integer}. SpikeDet uses the same integer-valued scheme, and for both detectors the
+$4\times2$ configuration outperforms $5\times1$ despite the same total of 8--10 steps. \emph{Temporal state:}
+EAS-SNN uses recurrent convolutional SNNs with temporal memory as an adaptive event sampler~\cite{wang2024eas},
+and HsVT combines LSTM blocks with a spiking temporal feature-extraction block on a MaxViT spatial
+backbone~\cite{xu2025hybrid}. HsVT is the closest design point to the spiking model of this thesis: it keeps
+spatial processing in non-spiking form and spikes along time. A state-space neuron supplies both mechanisms
+by construction, since its state is a carried, multi-valued memory and the graded readout of
+Section~\ref{subsec:readout_modes} is the per-neuron analogue of an integer-valued spike. EMS-YOLO and
+SpikeYOLO also report an ANN of equivalent architecture, so the overall cost of spiking is known for those
+designs; where that cost comes from is not reported.
 
 \section{Spiking State Space Models}
 \label{sec:spiking_ssm}
-\tbd{the formal SSM$\leftrightarrow$LIF bridge (a discretised diagonal SSM and a leaky
-integrate-and-fire neuron are the same linear recurrence with different readouts); SpikingSSMs and the
-SDN parallel-training trick; SiLIF; spiking selective SSMs. Source material:
-\texttt{docs/research/Spiking\_PureSSM\_litreview\_deepdive.md} \S2--\S3.}
+A discretised diagonal state-space model and a leaky integrate-and-fire neuron are the same linear
+recurrence with different readouts. Consider one state dimension of a diagonal SSM with decay $a<0$,
+input weight $b$, output weight $c$ and step $\Delta$, discretised with a zero-order hold:
+\begin{equation}
+  h_t = \bar a\, h_{t-1} + \bar b\, u_t, \qquad y_t = c\, h_t, \qquad
+  \bar a = e^{\Delta a}, \quad \bar b = \frac{e^{\Delta a}-1}{a}\, b .
+  \label{eq:ssm_scalar}
+\end{equation}
+The discrete LIF neuron of Equations~\eqref{eq:lif_integrate}--\eqref{eq:lif_reset} integrates its input
+$x_t$ as $m_t = \beta m_{t-1} + x_t$. With $\beta = \bar a$ and $x_t = \bar b u_t$ the membrane potential
+$m_t$ \emph{is} the SSM state $h_t$, and the leak is a discretised decay. The neuron differs in two
+respects only. Its readout is a threshold, $s_t = \Theta(m_t - \vartheta)$, instead of a linear map; and its
+reset, $m_t \leftarrow m_t - s_t\vartheta$, feeds the output back into the state. The second difference is
+the consequential one. Without reset the recurrence is linear and can be evaluated with a parallel scan, as
+SSMs are during training; with reset the state depends on its own thresholded past, and the recurrence must
+be unrolled sequentially. Much of the spiking-SSM literature consists of ways around that obstacle,
+summarised in Table~\ref{tab:spiking_ssm}.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Spiking state-space models. All except the last row target one-dimensional sequence tasks.}
+\label{tab:spiking_ssm}
+\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}Xl@{}}
+\toprule
+\textbf{Work} & \textbf{How spiking enters} & \textbf{Parallel training} & \textbf{Task} \\
+\midrule
+SpikingSSMs \cite{shen2025spikingssms} & spiking neurons with learnable thresholds driven by an S4D-type SSM &
+  a small network predicts the after-reset membrane & LRA, WikiText-103 \\
+SPikE-SSM \cite{zhong2026spike} & reset-refractory neuron, trainable thresholds & boundary compression of
+  the membrane & LRA, WikiText-103 \\
+P-SpikeSSM \cite{bal2025p} & spikes sampled stochastically from an SSM-based neuron & sampling replaces
+  sequential spike generation & long-range tasks \\
+SiLIF \cite{fabre2025silif} & the neuron is a two-state SSM with S4-style parametrisation & --- (surrogate
+  gradients through time) & speech \\
+Spiking-S4 \cite{du2023spiking} & spiking neurons combined with an S4 model & --- & speech enhancement \\
+SpikeMba \cite{li2024spikemba} & spiking saliency detector for proposals; Mamba non-spiking & --- &
+  video grounding \\
+\midrule
+This thesis & LIF readout on the output of a selective (Mamba-2) temporal block & SSM scan unchanged;
+  readout unrolled over the clip & event detection \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+SpikingSSMs~\cite{shen2025spikingssms} train a lightweight surrogate dynamic network to predict the
+after-reset membrane potential, which restores parallel training with orders-of-magnitude speed-ups over
+iterative unrolling, and report performance competitive with non-spiking SSMs at about 90\,\% network
+sparsity. SPikE-SSM~\cite{zhong2026spike} accelerates the same computation by compressing the membrane
+dynamics between spike boundaries and adds a reset-refractory neuron with trainable thresholds.
+P-SpikeSSM~\cite{bal2025p} avoids sequential spike generation altogether by sampling spikes stochastically
+from an SSM-based neuronal model. SiLIF~\cite{fabre2025silif} takes the correspondence of
+Equation~\eqref{eq:ssm_scalar} in the other direction: it makes it exact for a two-state adaptive neuron and
+gives the neuron an S4-style parametrisation (decays trained in logarithmic form, a learnable per-neuron step,
+and a complex-valued variant with oscillatory dynamics), reporting state-of-the-art accuracy among spiking
+neuron models on speech. Spiking-S4~\cite{du2023spiking} combines S4 with spiking neurons for speech
+enhancement at reduced parameter and FLOP counts.
+
+Two limitations of this literature matter here. First, it targets one-dimensional sequence tasks: long-range
+benchmarks, language modelling and speech. Second, it is built on linear time-invariant SSMs (S4, S4D), whose
+decay does not depend on the input. The only selective model in Table~\ref{tab:spiking_ssm}, SpikeMba, keeps
+Mamba itself non-spiking and uses spikes only for proposal generation~\cite{li2024spikemba}. In a selective
+SSM the decay $\bar a_t = e^{\Delta_t a}$ varies with the input at every step. The recurrence is still linear
+in the state, so a spiking \emph{readout} placed after the scan, as in this thesis, leaves the scan exact and
+parallel; making the selective state itself spike, with a reset inside the scan, would require one of the
+parallel-training devices above to be extended to input-dependent decays.
 
 \section{Neuromorphic Hardware and the Deployment Path}
 \label{sec:neuromorphic_hw}
-\tbd{Loihi 2: programmable per-neuron microcode (why a diagonal SSM recurrence maps natively rather
-than being forced into a fixed LIF primitive) and graded spikes (why they address the binary
-information bottleneck). Meyer et al.\ mapped a diagonal SSM (S4D) to Loihi 2 and measured
-${\sim}1000\times$ lower energy and ${\sim}75\times$ lower latency than a Jetson. Note that the Lava
-framework was archived by Intel in May 2026, which is why NIR is used as the export boundary.
-Source: \texttt{docs/research/INRC\_Loihi\_Access\_Notes.md}, \texttt{DeepResearch\_Loihi\_SpikingSSM.md}.}
+Neuromorphic processors execute spiking networks in an event-driven manner: computation and
+communication happen only when spikes arrive, so energy scales with activity rather than with the size of
+the input~\cite{davies2021advancing}. Two features of Intel's Loihi~2 matter for state-space models.
+Its neuron models are programmable in microcode rather than fixed to a LIF primitive, so any small
+per-neuron recurrence, including the state update of a diagonal SSM, can be implemented directly; and it
+supports graded spikes, which carry an integer payload rather than a single bit~\cite{orchard2021efficient},
+the hardware counterpart of integer-valued and graded readouts.
+
+Meyer et al.~\cite{meyer2024diagonal} gave the first implementation of an SSM on neuromorphic hardware,
+mapping S4D to Loihi~2. The comparison with an NVIDIA Jetson Orin Nano depends on the processing mode. In
+offline, batched, sample-by-sample processing the Jetson performed better; in token-by-token processing,
+Loihi~2 consumed about 1000 times less energy, with 75 times lower latency and 75 times higher throughput,
+than a recurrent S4D implementation on the Jetson. Token-by-token processing is exactly the regime of a
+streaming event camera, which is why this result motivates the neuromorphic strand. It was obtained for a
+linear time-invariant SSM on one-dimensional sequence benchmarks; a selective SSM, whose decay must be
+recomputed from the input at every step, and a two-dimensional detection backbone remain untested on such
+hardware. Other neuromorphic substrates take a different route: SynSense's Speck integrates an event sensor
+and a spiking processor on one chip~\cite{synsense2026speck}.
+
+Energy figures for spiking detectors run on GPUs are estimates, not measurements. The convention in the
+detection literature is to count synaptic operations and multiply them by a per-operation energy, typically
+0.9~pJ for a 32-bit floating-point accumulate against 4.6~pJ for a multiply--accumulate at
+45~nm~\cite{horowitz2014computing,su2023deep,luo2024integer}. Such estimates ignore memory access and data
+movement, which dominate energy on real hardware, so they rank designs rather than predict silicon
+consumption; measured results such as Meyer et al.'s are rare by comparison.
+
+The software path is in transition. Intel archived its Lava framework on 13 May 2026, stated that it will
+no longer maintain it, and announced a successor SDK without a public timeline~\cite{intel2026lava}. The
+Neuromorphic Intermediate Representation (NIR) defines a common set of computational primitives through
+which models can be exchanged between simulators and neuromorphic hardware~\cite{pedersen2024neuromorphic},
+and is used in this thesis as the export boundary for that reason.
 
 \section{Research Gaps Revisited}
 \label{sec:gaps_revisited}
-\tbd{Rewrite the Thesis-A gap statement to match what was actually done. The gap this thesis fills is
-narrower and better defended than the one originally proposed: existing SSM-detection results confound
-several changes at once, so the isolated effect of the spatial mixer is unmeasured; and a spiking
-\emph{structured} SSM detector, built as a controlled spiking-versus-non-spiking swap from an
-established SSM detector, is unoccupied territory.}
+The gap list of Section~\ref{sec:gaps_thesisA}, carried over from Thesis~A, assumed an integrated
+detection-and-avoidance system. After the scope change (Section~\ref{sec:scope_change}) its second gap,
+integrated detection and avoidance, is retired; its fourth, variable-rate processing for avoidance,
+survives as the rate robustness of the detector alone; and its first and third are addressed by Gap~A
+below and by the efficiency study of Section~\ref{sec:efficiency}. The gaps this thesis addresses are narrower
+and better defended than those originally proposed.
+
+\textbf{Gap~A: the isolated effect of the spatial mixer.} Published SSM detectors change several things at
+once. S5-RVT replaces the temporal mixer of an attention backbone~\cite{zubic2024state}; SMamba replaces the
+spatial attention with a sparse Mamba, adds token selection and keeps a ConvLSTM in
+time~\cite{yang2025smamba}. Neither isolates what the spatial mixer itself contributes. This thesis
+measures it with two detectors that differ only in that component (Section~\ref{sec:acc_results}).
+
+\textbf{Gap~B: rate robustness under the published artefacts.} The temporal generalisation of SSM detectors
+has been attributed to inference-time rescaling of the discretisation step~\cite{zubic2024state}. Whether
+the reported high-rate results can be reproduced from the released checkpoint and code, and how the
+robustness behaves under a fixed cadence versus a true rate change, had not been examined
+(Section~\ref{sec:robustness}).
+
+\textbf{Gap~C: where the cost of spiking comes from.} Spiking detectors have reached the accuracy of
+non-spiking ones on Gen1 (Table~\ref{tab:snn_landscape}), and spiking SSMs exist for sequence tasks
+(Table~\ref{tab:spiking_ssm}). To the author's knowledge, no surveyed work combines a selective state-space
+temporal core with spiking for event-based detection, and none decomposes the cost of spiking into the cost
+of the neuron dynamics, of sparsity and of binarisation against a non-spiking twin trained through an
+identical pipeline. The three readouts of Section~\ref{subsec:readout_modes}, which share one membrane, are
+designed to measure exactly that decomposition (Section~\ref{sec:spiking_results}).
 
 
 \chapter{Methodology}
