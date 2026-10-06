@@ -152,3 +152,25 @@ def test_rvt_detach_and_reset_handle_spiking_state(spiking_stages):
                    for c, s_ in plain), "plain Mamba state of sequence 0 must be zeroed"
     # resumes from the reset state without error (mixed helpers included)
     bb(_x(2), reset)
+
+
+def test_spike_gradient_reaches_stage4_mamba_through_the_spikes_alone():
+    """Stage 19: the spike-arm overfit smoke missed the 3x gate (2.65x) while analog/graded passed.
+    The integrated tests above put the loss on stages 2+3+4, so the ANN stages 2-3 could carry
+    all the learning and hide a dead spike path. Here the loss sits on stage 4 ONLY and the
+    stage-4 output is binary, so the stage-4 temporal Mamba can receive gradient solely through
+    the surrogate of the spikes."""
+    bb = _bb(spiking_stages=(4,), output_mode="spike").train()
+    feats, _ = bb(_x(), None)
+    out4 = feats[4].float()
+    assert set(out4.unique().tolist()) <= {0.0, 1.0}, "stage-4 output must be the binary spikes"
+    torch.manual_seed(2)
+    (out4 * torch.randn_like(out4)).mean().backward()      # random weights: not all-equal grads
+    ssm4 = [p for p in bb.temporal["4"].ssm.parameters() if p.requires_grad]
+    assert ssm4 and all(p.grad is not None and torch.isfinite(p.grad).all() for p in ssm4)
+    assert sum(float(p.grad.abs().sum()) for p in ssm4) > 0, "no gradient through the spikes"
+    sp4 = list(bb.spatial.stages[3].parameters())
+    assert sum(float(p.grad.abs().sum()) for p in sp4 if p.grad is not None) > 0
+    # the loss really isolates stage 4: the ANN temporal blocks of stages 2-3 get nothing
+    for s in ("2", "3"):
+        assert all(p.grad is None for p in bb.temporal[s].parameters()), f"stage {s} got gradient"

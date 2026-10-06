@@ -11,7 +11,8 @@ import torch
 import torch.nn as nn
 
 from event_ssm.integration.spiking_smoke import (
-    SpikingSmokeRecorder, find_spiking_backbone, median_step_ms, plot_smoke, smoke_verdict,
+    SpikingSmokeRecorder, find_spiking_backbone, median_step_ms, output_stem, plot_smoke,
+    smoke_verdict,
 )
 
 NAN = float("nan")
@@ -182,3 +183,22 @@ def test_verdict_is_json_serialisable():
     # the summary JSON is the Stage-19 notes row; int stage keys must survive the dump
     v = smoke_verdict(LOSSES_OK, {4: [0.2]}, "spike")
     assert json.loads(json.dumps(v))["firing"] == {"4": "OK"}
+
+
+# ---- output_stem: reruns never overwrite earlier evidence -----------------------------------------
+
+def test_output_stem_first_run_uses_the_plain_name(tmp_path):
+    assert output_stem(tmp_path, "spike_s4", 150) == "spikingssm_spike_s4_overfit"
+
+
+def test_output_stem_numbers_reruns_instead_of_overwriting(tmp_path):
+    (tmp_path / "spikingssm_spike_s4_overfit.json").write_text("{}")
+    assert output_stem(tmp_path, "spike_s4", 150) == "spikingssm_spike_s4_overfit_run2"
+    (tmp_path / "spikingssm_spike_s4_overfit_run2.json").write_text("{}")
+    assert output_stem(tmp_path, "spike_s4", 150) == "spikingssm_spike_s4_overfit_run3"
+
+
+def test_output_stem_marks_a_non_default_budget(tmp_path):
+    # a 300-epoch diagnostic must not be mistaken for (or numbered among) the 150-epoch gate runs
+    (tmp_path / "spikingssm_spike_s4_overfit.json").write_text("{}")
+    assert output_stem(tmp_path, "spike_s4", 300) == "spikingssm_spike_s4_overfit_e300"

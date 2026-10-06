@@ -4,7 +4,8 @@ real pl.Trainer. Same gate as Stages 5/12 (>= 3x loss reduction, no NaN) plus, f
 graded arms, a firing-rate band per spiking stage. The gates live in integration/spiking_smoke.py
 (CPU-tested); this script only runs the model and records.
 
-Writes results/smoke_test/spikingssm_<mode>_s<stages>_overfit.{png,json}; exit code 1 on FAIL.
+Writes results/smoke_test/spikingssm_<mode>_s<stages>_overfit[_e<epochs>][_run<n>].{png,json}
+(reruns are numbered, never overwritten); exit code 1 on FAIL.
 
 Run (events_signals, CUDA, idle GPU), ladder start first:
   python proofs/smoke_overfit_spikingssm.py --mode analog --stages 4
@@ -41,7 +42,8 @@ if os.environ.pop("MAMBA_STEP_SCALE", None) is not None:
 from event_ssm.integration.smoke_harness import compose_smoke_config, REPO
 from event_ssm.integration.make_smoke_dataset import build_smoke_dataset
 from event_ssm.integration.spiking_smoke import (
-    SpikingSmokeRecorder, find_spiking_backbone, median_step_ms, plot_smoke, smoke_verdict,
+    SpikingSmokeRecorder, find_spiking_backbone, median_step_ms, output_stem, plot_smoke,
+    smoke_verdict,
 )
 from event_ssm.models.spikingssm.lif import _BETA_EPS
 
@@ -107,8 +109,9 @@ summary = dict(stage=19, arm=tag, spiking_stages=stages, epochs=args.epochs,   #
                median_step_ms=round(step_ms, 1), git=sha,
                final_beta_mean={s: xs[-1] for s, xs in rec.beta_mean.items()},
                final_beta_max={s: xs[-1] for s, xs in rec.beta_max.items()}, **v)
-(OUT / f"spikingssm_{tag}_overfit.json").write_text(json.dumps(summary, indent=2) + "\n")
-plot_smoke(rec, v, args.mode, stages, OUT / f"spikingssm_{tag}_overfit.png",
+stem = output_stem(OUT, tag, args.epochs)             # reruns are numbered, never overwritten
+(OUT / f"{stem}.json").write_text(json.dumps(summary, indent=2) + "\n")
+plot_smoke(rec, v, args.mode, stages, OUT / f"{stem}.png",
            beta_cap=1.0 - _BETA_EPS,
            footer=f"peak VRAM {peak_gb:.2f} GB · median step {step_ms:.0f} ms "
                   f"· {len(rec.losses)} steps · git {sha}")
@@ -120,7 +123,7 @@ for s in sorted(v["firing"]):
           f"{'' if v['firing_gated'] else ', not gated'}]  beta mean/max="
           f"{summary['final_beta_mean'][s]:.4f}/{summary['final_beta_max'][s]:.4f}")
 print(f"peak VRAM {peak_gb:.2f} GB  median step {step_ms:.0f} ms")
-print("wrote", OUT / f"spikingssm_{tag}_overfit.png", "and .json")
+print("wrote", OUT / f"{stem}.png", "and .json")
 if v["passed"]:
     print("PASS")
 else:

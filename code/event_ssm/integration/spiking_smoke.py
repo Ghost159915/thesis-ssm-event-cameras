@@ -87,6 +87,18 @@ def median_step_ms(step_s, warmup=WARMUP_STEPS):
     return 1000.0 * statistics.median(step_s[warmup:] or step_s)
 
 
+def output_stem(out_dir, tag, epochs, default_epochs=150):
+    """File stem for one smoke run: `spikingssm_<tag>_overfit`, plus `_e<epochs>` off the default
+    budget, plus `_run2`, `_run3`, ... when an earlier run already wrote it, so a rerun (e.g. to
+    measure run-to-run spread) never overwrites earlier evidence."""
+    base = f"spikingssm_{tag}_overfit" + ("" if epochs == default_epochs else f"_e{epochs}")
+    stem, n = base, 1
+    while (out_dir / f"{stem}.json").exists():
+        n += 1
+        stem = f"{base}_run{n}"
+    return stem
+
+
 def find_spiking_backbone(module):
     """The first submodule exposing `spiking_stats()` (SpikingSSMBackbone), wherever RVT nests it."""
     for m in module.modules():
@@ -189,7 +201,7 @@ def plot_smoke(rec, verdict, mode, stages, path, *, silence=0.01, saturation=0.9
     ax_b.set_ylabel("learned β (leak)")
     ax_b.set_xlabel("train step (1 per epoch, same batch)")
     if rec.beta_mean:
-        ax_b.legend(fontsize=8, frameon=False, loc="lower right", ncol=2)
+        ax_b.legend(fontsize=8, frameon=False, loc="best", ncol=2)   # beta may sit anywhere
 
     for ax in (ax_l, ax_r, ax_b):
         ax.grid(True, color=_GRID, lw=0.8)
