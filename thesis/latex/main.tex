@@ -222,7 +222,7 @@ More recently, Prophesee (formerly Chronocam) has developed a series of commerci
 
 A notable limitation of current event cameras, however, is their relatively low spatial resolution compared to frame-based cameras. While modern frame-based sensors routinely achieve multi-megapixel resolutions, event cameras remain in the VGA to HD range. Furthermore, event cameras produce no output in static scenes, which can be both an advantage (data efficiency) and a limitation (loss of static scene information). These characteristics necessitate careful algorithm design that leverages the temporal strengths of event cameras while mitigating their spatial limitations.
 
-\begin{figure}[ht]
+\begin{figure}[htbp]
     \centering
     \includegraphics[width=0.75\textwidth]{images/fig_event_camera_principle.png}
     \caption{Operating principle of a Dynamic Vision Sensor (DVS). Each pixel independently and asynchronously fires an event when the change in log luminance exceeds a contrast threshold $C$, producing a stream of events $(x, y, t, p)$ with microsecond temporal resolution. Adapted from \cite{gallego2020event}.}
@@ -239,7 +239,7 @@ The simplest representation is the event frame or event histogram, which accumul
 
 Voxel grids, proposed by Zhu et al. \cite{zhu2019unsupervised}, address this limitation by discretising the event stream into a three-dimensional spatio-temporal volume. Events are accumulated into B temporal bins, producing a tensor of dimensions B × H × W that preserves temporal ordering. This representation has been widely adopted in subsequent work, including the Events-to-Video (E2VID) reconstruction framework \cite{rebecq2019e2vid} and various optical flow estimation methods. The number of temporal bins B represents a tuneable parameter balancing temporal resolution against computational cost. 
 
-\begin{figure}[ht]
+\begin{figure}[htbp]
     \centering
     \includegraphics[width=0.75\textwidth]{images/fig_voxel_grid.png}
     \caption{Voxel grid event representation. Events within a fixed time window are accumulated into $B$ temporal bins, producing a tensor of shape $B \times H \times W$ that preserves temporal ordering. Each bin is normalised independently. Adapted from \cite{zhu2019unsupervised}.}
@@ -252,7 +252,7 @@ Event Spike Tensors (ESTs), proposed by Gehrig et al. \cite{gehrig2019end}, samp
 
 More recently, hybrid representations combining multiple channels of information have been explored. For instance, representations encoding polarity, timestamp, and event count in separate channels have shown improved performance on detection benchmarks \cite{innocenti2021temporal}. The choice of event representation remains an active area of research, with the optimal representation often being task-dependent. 
 
-Among the representations surveyed, voxel grids are selected as the input representation for this work. Their three-dimensional spatio-temporal structure preserves temporal ordering across bins, a property demonstrated to be critical for detection performance \cite{gehrig2019end}, while remaining directly compatible with standard CNN and SSM-based backbone architectures. Time surfaces, although compact, collapse temporal structure into a single 2D map and are less suited to multi-object detection tasks where simultaneous events at different locations must be disambiguated. ESTs offer higher temporal fidelity through learned kernels, but introduce additional parameters and training complexity that is difficult to justify given the computational constraints of onboard UAV deployment. 
+This work uses the stacked histogram of RVT \cite{gehrig2023recurrent}: per 50-ms window, event counts in ten temporal bins for each of the two polarities (Appendix~\ref{subsec:stacked_hist}). Like a voxel grid it preserves temporal ordering across bins, a property demonstrated to be critical for detection performance \cite{gehrig2019end}, and it is directly compatible with standard CNN and SSM-based backbones. It was not selected by a fresh comparison: it is part of the verified baseline's frozen pipeline (Section~\ref{sec:frozen_pipeline}), and changing it would confound the backbone comparison that is the subject of this thesis. The voxel grid proposed in the Thesis~A plan was therefore not adopted. Time surfaces, although compact, collapse temporal structure into a single 2D map and are less suited to multi-object detection tasks where simultaneous events at different locations must be disambiguated. ESTs offer higher temporal fidelity through learned kernels, but introduce additional parameters and training complexity that is difficult to justify given the computational constraints of onboard UAV deployment. 
 
 Hybrid multi-channel representations have shown promise on recent benchmarks \cite{innocenti2021temporal}, but require careful engineering of the channel structure and have not yet been validated on the Gen1 automotive dataset used in this work. A bin count of $B = 10$ is adopted throughout, consistent with prior work on the Gen1 dataset \cite{perot2020learning}, providing sufficient temporal resolution to capture object motion between detection frames without exceeding the memory budget of the target hardware platform. 
 
@@ -310,7 +310,7 @@ This selectivity is analogous to the gating mechanisms in LSTMs and GRUs but ope
 
 To overcome the challenges of computing such a non-linear recurrence, Mamba employs a hardware-aware algorithm. This approach combines a parallel scan, kernel fusion, and selective recomputation to achieve 2--8$\times$ faster inference than comparable transformer models while matching their performance on competitive benchmarks \cite{gu2023mamba}. These efficiencies are particularly advantageous for the size, weight, and power (SWaP) constraints of micro-UAV platforms \cite{gu2023mamba, patro2025from}.
 
-\begin{figure}[ht]
+\begin{figure}[htbp]
     \centering
     \includegraphics[width=0.85\textwidth]{images/fig_mamba_architecture.png}
     \caption{The Mamba selective state space model architecture. Input-dependent parameters $\Delta_t$, $B_t$, and $C_t$ are computed as functions of the input $x_t$, enabling content-aware selective retention of long-range temporal context while maintaining linear computational complexity. Adapted from \cite{gu2023mamba}.}
@@ -1503,13 +1503,31 @@ The selective SSM (Mamba \cite{gu2023mamba}) introduces input-dependency to the 
 where $f_\theta$ denotes learned linear projections. Input-dependent $\Delta_k$ enables selective retention: a large $\Delta_k$ causes rapid state decay (forgetting irrelevant content), while a small $\Delta_k$ preserves long-range memory.
 
 \section{Event Representations}
-\tbd{IMPORTANT --- factual carry-over from Thesis A. The formulation below is the \emph{voxel grid},
-which is what the Thesis-A plan proposed. Every model reported in this thesis actually consumes a
-\textbf{20-channel stacked histogram} (2 polarities $\times$ 10 temporal bins, $\Delta t = 50$\,ms).
-Either add the stacked-histogram formulation alongside this one and say which is used, or replace it.
-As written this appendix contradicts Section~\ref{sec:frozen_pipeline}.}
+\subsection{Stacked Histogram (used by every model)}
+\label{subsec:stacked_hist}
+Every model in this thesis consumes the stacked histogram of the RVT preprocessing~\cite{gehrig2023recurrent}.
+For each output frame, the events $e_k=(x_k,y_k,t_k,p_k)$ with polarity $p_k\in\{0,1\}$ in the 50-ms window
+ending at the frame's timestamp are assigned to one of $B=10$ temporal bins by their normalised time,
+\begin{equation}
+  b_k = \min\!\left(\left\lfloor B\,\frac{t_k - t_{\min}}{\max(t_{\max}-t_{\min},\,1)}\right\rfloor,\; B-1\right),
+  \label{eq:sh_bin}
+\end{equation}
+where $t_{\min}$ and $t_{\max}$ are the first and last event timestamps in the window, in microseconds. The
+events are then counted per polarity, bin and pixel, and each count is clipped at $c=10$:
+\begin{equation}
+  S_{p,b}(x,y) = \min\!\left(c,\; \sum_k \mathbb{1}[p_k=p]\,\mathbb{1}[b_k=b]\,\mathbb{1}[x_k=x]\,\mathbb{1}[y_k=y]\right).
+  \label{eq:sh_count}
+\end{equation}
+The two polarities and ten bins are stacked polarity-major into $2B=20$ channels (channel $pB+b$), giving
+a tensor of shape $(20,240,304)$ stored as 8-bit integers. The data pipeline converts it to floating point
+without further normalisation and zero-pads it to $(20,256,320)$. Unlike the voxel grid below, events are
+not interpolated between bins, and the two polarities occupy separate channels rather than being summed
+with a sign. The representation is very sparse: in a sampled test recording only about 0.1\,\% of its
+entries are non-zero, and the count cut-off of 10 is reached by a negligible fraction of them.
 
 \subsection{Voxel Grid (proposed in Thesis A; not used)}
+The Thesis~A plan proposed the voxel grid below. It is retained for reference only; no model in this
+thesis uses it.
 Event streams are converted to a $B$-bin voxel grid $V \in \mathbb{R}^{B \times H \times W}$. Each event $e_k = (x_k, y_k, t_k, p_k)$ contributes to bin $b$ via bilinear temporal interpolation \cite{zhu2019unsupervised}:
 \begin{equation}
     V_b(x, y) = \sum_k p_k \cdot \max(0, 1 - |(B-1) \cdot t_k / T - b|) \cdot \delta(x-x_k) \cdot \delta(y-y_k)
@@ -1520,16 +1538,79 @@ where $T$ is the total window duration, $B=10$ bins for the Gen1 dataset, and $\
 
 \chapter{Reproducibility}
 \label{app:repro}
-\tbd{Pinned environment (PyTorch 2.11.0+cu128, mamba-ssm 2.3.2.post1, causal-conv1d 1.6.2.post1 for
-\texttt{sm\_120}); the runbooks; the patch set that re-applies all \texttt{external/} modifications
-after a re-clone; the test suite and how to run the GPU-marked tests; checkpoint provenance and hashes.}
+This appendix lists what is needed to reproduce the results of Chapter~\ref{ch:results}; the procedures
+themselves are in the project repository.
+
+\textbf{Environment.} All runs used one conda environment, pinned in \path{env/} (conda specification,
+\texttt{pip} lock file, and a separate lock for the Mamba kernels). Table~\ref{tab:env} lists the
+versions that matter.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Pinned software environment.}
+\label{tab:env}
+\begin{tabular}{ll}
+\toprule
+Component & Version \\
+\midrule
+Python & 3.11.15 \\
+PyTorch & 2.11.0+cu128 (CUDA 12.8, Blackwell \texttt{sm\_120}) \\
+\texttt{mamba-ssm} & 2.3.2.post1, built for \texttt{sm\_120} \\
+\texttt{causal-conv1d} & 1.6.2.post1, built for \texttt{sm\_120} \\
+PyTorch Lightning & 2.6.5 \\
+Hydra & 1.3.2 \\
+\texttt{torchdata} & 0.9.0 \\
+Reference implementation & \texttt{ssms\_event\_cameras} at commit \texttt{7c871b5} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+{\sloppy \textbf{Installation pitfalls.} The Mamba kernels must be installed with \texttt{--no-deps
+--no-build-isolation}; a default installation upgrades PyTorch and its CUDA build and breaks the stack.
+Loading full Lightning checkpoints under PyTorch $\geq 2.6$ requires
+\path{TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1}. The runbooks in \path{docs/runbooks/} cover a clean
+local setup, the baseline reproduction, and bootstrapping a rented GPU.\par}
+
+\textbf{Reference implementation.} The RVT/S5 code is cloned at the pinned commit and is not versioned in the
+repository. Every local change to it is stored in \path{docs/patches/} and re-applied after a re-clone: the
+Hydra configuration links that register the new backbones, two preprocessing fixes, and the inference-time
+$\Delta t$ hook of Section~\ref{subsec:f2}.
+
+\textbf{Tests.} The suite is run from the repository root, \texttt{pytest code/event\_ssm/tests/} (249 CPU
+tests at the time of writing), and the GPU tests with \texttt{-m gpu} on an otherwise idle GPU (28 tests).
+Running \texttt{pytest} from inside \path{code/event_ssm} instead lets the project's \texttt{models} package
+shadow RVT's and produces spurious import errors.
+
+\textbf{Checkpoints.} Table~\ref{tab:ckpts} identifies the three checkpoints behind every reported number.
+Hashes were computed on 6 October 2026.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Checkpoints behind the reported results (SHA-256, first 16 hex digits).}
+\label{tab:ckpts}
+\begin{tabular}{llll}
+\toprule
+Model & Origin & Selected step & SHA-256 (prefix) \\
+\midrule
+S5-RVT & published release~\cite{zubic2024state} & --- & \texttt{58396f15b6c6081c} \\
+EventSSM & run \texttt{8zotrwjw}, workstation & 320k (best val.) & \texttt{e94a36c2157bfea0} \\
+PureSSM & run \texttt{aekvsalq}, rented RTX~5090 & 310k (best val.) & \texttt{a07c108b430d288a} \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \chapter{Project Timeline}
 \label{app:gantt}
+Table~\ref{tab:timeline} and the Gantt chart below show the timeline as registered in Thesis~A. They are
+retained as the plan against which the project is assessed. The ``Simulation Integration'' and ``Hardware
+Testing'' phases were descoped (Section~\ref{sec:scope_change}), and the Thesis~C period was used instead
+for the spiking model and the write-up.
 
-\begin{table}[ht]
+\begin{table}[htbp]
     \centering
-    \caption{Summary of thesis timeline and major milestones.}
+    \caption{Summary of the thesis timeline and major milestones, as registered in Thesis~A.}
     \label{tab:timeline}
     \renewcommand{\arraystretch}{1.4}
     \begin{tabularx}{\textwidth}{|l|X|l|}
@@ -1546,7 +1627,7 @@ after a re-clone; the test suite and how to run the GPU-marked tests; checkpoint
     \end{tabularx}
 \end{table}
 
-\begin{figure}[ht]
+\begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{images/Ghantt Chart.png}
     \caption{Project Gantt chart showing the week-by-week schedule across all thesis phases. Thesis~A (Weeks 1--12) covers the literature review and MVP baseline reproduction. Thesis~B (Weeks 13--27) covers architecture design, dataset preparation, model training and benchmarking, temporal generalisation evaluation, and simulation integration. Thesis~C (Weeks 28--40) covers thesis writing and final submission. Diamond markers (M1--M5) indicate key milestone deliverables.}
@@ -1557,24 +1638,27 @@ after a re-clone; the test suite and how to run the GPU-marked tests; checkpoint
 
 \chapter{Risk Assessment}
 \label{app:risk}
-\tbd{Update this register for Thesis C. The Thesis-A risks about UAV flight testing and event-camera
-hardware no longer apply after the scope change; the live risks are now training instability in the
-spiking model, single-seed variance, and external dependence on INRC/Intel timelines.}
+Table~\ref{tab:risk_assessment} is the risk register for Thesis~C, with each risk's status on 6 October
+2026. The Thesis-A risks concerning event-camera hardware, obstacle-avoidance integration and injury during
+UAV flight testing were retired by the scope change of Section~\ref{sec:scope_change}, and the compute risk
+by moving from the Katana cluster to a local workstation and rented GPUs of the same architecture
+(Section~\ref{sec:hardware}).
 
-\begin{table}[h!]
+\begin{table}[htbp]
     \centering
     \small
-    \caption{Risk assessment for the thesis project.}
+    \caption{Risk register for Thesis~C (status on 6 October 2026).}
     \label{tab:risk_assessment}
-    \renewcommand{\arraystretch}{1.5}
-    \begin{tabularx}{\textwidth}{|>{\RaggedRight\arraybackslash}p{3cm}|l|l|>{\RaggedRight\arraybackslash}X|}
+    \renewcommand{\arraystretch}{1.4}
+    \begin{tabularx}{\textwidth}{|>{\RaggedRight\arraybackslash}p{3.2cm}|l|l|>{\RaggedRight\arraybackslash}X|}
         \hline
-        \rowcolor[gray]{0.9} \textbf{Risk} & \textbf{Likelihood} & \textbf{Impact} & \textbf{Mitigation} \\ \hline
-        SSM model does not achieve competitive detection accuracy & Medium & High & Both a CNN-SSM hybrid and a pure SSM architecture have been implemented, enabling direct ablation. If the pure SSM underperforms, the hybrid serves as a fallback while still contributing an SSM-based comparison. \\ \hline
-        Event camera hardware unavailable or delayed & Medium & Medium & Use publicly available datasets and simulation; focus on algorithmic contributions. \\ \hline
-        Insufficient computational resources for training & Low & Medium & Leverage UNSW Katana cluster; use model distillation to reduce training cost. \\ \hline
-        Obstacle avoidance integration proves infeasible within timeline & Medium & Medium & Prioritise detection benchmarking; use simulation-only evaluation if hardware integration delayed. \\ \hline
-        Injury during physical UAV testing & Low & High & Conduct testing in designated flying areas with safety protocols; use protective equipment; obtain required certifications. \\ \hline
+        \rowcolor[gray]{0.9} \textbf{Risk} & \textbf{Likelihood} & \textbf{Impact} & \textbf{Mitigation and status} \\ \hline
+        Spiking model does not train stably & Medium & High & A kill-switch fixed before training: if the model is not training stably by 11~October, it is frozen as a simulated proof of concept and effort moves to the write-up. Spiking is introduced stage by stage, and the residual bypass is reported if used. \emph{Status:} in overfitting tests the dense and graded readouts pass; the binary readout learns more slowly (it receives about a third of the dense readout's gradient) and passes with twice the steps; 25k-step runs in progress. \\ \hline
+        Single-seed variance & High & Medium & Each model is trained once. Claims are restricted to effects well outside the observed run-to-run variation ($\pm0.2$--$0.7$~mAP), such as $\mathrm{AP}_L$ differences, and are reported as single-seed (Section~\ref{sec:limitations}). \\ \hline
+        Training environment breaks & Medium & High & The hand-built Blackwell stack is pinned (Appendix~\ref{app:repro}); dependency resolution is disabled for the kernel packages; runbooks and patches rebuild it from scratch. \\ \hline
+        Long run lost to a crash or out-of-memory kill & Medium & Medium & Full-state checkpoint resumption, validated in earlier runs; data-loader workers capped for host memory; a rented GPU of the same architecture as fallback. \\ \hline
+        Write-up completed late & Medium & High & Writing runs in parallel with the experiments, and every non-spiking section is drafted before the spiking results arrive; the kill-switch caps the time the spiking strand can take. \\ \hline
+        Neuromorphic hardware access delayed (INRC, Lava archived) & High & Low & Hardware deployment is future work, not a thesis result (Section~\ref{sec:future_work}); the model is exported through the vendor-neutral NIR format. \\ \hline
     \end{tabularx}
 \end{table}
 
