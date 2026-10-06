@@ -65,9 +65,9 @@ _BETA_EPS = 1e-4          # keeps a learnable beta strictly inside (0,1) even at
 _EXTRA_STATE_VERSION = 1
 _ARM_KEYS = ("output_mode", "reset", "alpha", "detach_reset", "learn_beta", "learn_threshold")
 _OVERRIDE_ENV = "SPIKING_ALLOW_ARM_OVERRIDE"
-# Stored fixed beta/threshold are read back from float32 tensors; the worst round-trip error measured
-# over beta in [2e-4, 0.9998] on CPU and CUDA is 3.0e-7 relative, so 1e-5 cannot confuse two
-# operating points a sweep would ever distinguish, yet never trips on float32 noise.
+# Stored fixed beta/threshold are read back from float32 tensors; the worst round-trip error
+# measured over beta in [2e-4, 0.9998] on CPU and CUDA is 3.0e-7 relative, so 1e-5 cannot confuse
+# two operating points a sweep would ever distinguish, yet never trips on float32 noise.
 _FIXED_REL_TOL = 1e-5
 
 
@@ -176,11 +176,12 @@ class LIFReadout(nn.Module):
             raise ValueError(f"LIFReadout: malformed checkpoint extra state, missing {absent}")
         mismatched = [k for k in _ARM_KEYS if state[k] != cfg[k]]
         if mismatched:
-            detail = "; ".join(f"{k}: checkpoint={state[k]!r} vs config={cfg[k]!r}" for k in mismatched)
+            detail = "; ".join(f"{k}: checkpoint={state[k]!r} vs config={cfg[k]!r}"
+                               for k in mismatched)
             raise ValueError(
                 f"LIFReadout: the checkpoint was trained as a different ablation arm ({detail}). "
-                f"Re-run with the overrides the checkpoint was trained with. No override exists for "
-                f"these keys: they change the readout itself, not an operating point.")
+                f"Re-run with the overrides the checkpoint was trained with. No override exists "
+                f"for these keys: they change the readout itself, not an operating point.")
 
         # Categorical arm matches. Now the NON-learned operating point (learned values: never
         # compared — the checkpoint holds the trained value, which is what must be evaluated).
@@ -200,10 +201,12 @@ class LIFReadout(nn.Module):
         if os.environ.get(_OVERRIDE_ENV) != "1":
             raise ValueError(
                 f"LIFReadout: non-learned operating point differs from the checkpoint ({detail}). "
-                f"Refusing to guess which governs. For a deliberate post-hoc sweep (e.g. the Stage-22 "
-                f"threshold Pareto) set {_OVERRIDE_ENV}=1 and the CONFIG values will be used.")
-        msg = (f"[spiking] ARM OVERRIDE ({_OVERRIDE_ENV}=1): {detail} — the CONFIG values govern; "
-               f"the checkpoint values were discarded. Report this run as a post-hoc operating point.")
+                f"Refusing to guess which governs. For a deliberate post-hoc sweep (e.g. the "
+                f"Stage-22 threshold Pareto) set {_OVERRIDE_ENV}=1 and the CONFIG values will "
+                f"be used.")
+        msg = (f"[spiking] ARM OVERRIDE ({_OVERRIDE_ENV}=1): {detail} — the CONFIG values "
+               f"govern; the checkpoint values were discarded. Report this run as a post-hoc "
+               f"operating point.")
         # loud on both channels: warnings can be filtered by a launcher, stdout lands in the run log
         warnings.warn(msg, UserWarning, stacklevel=2)
         print(msg, flush=True)
@@ -218,10 +221,11 @@ class LIFReadout(nn.Module):
         assert x.ndim == 3, f"expected (N, L, C), got {tuple(x.shape)}"
         n, length, c = x.shape
         assert c == self.d_model, f"channel dim {c} != d_model {self.d_model}"
-        # D13: the recurrence runs in fp32 WHATEVER the input dtype. Every launcher is bf16-mixed, so
-        # the Mamba output arriving here is bf16; a bf16 membrane rounds beta 0.999 to exactly 1.0 (a
-        # pure integrator — the failure the epsilon-squeeze exists to prevent), drops small inputs
-        # against a large membrane (1.0 + 0.003 == 1.0) and flipped 0.04-0.27 % of spikes vs fp32.
+        # D13: the recurrence runs in fp32 WHATEVER the input dtype. Every launcher is bf16-mixed,
+        # so the Mamba output arriving here is bf16; a bf16 membrane rounds beta 0.999 to exactly
+        # 1.0 (a pure integrator — the failure the epsilon-squeeze exists to prevent), drops small
+        # inputs against a large membrane (1.0 + 0.003 == 1.0) and flipped 0.04-0.27 % of spikes
+        # vs fp32.
         # Upcasting only in the surrogate is too late: `mem - thr` is already quantised by then.
         # Elementwise ops are not on autocast's cast lists, so fp32 operands stay fp32 here.
         # For fp32 input `.float()` / `.to(x.dtype)` are no-ops: the fp32 path is bit-unchanged.

@@ -70,7 +70,8 @@ class SpikingSSMBlock(nn.Module):
             raise ValueError(f"SpikingSSMBlock: unsupported checkpoint extra-state version {got!r} "
                              f"(this code reads version {self._EXTRA_STATE_VERSION})")
         if "residual" not in state:
-            raise ValueError("SpikingSSMBlock: malformed checkpoint extra state, missing 'residual'")
+            raise ValueError("SpikingSSMBlock: malformed checkpoint extra state, "
+                             "missing 'residual'")
         if bool(state["residual"]) != bool(self.residual):
             raise ValueError(
                 f"SpikingSSMBlock: the checkpoint was trained as a different ablation arm "
