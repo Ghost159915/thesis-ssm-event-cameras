@@ -169,7 +169,8 @@ Recording these so they stay decided and do not quietly return:
       request, and the note that Intel's first email should be the three questions, not the proposal.
 - [ ] Commit the current working tree (Stage 17, thesis restructure, plan, figure).
 - [ ] Start Ch.4 Experimental Setup — 5 markers, the easiest entry point into the writing.
-- [ ] Trace the Thesis-A per-class discrepancy (car 56.8/38.6 vs 63.9/31.6).
+- [x] Trace the Thesis-A per-class discrepancy (car 56.8/38.6 vs 63.9/31.6). *Done 2026-10-06: 56.8/38.6 had no
+      source; measured 63.9/31.6 is correct (main.tex §4.2).*
 
 ---
 
@@ -178,3 +179,4 @@ Recording these so they stay decided and do not quietly return:
 | Date | Note |
 |---|---|
 | 2026-09-08 | Timeline created. Stage 17 CPU-complete; thesis restructured (43 pp); proposal ready to send. |
+| 2026-10-06 | W4. Stage 18 integrated; Stage 19 smoke done (analog/graded PASS, spike FAIL at 150 steps = binarisation cost, PASS at 300); 25k spike+graded runs launched locally. Ch.4 Experimental Setup written (31 → 26 markers); per-class discrepancy resolved. Writing is ~2 weeks behind the queue. |

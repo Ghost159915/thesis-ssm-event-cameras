@@ -77,7 +77,10 @@ After running evaluation, complete this table:
 | Model | Backbone | Temporal Module | Car AP@0.5 | Ped AP@0.5 | mAP@0.5 | Venue |
 |---|---|---|---|---|---|---|
 | RVT | CNN+ViT | ConvLSTM | 57.0 | 37.5 | 47.2 | CVPR 2023 |
-| S5-RVT (baseline) | CNN+ViT | S5 SSM | 56.8 | 38.6 | 47.7 | CVPR 2024 |
+| S5-RVT (baseline) | CNN+ViT | S5 SSM | 56.8\* | 38.6\* | 47.7 | CVPR 2024 |
+
+> \* **Correction (2026-10-06):** the per-class values in this row are unsourced placeholders (the paper reports
+> no per-class AP). Measured: car 63.9 / ped 31.6 — see `docs/results/Stage8_results_comparison.md`.
 | **EventSSMDetector** | **ResNet-18** | **Mamba** | **?** | **?** | **?** | Your thesis |
 | SMamba | CNN+Sparse Mamba | ConvLSTM | — | — | 50.4 | AAAI 2025 |
 

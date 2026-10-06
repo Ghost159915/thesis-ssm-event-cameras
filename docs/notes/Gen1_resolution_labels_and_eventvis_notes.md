@@ -48,8 +48,10 @@ the work targets. → **Keep Gen1 as the spine; list Gen4 validation as Future W
 
 ## 3. Gen1 label quality — a real limitation (for the Discussion chapter)
 
-Gen1's bounding-box labels were **semi-automatically generated and are known to be noisy/incomplete**,
-especially for pedestrians (small, distant, occluded). Measured example on test recording
+Gen1's bounding-box labels are **manual annotations at 1–4 Hz** (de Tournemire et al. 2020, arXiv:2001.08499 —
+*corrected 2026-10-06*: an earlier version of this note said "semi-automatically generated", which describes the
+later 1Mpx dataset, not Gen1). They are nonetheless **sparse in time and incomplete**, especially for pedestrians
+(small, distant, occluded). Measured example on test recording
 `17-10-12_16-51-41_1647500000_1707500000` (59 s, busy urban drive):
 
 - **128 GT boxes total → 117 car, only 11 pedestrian.** Visibly more pedestrians appear in the raw

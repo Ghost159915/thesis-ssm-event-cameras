@@ -259,6 +259,8 @@ Before building on top of the codebase, confirm your S5-RVT evaluation still run
 python evaluate.py --checkpoint path/to/s5_rvt_best.pth --split test
 
 # Expected output:
+# [Correction 2026-10-06: the per-class lines below were never published or measured -- the paper
+#  reports overall AP only, and it is COCO AP@[.50:.95], not AP@0.5. Measured: car 63.9 / ped 31.6.]
 # Car AP@0.5:         56.8 (±0.1 from published 56.8)
 # Pedestrian AP@0.5:  38.6 (±0.1 from published 38.6)
 # Overall mAP@0.5:    47.7 (±0.1 from published 47.71)

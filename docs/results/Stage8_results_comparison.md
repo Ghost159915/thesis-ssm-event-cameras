@@ -58,7 +58,12 @@ The overall deficit is **not uniform** — it is **almost entirely a large-objec
 ## Caveats (rigor)
 - **bf16** (EventSSM) vs **fp16** (baseline) — minor eval-precision difference; both reproduce their reference numbers, gap (1.5) is small.
 - **Single seed** — no error bars; note for any publication.
-- **Per-class vs paper:** our evaluator reproduces the baseline **overall** 47.7 exactly, but our per-class split (car 63.9 / ped 31.6) differs from the paper's reported (56.8 / 38.6). Likely a per-class threshold/protocol difference. **Use our own evaluator's per-class for *both* rows** (consistent); cite the paper only for the overall.
+- **Per-class (corrected 2026-10-06):** car 63.9 / ped 31.6 is the only measured per-class pair. The "56.8 / 38.6"
+  previously attributed here to "the paper" has **no published source**: neither Zubic et al. 2024 nor RVT reports
+  per-class AP on Gen1, and the RVT evaluator outputs class-averaged metrics only (the per-class read-out,
+  `perclass_patch.py`, was added at this stage). The pair first appears as an unmeasured "expected output" in
+  `docs/roadmap/Stage_02_Codebase_Audit.md` and was carried into the Thesis-A report. Use our evaluator's per-class
+  values for every model; cite the paper only for the overall 47.7.
 
 ---
 
