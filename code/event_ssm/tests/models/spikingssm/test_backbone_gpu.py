@@ -65,11 +65,31 @@ def test_streaming_two_clips_equals_one_clip(mode):
         b, _ = bb(x[2:], st)
     for s in (2, 3, 4):
         got = torch.cat([a[s], b[s]], dim=0)
-        if mode == "spike":
-            # binary output: a 1e-6 membrane difference can flip a spike exactly at threshold
-            assert (got != full[s]).float().mean().item() < 1e-3
-        else:
-            assert (got - full[s]).abs().max().item() < 1e-3
+        # A membrane within float noise (~1e-4, from the chunk scan's sequence-length dependence)
+        # of the threshold can fire in one run and not the other. With subtract-reset that shifts
+        # the membrane by `threshold` for all later steps -> an O(1) deviation on isolated
+        # elements in EVERY mode. So bound the FRACTION of deviating elements (observed worst 1.6e-4).
+        frac = ((got - full[s]).abs() > 1e-3).float().mean().item()
+        assert frac < 1e-3, f"stage {s}: {frac:.2e} of elements deviate"
+
+
+def test_streaming_exact_without_spiking():
+    """Strict state-carry check. With threshold=1e6 no spike or reset ever fires, so the LIF is a
+    continuous leaky integrator; split must then equal full up to scan float noise, which tightly
+    checks the Mamba-state AND membrane carry (no fraction allowance to hide behind)."""
+    bb = _bb(output_mode="analog", threshold=1e6).eval()
+    x = _x()
+    with torch.no_grad():
+        full, _ = bb(x, None)
+        assert all(v["rate"] == 0.0 for v in bb.spiking_stats().values())
+        a, st = bb(x[:2], None)
+        b, _ = bb(x[2:], st)
+        assert all(v["rate"] == 0.0 for v in bb.spiking_stats().values())
+    for s in (2, 3, 4):
+        got = torch.cat([a[s], b[s]], dim=0)
+        m = (got - full[s]).abs().max().item()
+        assert m <= 1e-3 * max(1.0, full[s].abs().max().item()), \
+            f"stage {s}: max|split-full| = {m:.3e}"
 
 
 def test_no_spiking_stages_equals_puressm():
