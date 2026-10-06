@@ -3,6 +3,7 @@ Builder tests use the `device` fixture (GPU present) like tests/test_register_pu
 compose/recipe tests are pure config and run anywhere."""
 import pathlib
 
+import pytest
 import torch
 from omegaconf import OmegaConf
 
@@ -94,6 +95,45 @@ def test_missing_spiking_block_uses_defaults(device):
     bb = rb.build_recurrent_backbone(cfg)
     assert bb.spiking_stages == (2, 3, 4)
     assert bb.temporal["4"].lif.output_mode == "spike"
+
+
+# Every copied arg at a NON-default value (applied to both builds): the shipped yaml uses the
+# branch defaults for most keys, so a key the copy stopped forwarding would hide behind its
+# default — the D12 lesson (mutation-checked: checkpoint_blocks dropped passes "shipped" only).
+_NON_DEFAULT = ["model.backbone.depths=[1,1,2,1]", "model.backbone.spatial_d_state=8",
+                "model.backbone.drop_path_rate=0.2", "model.backbone.checkpoint_blocks=True",
+                "model.backbone.d_state=32", "model.backbone.num_layers_per_stage=2",
+                "model.backbone.in_stages=[3,4]"]
+
+
+@pytest.mark.parametrize("overrides", [[], _NON_DEFAULT], ids=["shipped", "non_default"])
+def test_null_spiking_build_matches_puressm_build(device, overrides):
+    """register.py COPIES PureSSM's spatial/temporal construction (D4, so the PureSSM branch stays
+    byte-identical). Built from the composed configs, SpikingSSM with no spiking stage must have
+    exactly PureSSM's state_dict key->shape map: catches drift in the copied args (input_channels,
+    depths, spatial_d_state, d_state, num_layers_per_stage, in_stages) that the yaml-parity tests
+    cannot see. The two non-shape args are compared directly."""
+    from event_ssm.integration.smoke_harness import compose_smoke_config
+    from event_ssm.models.puressm.bimamba_block import DropPath
+    _register()
+    import models.detection.recurrent_backbone as rb
+    pure_cfg = compose_smoke_config(experiment="puressm", extra_overrides=overrides).model.backbone
+    spk_cfg = compose_smoke_config(experiment="spikingssm", extra_overrides=overrides + [
+        "model.backbone.spiking.spiking_stages=[]"]).model.backbone
+    pure = rb.build_recurrent_backbone(pure_cfg)
+    spk = rb.build_recurrent_backbone(spk_cfg)
+    assert spk.spiking_stages == ()
+
+    def shapes(m):
+        return {k: tuple(v.shape) for k, v in m.state_dict().items()}
+
+    assert shapes(spk) == shapes(pure)
+    assert spk.spatial.checkpoint_blocks == pure.spatial.checkpoint_blocks
+
+    def drop_probs(m):
+        return [d.p for d in m.modules() if isinstance(d, DropPath)]
+
+    assert drop_probs(spk) == drop_probs(pure)
 
 
 def _monitored_forward(monkeypatch, capsys, device, monitor):
