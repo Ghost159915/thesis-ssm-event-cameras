@@ -77,7 +77,8 @@ Same ordering as the smoke reductions (4.0 > 3.8 > 2.65) and as the pre-register
 
 ### 3.4 25k short runs
 
-*In progress.* Launched 2026-10-06 21:53 in tmux `stage19`: `spike` then `graded`, rung `[4]`
+*Complete* (spike 21:53→01:51, run `ax1lj36q`; graded 01:51→05:40, run `js9sthxu`; both stopped on
+`max_steps=25000 reached`). Launched 2026-10-06 21:53 in tmux `stage19`: `spike` then `graded`, rung `[4]`
 (`ARM=spike STAGES=4 bash code/event_ssm/scripts/stage19_short_local.sh ; ARM=graded …`). Verified at launch: composed
 config = SpikingSSM / spike / `[4]` / 25k / val 5k / batch 4 / bf16 / LR 2e-4 OneCycle / `checkpoint_blocks` true /
 group `stage19_short_spike_s4`. Spike run id `ax1lj36q` (checkpoints `external/ssms_event_cameras/RVT/RVT/ax1lj36q/`,
@@ -86,9 +87,37 @@ console log `results/stage19/spike_s4/`). Throughput 2.27 it/s; one full validat
 
 | arm | 5k | 10k | 15k | 20k | 25k | verdict |
 |---|---|---|---|---|---|---|
-| spike | **0.13** | | | | | |
-| graded | | | | | | |
+| spike | 0.1338 | 0.2401 | 0.2791 | 0.3176 | **0.3448** | PASS |
+| graded | 0.0918 | 0.2271 | 0.2925 | 0.3171 | **0.3430** | PASS |
 | PureSSM (Stage 13, cloud, same compressed schedule) | 0.155 | — | 0.286 | — | 0.351 | anchor |
+
+Values are val/AP from the ModelCheckpoint log lines (`'val/AP' reached …`). Monitors over the whole run (≈240 lines
+per arm, every 200 backbone forwards incl. validation): **zero SILENT / SATURATED / non-finite lines** in either arm.
+Stage-4 firing rate: spike 0.18–0.25, stable (0.230 → 0.219); graded 0.09–0.24, **falling** (0.221 → 0.120): the graded
+readout learns to fire about half as often, plausibly because each spike carries its magnitude. β mean stayed at 0.900
+(to three decimals) in both arms: the learnable leak barely moves in 25k steps at LR 2e-4 (a scalar logit behind a
+sigmoid with derivative ≈ 0.09 at β = 0.9), so in practice β behaves as fixed at its initialisation over this budget.
+
+### 3.5 Kill-switch verdict (criterion pre-registered in the wrapper header, 2026-10-06)
+
+| criterion | spike | graded |
+|---|---|---|
+| finite loss throughout (completed, no non-finite monitor line, val/AP finite and rising) | ✅ | ✅ |
+| no SILENT / SATURATED `[spk-monitor]` line after warm-up | ✅ | ✅ |
+| val/AP rising across the 5 checkpoints | ✅ (strictly) | ✅ (strictly) |
+| final val/AP ≥ 0.15 | ✅ 0.345 | ✅ 0.343 |
+
+**Verdict: PASS — the spiking model trains stably on ladder rung `[4]`.** Both arms land within 0.01 of the
+PureSSM anchor (0.351) on the same compressed schedule, inside single-run noise.
+
+Interpretation, with its limits:
+- The smoke's slower spike optimisation (D4) does **not** carry over to full-data training at this budget: spike
+  leads graded at 5k and 10k and ties it at 25k.
+- The pre-registered ordering `analog ≥ graded > spike` is **not** observed at 25k on `[4]` (spike − graded = +0.002,
+  noise). Rung `[4]` spikes only the coarsest stage (8×10), so a small cost is expected; the ordering is to be judged on
+  the full runs and higher rungs, not here.
+- Caveats: one seed per arm; compressed 25k OneCycle; rung `[4]` only; analog not run at 25k; data order differs
+  from the anchor (2/1 vs 6/2 workers) and the anchor ran on a different GPU without block checkpointing.
 
 ## 4. Decision record
 
@@ -165,5 +194,7 @@ console log `results/stage19/spike_s4/`). Throughput 2.27 it/s; one full validat
 ## 6. Next
 
 1. ~~Spike-smoke spread (H1)~~ done (§3.3): FAIL systematic at 150 steps, PASS at 300 → slow, not stuck.
-2. 25k short runs, `spike` then `graded`, rung `[4]`, in tmux. Record val/AP at 5k…25k, `[spk-monitor]` lines, peak VRAM and
-   it/s here; then the kill-switch call against §2 (due Sun 11 Oct).
+2. ~~25k short runs~~ done (§3.4): **kill-switch PASS** (§3.5).
+3. Next (user decision): the Stage-20 plan — which rung (`[4]` passed at ~zero cost; `[2,3,4]` is the config default and
+   the more meaningful spiking claim but untested) and which arms at which budget (timeline: graded at 400k, spike and
+   analog at 100k), local (~2.3 days per 400k incl. validation) or rented 5090 (~27 h).
