@@ -112,6 +112,12 @@ training vs carried in inference) — the standard SSM train/infer setup. The tw
 
 ## Placement: Interleaved Per Backbone Stage (not 3 modules at FPN scales)
 
+> **Correction (2026-10-06):** as built (and in every version since commit `3a93a61`) the temporal blocks are
+> per-scale *taps*: `ResNetMambaBackbone.forward` runs the whole spatial pyramid first and sends each temporal
+> output to the FPN only; the next spatial stage consumes the per-frame features. "Interleaved / mirrors
+> `RNNDetectorStage`" below overstates the similarity to RVT, whose recurrent output feeds the next stage. Since
+> Stage 6, temporal blocks exist on stages 2–4 only. Thesis wording: main.tex §3.1.1.
+
 The original plan placed three Mamba modules **after** the FPN (all `d_model = 256`). The **built** design interleaves
 **one `MambaTemporalBlock` after each of the 4 ResNet stages**, at the stage's native width
 (64 / 128 / 256 / 512), **before** the FPN (`code/event_ssm/backbone/resnet_mamba.py`). Stages 2–4
