@@ -74,10 +74,11 @@ best accuracy-per-FLOP at 4.59), and closing roughly half of the large-object ga
 baseline ($\mathrm{AP}_L$ $+2.95$ over the convolutional hybrid). A gradient-based receptive-field
 probe attributes that gain to a learned spatial extent twice that of the convolutional stack.
 Under a true tenfold change in event rate PureSSM retains 69.7\% of its accuracy against
-17.7\% for a ConvLSTM baseline, making it the most rate-robust model tested; a
-methodological audit further finds the inference-time $\Delta t$-rescaling compensation credited in
-the literature to be falsified at every tested operating point, reassigning the mechanism to the
-intrinsic rate tolerance of the recurrence.
+17.7\% for a ConvLSTM baseline, making it the most rate-robust model tested. An attempted
+reproduction of the inference-time $\Delta t$-rescaling compensation reported in the literature finds
+that, under the published checkpoint and code, it does not recover accuracy at any tested operating
+point and the published high-rate result is not reproducible, while the rate robustness itself is
+present without it.
 
 \tbd{one to two sentences on the spiking SSM result once Stage 20--22 have run}
 
@@ -179,10 +180,11 @@ in return?}
   \item \textbf{A causal mechanism for the large-object result:} a gradient-based effective-receptive-field
         probe showing that the state-space spatial mixer sees roughly twice as far as the convolutional
         stack, and --- unlike the convolutional stack --- \emph{widens its field through training}.
-  \item \textbf{A correction to the literature:} the inference-time $\Delta t$-rescaling compensation
-        credited with SSM temporal generalisation is falsified at every tested operating point across
-        19 evaluations. The robustness is real; the mechanism is reassigned to the uncompensated
-        recurrence.
+  \item \textbf{A reproduction study of $\Delta t$-rescaling:} under the published checkpoint and code,
+        the inference-time compensation reported to give SSMs their temporal generalisation does not
+        recover accuracy at any tested operating point (at a true tenfold rate it costs 9--13~mAP), and
+        the published 200\,Hz result is not reproducible. The rate robustness itself is reproduced
+        without the compensation.
   \item \textbf{An efficiency frontier reported honestly}, including the results that do not flatter
         the proposed model --- launch-bound wall-clock latency and a streaming state 31 times larger
         than the baseline's.
@@ -977,12 +979,12 @@ $4\times$    & 12\,ms  & 38.4 & 35.4 & 35.68 \\
 \end{tabular}
 \end{table}
 
-PureSSM and EventSSM are tied across this sweep, both marginally below the baseline. One sub-finding is
-worth stating carefully: at the dense $0.25\times$ window PureSSM overtakes the baseline overall
-($+0.71$), driven by $\mathrm{AP}_L$ ($+3.58$) --- the attention baseline's large-object accuracy
-collapses on smeared dense frames ($-14.3$) while PureSSM's holds ($-7.7$). The overall margin is within
-noise; \textbf{the $\mathrm{AP}_L$ gap is the trustworthy part}. Honest framing: PureSSM is more robust at
-the dense/slow end, the baseline at the sparse/fast end.
+PureSSM and EventSSM are tied across this sweep, both marginally below the baseline. One result at the
+dense end needs care. At the $0.25\times$ window PureSSM exceeds the baseline overall ($+0.71$), driven
+by large objects: on the smeared dense frames the attention baseline's $\mathrm{AP}_L$ falls by 14.3 and
+PureSSM's by 7.7, leaving PureSSM 3.58 ahead on $\mathrm{AP}_L$. The overall margin is within single-seed
+noise; the $\mathrm{AP}_L$ difference is the reliable part. PureSSM is therefore more robust at the dense,
+slow end of the sweep and the baseline at the sparse, fast end.
 
 \subsection{Regime 2 --- true rate change}
 \begin{table}[htbp]
@@ -1005,18 +1007,55 @@ temporal path, the additional robustness must originate in the BiMamba spatial b
 global receptive field behind the $\mathrm{AP}_L$ result, now paying off when true-$10\times$ frames are
 event-sparse.
 
-\subsection{A methodological correction}
+\subsection{Reproducing inference-time \texorpdfstring{$\Delta t$}{Delta t}-rescaling}
 \label{subsec:f2}
-The inference-time $\Delta t$-rescaling compensation proposed in the literature was \textbf{falsified at
-every tested operating point} for all three state-space models: at true $10\times$ it \emph{costs}
-roughly 13 mAP rather than recovering accuracy. The published Gen1 200\,Hz headline was not reproducible
-under the released checkpoint and code. The robustness conclusion survives with the mechanism
-reassigned: it comes from the uncompensated recurrence being intrinsically rate-tolerant, not from the
-explicit rescaling.
-\tbd{DECISION REQUIRED --- choose the framing and commit to it here. Option~A (drafted, softer): ``not
-reproducible under the published artefacts''. Option~B (harder): a direct claim that the mechanism is
-misattributed. See \texttt{docs/notes/Stage9\_Zubic\_methodology\_verdict.md}. This is the most
-contestable claim in the thesis; whichever is chosen, the evidence must be laid out in full.}
+Zubic et al.~\cite{zubic2024state} report that state-space detectors generalise to event rates not seen
+in training when the discretisation step is rescaled at inference to match the new rate, and give
+39.84~mAP on Gen1 at 200\,Hz (a tenfold rate increase) for S5 with this compensation, against 8.35 for
+RVT's ConvLSTM. This work attempted to reproduce that result with the published checkpoint and code, and
+transferred the compensation to Mamba by rescaling the post-softplus step $\Delta_t$ of
+Equation~\eqref{eq:mamba2_state} by the same factor. Table~\ref{tab:dt_comp} lists every compensated
+evaluation in the true-rate regime.
+
+\begin{table}[htbp]
+\centering
+\caption{Inference-time $\Delta t$ compensation under a true rate change (regime~2), mAP on the Gen1
+test split. ``Comp.'' rescales the step by the window ratio, the convention of~\cite{zubic2024state}.
+The published reference is S5 with compensation at 200\,Hz.}
+\label{tab:dt_comp}
+\begin{tabular}{llcccc}
+\toprule
+True rate & & \textbf{S5-RVT} & \textbf{EventSSM} & \textbf{PureSSM} & Published \\
+\midrule
+$2\times$ (25\,ms)  & no comp.  & 45.37 & 44.13 & 44.53 & --- \\
+                    & comp.     & 44.51 & 43.67 & 44.13 & --- \\
+\midrule
+$10\times$ (5\,ms)  & no comp.  & \textbf{29.67} & \textbf{29.09} & \textbf{32.38} & --- \\
+                    & comp.     & 19.96 & 20.18 & 19.70 & 39.84 \\
+                    & difference & $-9.71$ & $-8.91$ & $-12.68$ & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Three observations follow, all under the published artefacts. First, the compensation did not recover
+accuracy at any tested operating point. In regime~1 there is nothing for it to compensate: the model's
+step cadence is unchanged and only the number of events per frame falls, so rescaling $\Delta t$ only
+detunes the recurrence, and accuracy peaks at the trained step. In regime~2 the compensated models score
+below the uncompensated ones at both rates, by 9--13~mAP at the tenfold rate, consistently across S5 and
+both Mamba models. Second, the published 200\,Hz figure could not be reproduced: the best S5 result at a
+true tenfold rate is 29.67~mAP, without compensation. The released preprocessing also cannot generate a
+true-rate test set, because the frame stride is fixed at 50~ms in the code; the published experiment
+must therefore have used preprocessing that was not released, and that difference may account for the
+discrepancy. Third, the rate robustness itself is reproduced: without any compensation every state-space
+model retains 62--70\,\% of its accuracy at a true tenfold rate (Table~\ref{tab:regime2}), against the
+17.7\,\% reported for the ConvLSTM.
+
+The conclusion drawn here is accordingly limited to what the published artefacts support. State-space
+detectors are substantially more rate-robust than the recurrent-convolutional baseline, and under the
+released checkpoint and code this robustness does not require the inference-time compensation. Whether
+the compensation behaves differently under the unreleased preprocessing cannot be determined from the
+published material. The complete audit, with the code evidence and all evaluations, is recorded in the
+project repository (\path{docs/notes/Stage9_Zubic_methodology_verdict.md}).
 
 \section{Efficiency}
 \label{sec:efficiency}

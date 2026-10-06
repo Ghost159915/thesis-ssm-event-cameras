@@ -75,8 +75,10 @@ send it and forget it.
 
 ### 🚦 The two gates
 
-**Week 2 — Δt framing decision.** Choose soft (*"not reproducible under the published artefacts"*,
-already drafted) or hard (*the mechanism is misattributed*). This is the most contestable claim in the
+**Week 2 — Δt framing decision.** ✅ **DECIDED 2026-10-06 (user): Option A, soft** — *"not reproducible
+under the published artefacts"*; no misattribution claim. Applied consistently to the abstract, the
+contributions list and §5.4.3 (evidence table of all compensated true-rate evals). Original options: soft
+or hard (*the mechanism is misattributed*). This is the most contestable claim in the
 thesis and §5.4.3 cannot be finished without it. Evidence:
 `docs/notes/Stage9_Zubic_methodology_verdict.md`.
 
@@ -179,4 +181,4 @@ Recording these so they stay decided and do not quietly return:
 | Date | Note |
 |---|---|
 | 2026-09-08 | Timeline created. Stage 17 CPU-complete; thesis restructured (43 pp); proposal ready to send. |
-| 2026-10-06 | W4. Stage 18 integrated; Stage 19 smoke done (analog/graded PASS, spike FAIL at 150 steps = binarisation cost, PASS at 300); 25k spike+graded runs launched locally. Ch.4 Experimental Setup written (31 → 26 markers); per-class discrepancy resolved. Writing is ~2 weeks behind the queue. |
+| 2026-10-06 | W4. Stage 18 integrated; Stage 19 smoke done (analog/graded PASS, spike FAIL at 150 steps = binarisation cost, PASS at 300); 25k spike+graded runs launched locally. Ch.4 Experimental Setup written (31 → 26 markers); per-class discrepancy resolved. Same evening: Ch.3 EventSSM/PureSSM (→ 24), Ch.5 §5.2–5.3 (→ 22), Δt framing decided (A, soft) + §5.4.3 written (→ 21). |
