@@ -42,7 +42,7 @@ with every Stage-19/20 ablation arm expressible as a CLI override
     `None` passes through.
   * non-spiking stage: the parent's helpers, imported unmodified.
 * `spiking_stages=()` ⇒ numerically the PureSSM backbone (same modules, same forward path).
-* `firing_rates()` → `{stage: float}` for monitors.
+* `spiking_stats()` → `{stage: {rate, beta_mean, beta_min, beta_max, thr_mean}}` (floats) for the monitor.
 
 RVT's `RNNStates.recursive_detach/recursive_reset` already recurse through lists/tuples of tensors,
 so the nested state needs no RVT change; `mem` reset-to-zero on sequence boundaries is the correct
@@ -66,7 +66,7 @@ existing Stage-17 tests must pass untouched.
 
 ### 3.4 `integration/monitors.py` — `attach_spiking_monitor(backbone, every_n=200)` (additive function)
 
-Forward hook on the backbone. Every `every_n` calls logs per spiking stage: firing rate, mean/min/max
+Forward hook on the backbone; reads `backbone.spiking_stats()`. Every `every_n` calls logs per spiking stage: firing rate, mean/min/max
 learned β, mean threshold → wandb (`commit=False`) + one printed `[spk-monitor]` line. Warns on
 **silence** (rate < 0.01) and **saturation** (rate > 0.90). Same `every_n >= 1` guard and
 exception-suppression contract as the spatial monitor. Cadence env: `SPIKING_MONITOR_EVERY`.
