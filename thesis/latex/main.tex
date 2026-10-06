@@ -641,6 +641,7 @@ with $\alpha = 2$ by default. The forward pass remains a hard step, so the model
 only the gradient is smoothed.
 
 \subsection{Readout modes}
+\label{subsec:readout_modes}
 Three readouts are implemented, and comparing them decomposes the cost of spiking rather than merely
 measuring it: \textbf{spike} ($s_t$, binary), \textbf{graded} ($s_t \cdot m_t$, the analogue of Loihi~2
 graded spikes and of SpikeYOLO's integer-valued training), and \textbf{analog} ($m_t$, the
@@ -1164,25 +1165,80 @@ spike (binary)   & --- & --- & --- & --- \\
 
 \section{What the Four Models Show}
 \label{sec:what_shown}
-\tbd{Expand each of the following into a paragraph. (1) A pure state-space backbone is a viable
-detection backbone: with no attention and only a zero-initialised depthwise term for local mixing, it matches the convolutional hybrid
-overall while being the smallest, most compute-efficient and most rate-robust of the three.
-(2) The receptive field is the lever --- one controlled change moves large-object accuracy by $+2.95$,
-explained by a learned field up to twice as wide (stage 3). (3) State-space temporal robustness is real,
-and under the published artefacts it does not need the inference-time $\Delta t$ compensation (option-A
-framing, decided 2026-10-06: make no misattribution claim). (4) Efficiency is a genuine trade-space, not a free win. (5) PureSSM's honest
-position relative to EventSSM: the community's proven recipe is state-space-temporal with a lightweight
-spatial mixer; PureSSM pushes to pure state-space spatial and buys smaller, more robust, leaner-FLOP and
-better $\mathrm{AP}_L$, paying wall-clock latency. Both are legitimate designs --- report the frontier,
-not a single winner.}
+\textbf{A pure state-space spatial backbone is a viable detection backbone.} PureSSM uses no attention,
+and its only local spatial mixing is a zero-initialised depthwise term in each block. It nonetheless
+matches the convolutional hybrid on overall accuracy (46.43 against 46.22, Table~\ref{tab:accuracy})
+with the fewest parameters (16.33\,M) and the fewest FLOPs (10.12\,G) of the three models, and it is the
+most robust of them to a true change in event rate (69.7\,\% retention at a tenfold rate,
+Table~\ref{tab:regime2}). Two qualifications keep this in proportion. It remains 1.3~mAP below the
+attention-based baseline, and its rate advantage holds for a true rate change: under a fixed cadence
+with a shortened accumulation window, the baseline degrades least (Table~\ref{tab:regime1}).
+
+\textbf{The receptive field is the lever.} One controlled change, the spatial mixer, raises large-object
+accuracy by 2.95~$\mathrm{AP}_L$ while small- and medium-object accuracy barely moves ($+0.08$ and
+$+0.28$). The receptive-field probe explains the pattern: the state-space mixer learns a field twice as
+wide as the convolutional stack's at stage~3 and a quarter wider at stage~4, while the convolutional
+field changes little in training (Section~\ref{sec:erf}). The class-level result agrees, since the gain
+is in cars, the class with large and close instances, and not in pedestrians. The same wider field is
+the most plausible source of PureSSM's additional rate robustness, because EventSSM and PureSSM share an
+identical temporal path; that attribution follows from the controlled design rather than from a direct
+probe.
+
+\textbf{State-space temporal processing is robust to the event rate.} All three state-space models
+keep 62--70\,\% of their accuracy at a true tenfold rate without any compensation, against 17.7\,\%
+reported for the ConvLSTM (Table~\ref{tab:regime2}). Under the published artefacts this robustness does
+not depend on the inference-time $\Delta t$ compensation, which lowered accuracy at every tested
+operating point (Section~\ref{subsec:f2}); whether it behaves differently under the unreleased
+preprocessing cannot be settled from the released material. For a platform whose event rate varies with
+its own speed, the practical consequence is that a state-space detector degrades gracefully, rather than
+collapsing, at a rate it was not trained for, and without per-rate tuning.
+
+\textbf{Efficiency is a trade-space, not a free gain.} PureSSM performs the least computation and has
+the best accuracy per FLOP, but it is the slowest model in eager execution (37\,Hz), because its
+fourteen bidirectional scans launch many small kernels. CUDA-graph replay lifts it to 181\,Hz, yet
+EventSSM stays ahead in both modes (79 and 210\,Hz) and draws the least energy per frame (0.438\,J). The
+baseline carries a 4.7\,MB streaming state against 144\,MB for both Mamba models, the cost of Mamba's
+state expansion at every spatial location. Event sparsity does not help on the GPU at all: every frame
+is processed densely, whatever its event count. Which model is most efficient therefore depends on the
+binding constraint (FLOPs, latency, energy or memory), and the thesis reports the frontier rather than
+a winner on any single axis.
+
+\textbf{PureSSM and EventSSM are two legitimate designs.} Published state-space event detectors keep a
+conventional mixer on one of the two axes: S5-RVT combines attention in space with an S5 recurrence in
+time~\cite{zubic2024state}, and SMamba a sparse spatial Mamba with a ConvLSTM in time~\cite{yang2025smamba}.
+EventSSM follows the same pattern, pairing a lightweight convolutional spatial mixer with Mamba in time.
+PureSSM is state-space on both axes. It buys a smaller model, fewer FLOPs, better large-object accuracy
+and greater rate robustness, and pays in wall-clock latency on current GPUs. Which is preferable depends
+on whether a deployment is bound by computation and robustness, or by latency on conventional hardware.
 
 \section{The Neuromorphic Case}
 \label{sec:neuro_case}
-\tbd{Why this particular model suits Loihi 2: the temporal core is a diagonal linear recurrence that
-maps onto programmable per-neuron microcode; event sparsity that a GPU wastes is rewarded on an
-event-driven substrate; graded spikes address the binary bottleneck. Then state the deployment reality
-honestly --- Intel archived the Lava framework in May 2026 and has announced a successor SDK without a
-public timeline, which is why NIR is used as the export boundary.}
+The neuromorphic strand rests on three properties that the GPU measurements of
+Section~\ref{sec:efficiency} cannot capture. First, the event sparsity that a GPU leaves unused is what
+neuromorphic processors are built for: they compute only when spikes arrive, so their energy scales with
+activity rather than with frame size~\cite{davies2021advancing}. Second, the temporal core of the models
+in this thesis is a linear recurrence with a diagonal decay (Equation~\eqref{eq:mamba2_state}), which
+decomposes into independent per-state updates, each implementable as a neuron. Loihi~2 supports
+user-programmable neuron models through microcode~\cite{orchard2021efficient}, and Meyer
+et al.~\cite{meyer2024diagonal} mapped the diagonal SSM S4D onto it, measuring for token-by-token
+processing about 1000 times less energy and 75 times lower latency than a recurrent S4D implementation on
+a Jetson Orin Nano. Third, Loihi~2 supports graded spikes, which carry an integer payload rather than a
+single bit~\cite{orchard2021efficient}. They are the hardware counterpart of the graded readout of
+Section~\ref{subsec:readout_modes} and address the binary information bottleneck that the spike readout
+imposes; Section~\ref{sec:spiking_results} measures what that bottleneck costs.
+
+Three gaps separate the model of this thesis from silicon. (i) Mamba's step $\Delta_t$ is input
+dependent, so its decay $\exp(\Delta_t a)$ changes at every step. The S4D port relies on fixed, linear
+time-invariant dynamics, and a selective recurrence would need either per-step computation of the decay
+on the chip or a fixed-step variant. (ii) Only the temporal readout spikes; the BiMamba spatial backbone
+is not spiking (Section~\ref{subsec:spiking_method}) and would run on a conventional accelerator, so the
+deployed system would be hybrid. (iii) The software path is in flux. Intel archived the Lava framework on
+13 May 2026, stating that it will no longer maintain it, and has announced a successor SDK without a
+public timeline~\cite{intel2026lava}. This thesis therefore uses the Neuromorphic Intermediate
+Representation (NIR)~\cite{pedersen2024neuromorphic}, a vendor-neutral exchange format, as its export
+boundary, so that the model can be retargeted to Lava's successor or to another neuromorphic platform.
+The energy figures of Section~\ref{sec:spiking_results} are accordingly estimates from operation counts
+in simulation, not measurements on hardware.
 
 \section{Scope Change: the Obstacle-Avoidance Aim}
 \label{sec:scope_change}
