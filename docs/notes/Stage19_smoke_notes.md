@@ -77,7 +77,18 @@ Same ordering as the smoke reductions (4.0 > 3.8 > 2.65) and as the pre-register
 
 ### 3.4 25k short runs
 
-*Pending (user-run, launched 2026-10-06 evening; §6).*
+*In progress.* Launched 2026-10-06 21:53 in tmux `stage19`: `spike` then `graded`, rung `[4]`
+(`ARM=spike STAGES=4 bash code/event_ssm/scripts/stage19_short_local.sh ; ARM=graded …`). Verified at launch: composed
+config = SpikingSSM / spike / `[4]` / 25k / val 5k / batch 4 / bf16 / LR 2e-4 OneCycle / `checkpoint_blocks` true /
+group `stage19_short_spike_s4`. Spike run id `ax1lj36q` (checkpoints `external/ssms_event_cameras/RVT/RVT/ax1lj36q/`,
+console log `results/stage19/spike_s4/`). Throughput 2.27 it/s; one full validation ≈ 12 min; GPU 12.4/16 GB; host RAM
+≈ 5 GB available (close heavy apps). Stage-4 firing rate 0.21–0.24 throughout, β ≈ 0.900, no SILENT/SATURATED, no NaN.
+
+| arm | 5k | 10k | 15k | 20k | 25k | verdict |
+|---|---|---|---|---|---|---|
+| spike | **0.13** | | | | | |
+| graded | | | | | | |
+| PureSSM (Stage 13, cloud, same compressed schedule) | 0.155 | — | 0.286 | — | 0.351 | anchor |
 
 ## 4. Decision record
 

@@ -558,7 +558,8 @@ Commit before any result is seen:
    LIF dynamics, leak and reset), analog → graded (cost of sparsity), graded → spike (cost of binarisation), whatever their size.
 3. **Expected ordering** `analog ≥ graded > spike` still stands.
 4. The model is a **hybrid** (only the temporal readout spikes; the BiMamba spatial backbone is ANN). Published SNN detectors
-   (SpikeDet 40.8, SpikeYOLO 38.5, EMS-YOLO 26.7–31.0) are full-spike. They are context, not a target; the decomposition is the contribution.
+   (SpikeDet 40.8, SpikeYOLO 38.5, EMS-YOLO 26.7–31.0) are full-spike. *[Corrected 2026-10-06: SpikeDet v5 reports
+   46.5–47.6 and the hybrid HsVT 44.9–47.8 — see CLAUDE.md and main.tex `tab:snn_landscape`.]* They are context, not a target; the decomposition is the contribution.
 5. Any run with `residual=True` is reported as such.
 
 ## 8. Before launching Stage 19 (final-review recommendations)
