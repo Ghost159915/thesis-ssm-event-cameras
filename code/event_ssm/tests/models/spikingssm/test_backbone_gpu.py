@@ -13,6 +13,10 @@ pytestmark = [pytest.mark.gpu,
 
 L, B, H, W = 4, 2, 64, 96
 
+# (4,) is the de-risking ladder's first rung and the only config mixing plain-Mamba stages (2-3)
+# with a spiking stage in ONE forward, i.e. the per-stage choice of _state_* vs _spk_state_* helpers.
+LADDER = pytest.mark.parametrize("spiking_stages", [(2, 3, 4), (4,)], ids=["spk234", "spk4"])
+
 
 def _spatial():
     from event_ssm.models.puressm import BiMambaSpatialStages
@@ -54,10 +58,11 @@ def test_forward_backward_and_grad_reaches_spatial_stem():
     assert set(st) == {2, 3, 4} and all(0.0 <= v["rate"] <= 1.0 for v in st.values())
 
 
+@LADDER
 @pytest.mark.parametrize("mode", ["analog", "graded", "spike"])
-def test_streaming_two_clips_equals_one_clip(mode):
+def test_streaming_two_clips_equals_one_clip(mode, spiking_stages):
     """State carried across clips (TBPTT / streaming eval) must reproduce the long clip."""
-    bb = _bb(output_mode=mode).eval()
+    bb = _bb(spiking_stages=spiking_stages, output_mode=mode).eval()
     x = _x()
     with torch.no_grad():
         full, _ = bb(x, None)
@@ -69,22 +74,27 @@ def test_streaming_two_clips_equals_one_clip(mode):
         # of the threshold can fire in one run and not the other. With subtract-reset that shifts
         # the membrane by `threshold` for all later steps -> an O(1) deviation on isolated
         # elements in EVERY mode. So bound the FRACTION of deviating elements (observed worst 1.6e-4).
+        # NaN-blind guard: `NaN.abs() > 1e-3` is False, so NaNs would otherwise count as "not deviating"
+        assert torch.isfinite(got).all() and torch.isfinite(full[s]).all(), \
+            f"stage {s} ({mode}): non-finite output"
         frac = ((got - full[s]).abs() > 1e-3).float().mean().item()
         assert frac < 1e-3, f"stage {s}: {frac:.2e} of elements deviate"
 
 
-def test_streaming_exact_without_spiking():
+@LADDER
+def test_streaming_exact_without_spiking(spiking_stages):
     """Strict state-carry check. With threshold=1e6 no spike or reset ever fires, so the LIF is a
     continuous leaky integrator; split must then equal full up to scan float noise, which tightly
     checks the Mamba-state AND membrane carry (no fraction allowance to hide behind)."""
-    bb = _bb(output_mode="analog", threshold=1e6).eval()
+    bb = _bb(spiking_stages=spiking_stages, output_mode="analog", threshold=1e6).eval()
     x = _x()
     with torch.no_grad():
         full, _ = bb(x, None)
-        assert all(v["rate"] == 0.0 for v in bb.spiking_stats().values())
+        assert all(v["rate"] == 0.0 for v in bb.spiking_stats().values())   # after full
         a, st = bb(x[:2], None)
+        assert all(v["rate"] == 0.0 for v in bb.spiking_stats().values())   # after clip a
         b, _ = bb(x[2:], st)
-        assert all(v["rate"] == 0.0 for v in bb.spiking_stats().values())
+        assert all(v["rate"] == 0.0 for v in bb.spiking_stats().values())   # after clip b
     for s in (2, 3, 4):
         got = torch.cat([a[s], b[s]], dim=0)
         m = (got - full[s]).abs().max().item()
@@ -106,16 +116,24 @@ def test_no_spiking_stages_equals_puressm():
         assert torch.allclose(got[s], want[s], atol=1e-6, rtol=0)
 
 
-def test_rvt_detach_and_reset_handle_spiking_state():
+@LADDER
+def test_rvt_detach_and_reset_handle_spiking_state(spiking_stages):
     from modules.utils.detection import RNNStates
-    bb = _bb().train()
+    bb = _bb(spiking_stages=spiking_stages).train()
     _, states = bb(_x(2), None)
     det = RNNStates.recursive_detach(states)
     reset = RNNStates.recursive_reset(det, indices_or_bool_tensor=[0])
-    mamba_b, mem_b = reset[3]                                  # stage 4 (index 3)
+    mamba_b, mem_b = reset[3]                                  # stage 4 (index 3): spiking tuple
     assert mem_b.shape[0] == B
     assert torch.count_nonzero(mem_b[0]) == 0, "reset must zero the membrane of sequence 0"
     assert all(torch.count_nonzero(c[0]) == 0 and torch.count_nonzero(s_[0]) == 0
                for c, s_ in mamba_b)
-    # resumes from the reset state without error
+    if spiking_stages == (4,):
+        # mixed ladder: stage 2 (index 1) is a PLAIN per-layer [(conv, ssm), ...] list, no mem
+        plain = reset[1]
+        assert isinstance(plain, list) and all(isinstance(p, tuple) and len(p) == 2 for p in plain)
+        assert all(p[0].shape[0] == B and p[1].shape[0] == B for p in plain)
+        assert all(torch.count_nonzero(c[0]) == 0 and torch.count_nonzero(s_[0]) == 0
+                   for c, s_ in plain), "plain Mamba state of sequence 0 must be zeroed"
+    # resumes from the reset state without error (mixed helpers included)
     bb(_x(2), reset)
