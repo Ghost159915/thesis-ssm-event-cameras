@@ -37,11 +37,14 @@ def _mean(xs):
     return sum(xs) / len(xs) if xs else float("nan")
 
 
-def smoke_verdict(losses, rates, mode, *, min_reduction=3.0, silence=0.01, saturation=0.90):
+def smoke_verdict(losses, rates, mode, *, expected_stages=None, min_reduction=3.0, silence=0.01,
+                  saturation=0.90):
     """Apply the three gates above.
 
-    losses: per-step total loss. rates: {stage: per-step firing rate}. Returns a JSON-ready dict
-    (the Stage-19 notes row) with `passed` and the human-readable `failures`.
+    losses: per-step total loss. rates: {stage: per-step firing rate}. expected_stages: the requested
+    spiking stages; if given, the recorded stages must be exactly these (any arm), so a recording
+    that silently covers other stages cannot pass. Returns a dict (the Stage-19 notes row; pass it
+    through `json_safe` before dumping) with `passed` and the human-readable `failures`.
     """
     if mode not in _MODES:
         raise ValueError(f"unknown output mode {mode!r}; expected one of {_MODES}")
@@ -55,6 +58,10 @@ def smoke_verdict(losses, rates, mode, *, min_reduction=3.0, silence=0.01, satur
     reduction = initial / max(final, 1e-9)
     if not reduction >= min_reduction:                   # written so that a NaN reduction fails
         failures.append(f"loss reduction {reduction:.2f}x < {min_reduction:g}x (no-learning regression)")
+
+    if expected_stages is not None and set(rates) != set(expected_stages):
+        failures.append(f"recorded stages {sorted(rates)} != requested stages "
+                        f"{sorted(expected_stages)}")
 
     gated = mode != "analog"
     final_rate, firing = {}, {}
@@ -99,6 +106,32 @@ def output_stem(out_dir, tag, epochs, default_epochs=150):
     return stem
 
 
+def verify_arm(backbone, mode, stages):
+    """Fail closed on a mislabelled arm: the BUILT model, not the config, decides what a run measured.
+    Raises (never `assert`, which `python -O` strips) unless the backbone spikes on exactly `stages`,
+    every one of them with `output_mode == mode`."""
+    built = tuple(backbone.spiking_stages)
+    if sorted(built) != sorted(stages):
+        raise RuntimeError(f"mislabelled arm: built spiking_stages {list(built)} != requested "
+                           f"{sorted(stages)}")
+    for s in stages:
+        got = backbone.temporal[str(s)].lif.output_mode
+        if got != mode:
+            raise RuntimeError(f"mislabelled arm: stage {s} built as {got!r}, requested {mode!r}")
+
+
+def json_safe(obj):
+    """Recursively map non-finite floats (NaN/inf) to None so the summary is strict JSON (`jq`-safe);
+    a failing run is exactly when NaN appears."""
+    if isinstance(obj, dict):
+        return {k: json_safe(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [json_safe(v) for v in obj]
+    if isinstance(obj, float) and not math.isfinite(obj):
+        return None
+    return obj
+
+
 def find_spiking_backbone(module):
     """The first submodule exposing `spiking_stats()` (SpikingSSMBackbone), wherever RVT nests it."""
     for m in module.modules():
@@ -114,8 +147,13 @@ def _sync():
 
 
 class SpikingSmokeRecorder(Callback):
-    """Per training step: total loss, step time (forward + backward + optimiser step, synchronised,
-    data loading excluded) and, per spiking stage, firing rate and learned beta (mean / max).
+    """Per training step: total loss, step time and, per spiking stage, firing rate and learned beta
+    (mean / max).
+
+    Step time is synchronised and spans Lightning's on_train_batch_start -> on_train_batch_end:
+    forward, backward, gradient clipping and the optimiser step, plus RVT's host-side
+    post-processing in training_step and, every `--monitor-every` steps, the monitors' host syncs
+    and prints (the median absorbs those). Data loading and the LR-scheduler step are outside it.
 
     Reading `spiking_stats()` costs a host sync every step: fine for a smoke, which is why the
     production monitor (`attach_spiking_monitor`) reads it only at its cadence. The read happens
@@ -208,7 +246,7 @@ def plot_smoke(rec, verdict, mode, stages, path, *, silence=0.01, saturation=0.9
         ax.set_axisbelow(True)
         for side in ("top", "right"):
             ax.spines[side].set_visible(False)
-        ax.tick_params(colors=_MUTED, labelsize=8)
+        ax.tick_params(which="both", colors=_MUTED, labelsize=8)   # minor log labels too
     if footer:
         fig.text(0.01, 0.005, footer, fontsize=8, color=_MUTED, ha="left", va="bottom")
     fig.tight_layout(rect=(0, 0.02 if footer else 0, 1, 1))

@@ -17,7 +17,8 @@ WRAPPER = pathlib.Path(__file__).resolve().parents[3] / "scripts" / "stage19_sho
 def _run(tmp_path, env_extra, args=()):
     env = {k: v for k, v in os.environ.items()
            if k not in ("ARM", "STAGES", "MAX_STEPS", "VAL_EVERY", "BATCH", "GROUP_NAME", "RUNDIR",
-                        "EXPERIMENT", "MAMBA_STEP_SCALE", "S5_STEP_SCALE")}
+                        "EXPERIMENT", "MAMBA_STEP_SCALE", "S5_STEP_SCALE", "STAGE7_RESUME",
+                        "PRECISION", "VAL_FRAC", "MAX_EPOCHS", "DATASET")}
     env["REPO"] = str(tmp_path)
     env.update(env_extra)
     return subprocess.run(["bash", str(WRAPPER), *args], env=env, capture_output=True, text=True,
@@ -30,7 +31,8 @@ def recorder_repo(tmp_path):
     fake.parent.mkdir(parents=True)
     fake.write_text(
         'for v in EXPERIMENT MAX_STEPS VAL_EVERY BATCH GROUP_NAME RUNDIR SPIKING_MONITOR '
-        'PURESSM_MONITOR MAMBA_STEP_SCALE; do echo "ENV $v=${!v-<unset>}"; done\n'
+        'PURESSM_MONITOR MAMBA_STEP_SCALE S5_STEP_SCALE STAGE7_RESUME PRECISION VAL_FRAC '
+        'MAX_EPOCHS DATASET; do echo "ENV $v=${!v-<unset>}"; done\n'
         'for a in "$@"; do echo "ARG $a"; done\n')
     return tmp_path
 
@@ -81,7 +83,52 @@ def test_budget_and_labels_cannot_be_overridden_from_the_environment(recorder_re
     assert env["RUNDIR"].endswith("/results/stage19/spike_s4")
 
 
-def test_stage9_dt_hook_is_unset(recorder_repo):
-    r = _run(recorder_repo, {"ARM": "spike", "MAMBA_STEP_SCALE": "10"})
+def test_stage9_dt_hooks_are_unset(recorder_repo):
+    r = _run(recorder_repo, {"ARM": "spike", "MAMBA_STEP_SCALE": "10", "S5_STEP_SCALE": "10"})
     env, _ = _parse(r.stdout)
-    assert env["MAMBA_STEP_SCALE"] == "<unset>"
+    assert env["MAMBA_STEP_SCALE"] == "<unset>" and env["S5_STEP_SCALE"] == "<unset>"
+
+
+def test_recipe_knobs_cannot_be_overridden_from_the_environment(recorder_repo):
+    # stale exports of the launcher's other recipe knobs (PRECISION=32 is a documented fp32
+    # fallback) must not leak into a run that is labelled as the Stage-13-comparable short run
+    r = _run(recorder_repo, {"ARM": "spike", "EXPERIMENT": "puressm", "PRECISION": "32",
+                             "VAL_FRAC": "0.25", "MAX_EPOCHS": "1", "DATASET": "/tmp/other"})
+    env, _ = _parse(r.stdout)
+    assert env["EXPERIMENT"] == "spikingssm"
+    assert (env["PRECISION"], env["VAL_FRAC"], env["MAX_EPOCHS"]) == ("bf16-mixed", "1.0", "10000")
+    assert env["DATASET"] == f"{recorder_repo}/data/gen1_raw/gen1"
+
+
+def test_resume_path_passes_through(recorder_repo):
+    # resuming a crashed run is a requirement: the launcher's STAGE7_RESUME must reach it intact
+    r = _run(recorder_repo, {"ARM": "spike", "STAGE7_RESUME": "/abs/last_epoch=000-step=5000.ckpt"})
+    env, _ = _parse(r.stdout)
+    assert env["STAGE7_RESUME"] == "/abs/last_epoch=000-step=5000.ckpt"
+
+
+@pytest.mark.parametrize("extra", [
+    "model.backbone.spiking.residual=True",              # the escape hatch must be its own arm
+    "model.backbone.spiking.output_mode=analog",         # Hydra: last value wins -> mislabelled arm
+    "+model.backbone.spiking.threshold=0.5",
+    "training.max_steps=400000",
+    "++training.learning_rate=1e-3",
+    "batch_size.train=8",
+    "wandb.group_name=mine",
+    "hydra.run.dir=/tmp/x",
+    "dataset.path=/tmp/x",
+    "+experiment/gen1=puressm",
+])
+def test_rejects_passthrough_args_that_could_change_the_arm_budget_or_labels(recorder_repo, extra):
+    r = _run(recorder_repo, {"ARM": "spike"}, args=(extra,))
+    assert r.returncode == 2
+    assert "argument" in r.stderr
+    assert "ENV " not in r.stdout
+
+
+@pytest.mark.parametrize("extra", [("--cfg", "job"), ("hydra.verbose=true",)])
+def test_allows_dry_run_and_verbosity_args(recorder_repo, extra):
+    r = _run(recorder_repo, {"ARM": "spike"}, args=extra)
+    assert r.returncode == 0, r.stderr
+    _, args = _parse(r.stdout)
+    assert args[3:] == list(extra)

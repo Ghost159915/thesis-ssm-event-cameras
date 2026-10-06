@@ -27,6 +27,8 @@ ap.add_argument("--monitor-every", type=int, default=10,
                      "150-step smoke")
 args = ap.parse_args()
 stages = sorted(set(args.stages))
+if stages not in ([4], [3, 4], [2, 3, 4]):           # same rungs as scripts/stage19_short_local.sh
+    ap.error(f"--stages must be one ladder rung: 4 | 3 4 | 2 3 4 (got {stages})")
 tag = f"{args.mode}_s{''.join(map(str, stages))}"
 
 # Monitors attach at backbone build time (register.py reads the env), so set them before building.
@@ -42,12 +44,13 @@ if os.environ.pop("MAMBA_STEP_SCALE", None) is not None:
 from event_ssm.integration.smoke_harness import compose_smoke_config, REPO
 from event_ssm.integration.make_smoke_dataset import build_smoke_dataset
 from event_ssm.integration.spiking_smoke import (
-    SpikingSmokeRecorder, find_spiking_backbone, median_step_ms, output_stem, plot_smoke,
-    smoke_verdict,
+    SpikingSmokeRecorder, find_spiking_backbone, json_safe, median_step_ms, output_stem, plot_smoke,
+    smoke_verdict, verify_arm,
 )
 from event_ssm.models.spikingssm.lif import _BETA_EPS
 
 import torch, lightning.pytorch as pl
+from omegaconf import OmegaConf
 
 OUT = REPO / "results/smoke_test"; OUT.mkdir(parents=True, exist_ok=True)
 
@@ -66,8 +69,8 @@ cfg = compose_smoke_config(max_epochs=args.epochs, batch_size=2, experiment="spi
                                             "model.backbone.spiking.spiking_stages="
                                             f"[{','.join(map(str, stages))}]"])
 spk_cfg = cfg.model.backbone.spiking
-assert spk_cfg.output_mode == args.mode and list(spk_cfg.spiking_stages) == stages, \
-    f"arm override did not reach the config: {spk_cfg}"
+if spk_cfg.output_mode != args.mode or sorted(spk_cfg.spiking_stages) != stages:
+    raise RuntimeError(f"arm override did not reach the config: {spk_cfg}")
 
 from modules.utils.fetch import fetch_data_module, fetch_model_module
 dm = fetch_data_module(cfg)
@@ -76,11 +79,7 @@ train_loader = dm.train_dataloader()
 module = fetch_model_module(cfg)
 
 # Fail closed on a mislabelled arm: the BUILT model, not the config, decides what was measured.
-bb = find_spiking_backbone(module)
-assert tuple(bb.spiking_stages) == tuple(stages), f"built spiking_stages {bb.spiking_stages} != {stages}"
-for s in stages:
-    built_mode = bb.temporal[str(s)].lif.output_mode
-    assert built_mode == args.mode, f"stage {s} built as {built_mode!r}, asked for {args.mode!r}"
+verify_arm(find_spiking_backbone(module), args.mode, stages)   # raises; never stripped by -O
 print(f"[stage19] arm verified on the built model: output_mode={args.mode} spiking_stages={stages}")
 # overfit_batches=1 re-fetches index 0 every epoch via the REAL dataloader (fresh label objects;
 # training_step mutates labels to numpy in place, so one captured batch cannot be replayed).
@@ -98,7 +97,7 @@ trainer.fit(module, train_dataloaders=train_loader)
 peak_gb = torch.cuda.max_memory_allocated() / 2**30   # same unit as the Stage-11 probe's 8.55 GB
 step_ms = median_step_ms(rec.step_s)
 
-v = smoke_verdict(rec.losses, rec.rates, args.mode)
+v = smoke_verdict(rec.losses, rec.rates, args.mode, expected_stages=stages)
 try:
     sha = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=REPO, capture_output=True,
                          text=True, check=True).stdout.strip()
@@ -108,9 +107,12 @@ summary = dict(stage=19, arm=tag, spiking_stages=stages, epochs=args.epochs,   #
                n_steps=len(rec.losses), peak_vram_gb=round(peak_gb, 3),
                median_step_ms=round(step_ms, 1), git=sha,
                final_beta_mean={s: xs[-1] for s, xs in rec.beta_mean.items()},
-               final_beta_max={s: xs[-1] for s, xs in rec.beta_max.items()}, **v)
+               final_beta_max={s: xs[-1] for s, xs in rec.beta_max.items()},
+               # the whole LIF block (threshold, residual, learn_*...), so provenance never rests
+               # on config defaults
+               spiking_cfg=OmegaConf.to_container(spk_cfg, resolve=True), **v)
 stem = output_stem(OUT, tag, args.epochs)             # reruns are numbered, never overwritten
-(OUT / f"{stem}.json").write_text(json.dumps(summary, indent=2) + "\n")
+(OUT / f"{stem}.json").write_text(json.dumps(json_safe(summary), indent=2, allow_nan=False) + "\n")
 plot_smoke(rec, v, args.mode, stages, OUT / f"{stem}.png",
            beta_cap=1.0 - _BETA_EPS,
            footer=f"peak VRAM {peak_gb:.2f} GB · median step {step_ms:.0f} ms "

@@ -11,8 +11,8 @@ import torch
 import torch.nn as nn
 
 from event_ssm.integration.spiking_smoke import (
-    SpikingSmokeRecorder, find_spiking_backbone, median_step_ms, output_stem, plot_smoke,
-    smoke_verdict,
+    SpikingSmokeRecorder, find_spiking_backbone, json_safe, median_step_ms, output_stem, plot_smoke,
+    smoke_verdict, verify_arm,
 )
 
 NAN = float("nan")
@@ -202,3 +202,90 @@ def test_output_stem_marks_a_non_default_budget(tmp_path):
     # a 300-epoch diagnostic must not be mistaken for (or numbered among) the 150-epoch gate runs
     (tmp_path / "spikingssm_spike_s4_overfit.json").write_text("{}")
     assert output_stem(tmp_path, "spike_s4", 300) == "spikingssm_spike_s4_overfit_e300"
+
+
+# ---- review hardening: windows, counts, median (hand-derived values) -------------------------------
+
+def test_loss_window_is_three_steps_at_each_end():
+    # first three 12,9,6 -> 9.0; last three 3,2,1 -> 2.0 (a window of 2 would give 10.5 and 1.5)
+    v = smoke_verdict([12, 9, 6, 5, 4, 3, 3, 2, 1], {4: [0.2]}, "spike")
+    assert v["initial_loss"] == pytest.approx(9.0)
+    assert v["final_loss"] == pytest.approx(2.0)
+    assert v["reduction"] == pytest.approx(4.5)
+
+
+def test_firing_rate_averages_exactly_the_last_three_steps():
+    # mean(0, 0, 0.025) = 0.00833 -> SILENT; last-only (0.025) or last-two (0.0125) would say OK
+    v = smoke_verdict(LOSSES_OK, {4: [0.3, 0.3, 0.0, 0.0, 0.025]}, "spike")
+    assert v["final_rate"][4] == pytest.approx(0.025 / 3)
+    assert v["firing"] == {4: "SILENT"}
+
+
+def test_exactly_five_loss_points_is_enough():
+    v = smoke_verdict([9, 9, 9, 3, 3], {4: [0.2]}, "spike")
+    assert not any("too few" in f for f in v["failures"])
+
+
+def test_median_step_is_a_median_not_a_mean():
+    # post-warm-up 0.1, 0.2, 0.9 s: median 200 ms, mean would be 400 ms
+    assert median_step_ms([5.0] * 5 + [0.1, 0.2, 0.9]) == pytest.approx(200.0)
+
+
+# ---- review hardening: recorded stages must be the requested stages --------------------------------
+
+def test_missing_or_extra_recorded_stage_fails_every_arm():
+    for mode in ("spike", "analog"):
+        v = smoke_verdict(LOSSES_OK, {4: [0.2]}, mode, expected_stages=(3, 4))
+        assert v["passed"] is False and any("stage" in f and "recorded" in f for f in v["failures"])
+        v = smoke_verdict(LOSSES_OK, {3: [0.2], 4: [0.2]}, mode, expected_stages=(4,))
+        assert v["passed"] is False
+
+
+def test_matching_recorded_stages_pass():
+    v = smoke_verdict(LOSSES_OK, {3: [0.2], 4: [0.2]}, "spike", expected_stages=[4, 3])
+    assert v["passed"] is True
+
+
+# ---- review hardening: arm verification on the built model (raises, never an assert) --------------
+
+class _Lif:
+    def __init__(self, mode):
+        self.output_mode = mode
+
+
+class _Blk(nn.Module):
+    def __init__(self, mode):
+        super().__init__()
+        self.lif = _Lif(mode)
+
+
+class _ArmBackbone(nn.Module):
+    """The two attributes verify_arm reads off SpikingSSMBackbone: spiking_stages and
+    temporal[str(stage)].lif.output_mode."""
+
+    def __init__(self, stages, modes):
+        super().__init__()
+        self.spiking_stages = tuple(stages)
+        self.temporal = nn.ModuleDict({str(s): _Blk(m) for s, m in zip(stages, modes)})
+
+
+def test_verify_arm_accepts_the_requested_arm():
+    verify_arm(_ArmBackbone((3, 4), ("spike", "spike")), "spike", [3, 4])
+
+
+@pytest.mark.parametrize("stages, modes, want_mode, want_stages", [
+    ((2, 3, 4), ("spike",) * 3, "spike", [4]),          # wrong rung built (e.g. config default)
+    ((4,), ("analog",), "spike", [4]),                   # wrong output mode built
+    ((3, 4), ("spike", "graded"), "spike", [3, 4]),      # one stage built differently
+])
+def test_verify_arm_raises_on_a_mislabelled_arm(stages, modes, want_mode, want_stages):
+    with pytest.raises(RuntimeError, match="arm"):
+        verify_arm(_ArmBackbone(stages, modes), want_mode, want_stages)
+
+
+# ---- review hardening: the summary is strict JSON ---------------------------------------------------
+
+def test_json_safe_turns_non_finite_floats_into_null():
+    raw = {"reduction": NAN, "rates": {4: float("inf")}, "steps": [1.0, NAN], "ok": 0.5, "n": 3}
+    out = json.loads(json.dumps(json_safe(raw), allow_nan=False))
+    assert out == {"reduction": None, "rates": {"4": None}, "steps": [1.0, None], "ok": 0.5, "n": 3}
