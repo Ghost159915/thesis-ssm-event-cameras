@@ -79,6 +79,17 @@ ln -s ../../../../../../code/event_ssm/configs/experiment/gen1/puressm.yaml \
       external/ssms_event_cameras/RVT/config/experiment/gen1/puressm.yaml
 ```
 
+## Stage 18 (2026-10-06): SpikingSSM Hydra config symlinks
+
+After any re-clone of external/, re-create the Stage-18 Hydra config symlinks:
+```bash
+mkdir -p external/ssms_event_cameras/RVT/config/model/spikingssm_yolox
+ln -s ../../../../../../code/event_ssm/configs/spikingssm_yolox/default.yaml \
+      external/ssms_event_cameras/RVT/config/model/spikingssm_yolox/default.yaml
+ln -s ../../../../../../code/event_ssm/configs/experiment/gen1/spikingssm.yaml \
+      external/ssms_event_cameras/RVT/config/experiment/gen1/spikingssm.yaml
+```
+
 ## Deferred (low-priority, from the Stage-9 code review)
 - Single-source-of-truth: derive `ts_step_frame_ms` from `get_base_delta_ts_for_labels_us` (or assert they
   agree) instead of the second hardcode. Touches validated code → fold in next time that file is edited.

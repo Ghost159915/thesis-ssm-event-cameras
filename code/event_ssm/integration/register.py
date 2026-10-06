@@ -1,8 +1,8 @@
 """Register the drop-in ResNetMamba and PureSSM backbones into RVT via monkeypatch.
 
 register_resnet_mamba() wires TWO things (idempotent, call ONCE at startup):
-  1. build_recurrent_backbone -> returns ResNetMambaBackbone for backbone.name == "ResNetMamba"
-     or PureSSM backbone for backbone.name == "PureSSM".
+  1. build_recurrent_backbone -> returns ResNetMambaBackbone for backbone.name == "ResNetMamba",
+     PureSSM backbone for "PureSSM", or SpikingSSMBackbone for "SpikingSSM".
   2. dynamically_modify_train_config -> handles our backbones (sets backbone.in_res_hw to the
      multiple-of-32 padded resolution and injects head.num_classes); the stock modifier only knows
      MaxViTRNN and raises NotImplementedError otherwise.
@@ -10,6 +10,10 @@ register_resnet_mamba() wires TWO things (idempotent, call ONCE at startup):
 For full RVT training wiring (Stage 6) call it BEFORE train.py's `from config.modifier import ...`
 and before YoloXDetector imports the builder, so those `from ... import` name-binds pick up the
 patched versions. Requires `code/` on PYTHONPATH so `event_ssm` is importable."""
+
+# LIF-readout keys forwarded verbatim from `backbone.spiking` to LIFReadout (Stage 18)
+_LIF_KEYS = ("output_mode", "beta", "threshold", "alpha", "learn_beta", "learn_threshold",
+             "reset", "detach_reset")
 
 
 def register_backbone_builder():
@@ -59,6 +63,41 @@ def register_backbone_builder():
                 from event_ssm.integration.monitors import attach_spatial_norm_monitor
                 attach_spatial_norm_monitor(bb, every_n=int(os.environ.get("PURESSM_MONITOR_EVERY", "200")))
             return bb
+        if backbone_cfg.name == "SpikingSSM":
+            # Stage 18: PureSSM skeleton with the temporal readout spiking (choice C). Spatial and
+            # temporal args are IDENTICAL to the PureSSM branch above (controlled experiment);
+            # duplicated rather than refactored so the PureSSM branch stays byte-identical.
+            from event_ssm.models.puressm import BiMambaSpatialStages
+            from event_ssm.models.spikingssm.backbone import SpikingSSMBackbone
+            in_stages = backbone_cfg.get("in_stages", None)
+            temporal_stages = tuple(in_stages) if in_stages is not None else (2, 3, 4)
+            spatial = BiMambaSpatialStages(
+                in_channels=backbone_cfg.input_channels,
+                depths=tuple(backbone_cfg.get("depths", (2, 2, 8, 2))),
+                d_state=backbone_cfg.get("spatial_d_state", 16),
+                drop_path_rate=backbone_cfg.get("drop_path_rate", 0.1),
+                checkpoint_blocks=backbone_cfg.get("checkpoint_blocks", False),
+            )
+            spk = backbone_cfg.get("spiking", None) or {}
+            bb = SpikingSSMBackbone(
+                in_channels=backbone_cfg.input_channels,
+                d_state=backbone_cfg.get("d_state", 64),
+                num_layers_per_stage=backbone_cfg.get("num_layers_per_stage", 1),
+                temporal_stages=temporal_stages,
+                spatial=spatial,
+                spiking_stages=tuple(spk.get("spiking_stages", temporal_stages)),
+                residual=bool(spk.get("residual", False)),
+                lif_kwargs={k: spk[k] for k in _LIF_KEYS if k in spk},
+            )
+            import os
+            if os.environ.get("PURESSM_MONITOR") == "1":
+                from event_ssm.integration.monitors import attach_spatial_norm_monitor
+                attach_spatial_norm_monitor(bb, every_n=int(os.environ.get("PURESSM_MONITOR_EVERY", "200")))
+            if os.environ.get("SPIKING_MONITOR") == "1":
+                # Stage 18: firing-rate silence/saturation watch (the two silent SNN failure modes)
+                from event_ssm.integration.monitors import attach_spiking_monitor
+                attach_spiking_monitor(bb, every_n=int(os.environ.get("SPIKING_MONITOR_EVERY", "200")))
+            return bb
         return orig(backbone_cfg)
 
     patched._resnet_mamba_registered = True
@@ -83,7 +122,7 @@ def register_config_modifier():
 
     def patched_modify(config):
         mdl = config.model
-        if mdl.get("name") == "rnndet" and mdl.backbone.get("name") in ("ResNetMamba", "PureSSM"):
+        if mdl.get("name") == "rnndet" and mdl.backbone.get("name") in ("ResNetMamba", "PureSSM", "SpikingSSM"):
             with open_dict(config):
                 # Mirror the stock modifier's SLURM bookkeeping (it sets this BEFORE the model
                 # dispatch, so our early-return branch must replicate it -- Stage-6 SLURM logging

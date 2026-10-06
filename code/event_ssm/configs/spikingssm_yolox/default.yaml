@@ -1,0 +1,56 @@
+# @package _global_
+# Canonical (tracked) Hydra model config for the SpikingSSM backbone (Stage 18, choice C).
+# Symlinked into the (gitignored) RVT config tree at
+# external/ssms_event_cameras/RVT/config/model/spikingssm_yolox/default.yaml.
+# Byte-identical to puressm_yolox/default.yaml except `name` and the `spiking` block (controlled
+# experiment — enforced by tests/models/spikingssm/test_register_spikingssm.py).
+defaults:
+  - override /model: rnndet
+
+model:
+  backbone:
+    name: SpikingSSM
+    compile:
+      enable: False
+      args:
+        mode: reduce-overhead
+    input_channels: 20         # stacked_histogram: 2 pol x 10 bins (matches baseline gen1.yaml)
+    d_state: 64                # TEMPORAL Mamba-2 blocks (identical to ResNetMamba — never a confound)
+    num_layers_per_stage: 1
+    in_stages: [2, 3, 4]       # temporal blocks ONLY on FPN-consumed stages (Finding §8)
+    depths: [2, 2, 8, 2]       # SPATIAL BiMamba pyramid depths (spec §4.3)
+    spatial_d_state: 16        # spatial scans need small state (VMamba evidence, spec §4.2)
+    drop_path_rate: 0.1
+    checkpoint_blocks: False   # local-16GB training fallback; cloud RTX 5090 32GB leaves False
+    spiking:                   # LIF readout on the temporal Mamba output (Stage 17/18)
+      output_mode: spike       # spike | graded | analog (analog = control arm, should ≈ PureSSM 46.4)
+      spiking_stages: [2, 3, 4]  # ⊆ in_stages; de-risking ladder [4] -> [3,4] -> [2,3,4]
+      beta: 0.9                # initial leak; learnable per channel if learn_beta
+      threshold: 1.0           # sweep = energy-accuracy Pareto (Stage 22)
+      alpha: 2.0               # arctan surrogate sharpness
+      learn_beta: True
+      learn_threshold: False
+      reset: subtract          # subtract | zero
+      detach_reset: True
+      residual: False          # analog bypass — escape hatch, MUST be reported if used
+  fpn:
+    name: PAFPN
+    compile:
+      enable: False
+      args:
+        mode: reduce-overhead
+    depth: 0.67                # round(depth * 3) == num bottleneck blocks
+    in_stages: [2, 3, 4]
+    depthwise: False
+    act: "silu"
+  head:
+    name: YoloX
+    compile:
+      enable: False
+      args:
+        mode: reduce-overhead
+    depthwise: False
+    act: "silu"
+  postprocess:
+    confidence_threshold: 0.1
+    nms_threshold: 0.45
