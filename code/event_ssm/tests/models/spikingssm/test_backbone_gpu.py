@@ -117,6 +117,21 @@ def test_no_spiking_stages_equals_puressm():
 
 
 @LADDER
+def test_bf16_autocast_features_bf16_membrane_fp32(spiking_stages):
+    """Every launcher runs bf16-mixed. Features stay in the autocast dtype (the neck sees what it
+    saw for PureSSM), but the carried LIF membrane is fp32 by contract (D13): in bf16, beta 0.999
+    rounds to 1.0 and small inputs vanish against a large membrane."""
+    bb = _bb(spiking_stages=spiking_stages).train()
+    with torch.autocast("cuda", dtype=torch.bfloat16):
+        feats, states = bb(_x(), None)
+    for s in (2, 3, 4):
+        assert feats[s].dtype == torch.bfloat16, f"stage {s}: {feats[s].dtype}"
+    for s in spiking_stages:
+        _, mem_b = states[s - 1]
+        assert mem_b.dtype == torch.float32, f"stage {s}: carried mem is {mem_b.dtype}"
+
+
+@LADDER
 def test_rvt_detach_and_reset_handle_spiking_state(spiking_stages):
     from modules.utils.detection import RNNStates
     bb = _bb(spiking_stages=spiking_stages).train()

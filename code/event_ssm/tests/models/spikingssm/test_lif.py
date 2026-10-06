@@ -152,3 +152,38 @@ def test_beta_at_or_beyond_eps_is_rejected_cleanly(beta):
 def test_beta_just_inside_eps_initialises_exactly():
     lif = LIFReadout(d_model=4, beta=2e-4, learn_beta=False)
     assert torch.allclose(lif.beta, torch.full((4,), 2e-4), atol=1e-7)
+
+
+# --- Stage 18 final review (D13): the recurrence must run in fp32 under bf16 autocast -------------
+# Every real launcher trains/evaluates bf16-mixed, so the Mamba output reaching the LIF is bf16.
+# bf16 has an 8-bit mantissa: beta 0.999 rounds to exactly 1.0 and 1.0 + 0.003 == 1.0.
+
+def test_bf16_input_spikes_equal_fp32_recurrence_on_same_values():
+    """Output dtype follows the input (bf16), but the spikes must be those of an fp32
+    recurrence on the identical (bf16-representable) values — no bf16 quantisation inside."""
+    torch.manual_seed(3)
+    lif = LIFReadout(d_model=64, output_mode="spike").eval()
+    x = torch.randn(256, 32, 64).bfloat16()
+    out_bf16, _ = lif(x)
+    out_fp32, _ = lif(x.float())
+    assert out_bf16.dtype == torch.bfloat16
+    assert torch.equal(out_bf16.float(), out_fp32), \
+        f"{(out_bf16.float() != out_fp32).float().mean().item():.2e} of spikes flipped by bf16 state"
+
+
+def test_carried_membrane_is_fp32_for_bf16_input():
+    lif = LIFReadout(d_model=8)
+    _, mem = lif(torch.randn(4, 5, 8).bfloat16())
+    assert mem.dtype == torch.float32, "membrane state is fp32 by contract (D13)"
+
+
+def test_leak_survives_bf16_input():
+    """beta=0.999 is exactly 1.0 in bf16 -> a pure integrator. The fp32 membrane must decay:
+    one unit pulse at t=0, then zeros to t=199 -> mem = 0.999**199."""
+    lif = LIFReadout(d_model=1, beta=0.999, threshold=1e6, learn_beta=False,
+                     output_mode="analog").eval()
+    x = torch.zeros(1, 200, 1)
+    x[0, 0, 0] = 1.0
+    _, mem = lif(x.bfloat16())
+    assert mem.dtype == torch.float32
+    assert mem.item() == pytest.approx(0.999 ** 199, abs=1e-4)

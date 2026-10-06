@@ -27,6 +27,9 @@ with N = B*H*W (folded spatial locations) and L = time. `mem` is carried across 
 like the Mamba (conv, ssm) state; dim0 = N keeps it compatible with the backbone's
 `_state_to_bmajor`/`_state_from_bmajor` reshapes at Stage 18.
 
+**Precision contract** (Stage-18 final review, D13): the recurrence always runs in fp32. `out`
+has the dtype of `x` (bf16 under the bf16-mixed launchers); the carried `mem` is always fp32.
+
 **Output modes** (an ablation axis, not decoration):
   * `spike`  — binary {0,1}. The neuromorphic target, and the strictest information bottleneck.
   * `graded` — s[t] * mem_pre[t]: fires sparsely but carries magnitude. This is the analogue of
@@ -112,14 +115,21 @@ class LIFReadout(nn.Module):
         assert x.ndim == 3, f"expected (N, L, C), got {tuple(x.shape)}"
         n, length, c = x.shape
         assert c == self.d_model, f"channel dim {c} != d_model {self.d_model}"
-        if mem is None:
-            mem = x.new_zeros(n, c)
-        beta = self.beta.to(x.dtype)
-        thr = self.threshold.to(x.dtype)
+        # D13: the recurrence runs in fp32 WHATEVER the input dtype. Every launcher is bf16-mixed, so
+        # the Mamba output arriving here is bf16; a bf16 membrane rounds beta 0.999 to exactly 1.0 (a
+        # pure integrator — the failure the epsilon-squeeze exists to prevent), drops small inputs
+        # against a large membrane (1.0 + 0.003 == 1.0) and flipped 0.04-0.27 % of spikes vs fp32.
+        # Upcasting only in the surrogate is too late: `mem - thr` is already quantised by then.
+        # Elementwise ops are not on autocast's cast lists, so fp32 operands stay fp32 here.
+        # For fp32 input `.float()` / `.to(x.dtype)` are no-ops: the fp32 path is bit-unchanged.
+        xf = x.float()
+        mem = xf.new_zeros(n, c) if mem is None else mem.float()
+        beta = self.beta.float()
+        thr = self.threshold.float()
 
-        outs, spike_sum = [], x.new_zeros(())
+        outs, spike_sum = [], xf.new_zeros(())
         for t in range(length):
-            mem = beta * mem + x[:, t]
+            mem = beta * mem + xf[:, t]
             spk = atan_spike(mem - thr, self.alpha)
             # record the pre-reset membrane: it is what a graded spike would carry
             mem_pre = mem
@@ -137,7 +147,10 @@ class LIFReadout(nn.Module):
             spike_sum = spike_sum + spk.detach().float().mean()
 
         self._last_firing_rate = spike_sum / max(length, 1)          # detached; no host sync
-        return torch.stack(outs, dim=1), mem
+        # Output goes back to the input dtype (the neck sees what it saw for PureSSM); the carried
+        # membrane stays fp32 by contract — a numerically sensitive accumulator, like an optimiser
+        # moment — so it is never re-quantised between clips either.
+        return torch.stack(outs, dim=1).to(x.dtype), mem
 
     def extra_repr(self):
         return (f"d_model={self.d_model}, output_mode={self.output_mode}, reset={self.reset}, "
