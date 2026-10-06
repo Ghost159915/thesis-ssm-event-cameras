@@ -142,6 +142,22 @@ def test_firing_rate_is_lazy_tensor_not_host_float():
     assert isinstance(lif.last_firing_rate, float) and lif.last_firing_rate == 1.0
 
 
+def test_firing_rate_bookkeeping_is_one_reduction_not_one_per_step():
+    """The rate used to cost detach+mean+add kernels on EVERY timestep (3·L launches per stage per
+    forward, all on the latency path). It must be reduced once, after the loop."""
+    from torch.profiler import ProfilerActivity, profile
+    length = 16
+    lif = LIFReadout(d_model=4)
+    x = torch.randn(3, length, 4)
+    with profile(activities=[ProfilerActivity.CPU]) as prof:
+        lif(x)
+    n_mean = sum(e.count for e in prof.key_averages() if e.key == "aten::mean")
+    assert n_mean == 1, f"aten::mean launched {n_mean}x for L={length}"
+    # semantics unchanged: still the mean over all (N, L, C) spike elements
+    spk, _ = LIFReadout(d_model=4, output_mode="spike").eval()(x)
+    assert lif.last_firing_rate == pytest.approx(spk.mean().item(), abs=1e-7)
+
+
 @pytest.mark.parametrize("beta", [1e-4, 1.0 - 1e-4, 1e-5])
 def test_beta_at_or_beyond_eps_is_rejected_cleanly(beta):
     """beta == eps used to pass the (0,1) check and then crash in math.log(0)."""

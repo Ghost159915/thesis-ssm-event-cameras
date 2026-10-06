@@ -127,7 +127,7 @@ class LIFReadout(nn.Module):
         beta = self.beta.float()
         thr = self.threshold.float()
 
-        outs, spike_sum = [], xf.new_zeros(())
+        outs, spks = [], []
         for t in range(length):
             mem = beta * mem + xf[:, t]
             spk = atan_spike(mem - thr, self.alpha)
@@ -144,9 +144,13 @@ class LIFReadout(nn.Module):
                 outs.append(spk * mem_pre)
             else:                                          # analog: pre-reset membrane (leak+reset kept)
                 outs.append(mem_pre)
-            spike_sum = spike_sum + spk.detach().float().mean()
+            # detached views (no copy); reduced ONCE after the loop — a running mean cost
+            # detach+mean+add kernel launches on every timestep, all on the latency path
+            spks.append(spk.detach())
 
-        self._last_firing_rate = spike_sum / max(length, 1)          # detached; no host sync
+        # same quantity as before (mean over every (N, L, C) spike); stays a detached 0-d tensor,
+        # so still no host sync
+        self._last_firing_rate = torch.stack(spks).float().mean().detach()
         # Output goes back to the input dtype (the neck sees what it saw for PureSSM); the carried
         # membrane stays fp32 by contract — a numerically sensitive accumulator, like an optimiser
         # moment — so it is never re-quantised between clips either.
