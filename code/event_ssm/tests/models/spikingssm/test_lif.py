@@ -129,3 +129,26 @@ def test_rejects_bad_config():
             LIFReadout(d_model=4, **kwargs)
     with pytest.raises(AssertionError):
         LIFReadout(d_model=4)(torch.randn(3, 5, 7))            # channel mismatch
+
+
+def test_firing_rate_is_lazy_tensor_not_host_float():
+    """forward must not force a host sync: the rate is stored as a detached tensor and only
+    converted to float when read (Stage-22 latency would otherwise be contaminated)."""
+    lif = LIFReadout(d_model=4)
+    assert lif.last_firing_rate != lif.last_firing_rate          # nan before any forward
+    lif(torch.full((2, 3, 4), 5.0))
+    assert isinstance(lif._last_firing_rate, torch.Tensor)
+    assert not lif._last_firing_rate.requires_grad
+    assert isinstance(lif.last_firing_rate, float) and lif.last_firing_rate == 1.0
+
+
+@pytest.mark.parametrize("beta", [1e-4, 1.0 - 1e-4, 1e-5])
+def test_beta_at_or_beyond_eps_is_rejected_cleanly(beta):
+    """beta == eps used to pass the (0,1) check and then crash in math.log(0)."""
+    with pytest.raises(AssertionError, match="beta"):
+        LIFReadout(d_model=4, beta=beta)
+
+
+def test_beta_just_inside_eps_initialises_exactly():
+    lif = LIFReadout(d_model=4, beta=2e-4, learn_beta=False)
+    assert torch.allclose(lif.beta, torch.full((4,), 2e-4), atol=1e-7)

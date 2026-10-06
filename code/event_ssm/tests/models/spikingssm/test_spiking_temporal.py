@@ -80,14 +80,16 @@ def test_output_modes_run_on_real_kernels(mode):
 
 
 def test_ssm_path_matches_the_non_spiking_block():
-    """The SSM recurrence must be untouched: with an analog readout and beta->0 the block
-    reduces to MambaTemporalBlock's output, proving the spiking layer is the ONLY change."""
+    """The SSM recurrence must be untouched: the block's output equals the LIF readout applied
+    to an independent, weight-identical MambaTemporalBlock — so the spiking layer is the ONLY
+    change. (Previously used beta=1e-4 == _BETA_EPS, which crashed in the inverse sigmoid.)"""
     from event_ssm.temporal.mamba_temporal import MambaTemporalBlock
-    blk = _block(d_model=128, output_mode="analog", beta=1e-4, learn_beta=False).eval()
+    blk = _block(d_model=128, output_mode="analog").eval()
     ref = MambaTemporalBlock(d_model=128).cuda().float().eval()
     ref.load_state_dict(blk.ssm.state_dict())
     x = torch.randn(8, 6, 128, device="cuda")
     with torch.no_grad():
         got, _ = blk(x)
-        want, _ = ref(x)
-    assert (got - want).abs().max().item() < 1e-3
+        y, _ = ref(x)
+        want, _ = blk.lif(y)
+    assert (got - want).abs().max().item() < 1e-5

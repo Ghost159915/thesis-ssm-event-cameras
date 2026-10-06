@@ -56,7 +56,9 @@ class LIFReadout(nn.Module):
         super().__init__()
         assert output_mode in _OUTPUT_MODES, f"output_mode must be one of {_OUTPUT_MODES}, got {output_mode!r}"
         assert reset in _RESET_MODES, f"reset must be one of {_RESET_MODES}, got {reset!r}"
-        assert 0.0 < beta < 1.0, f"beta must lie in (0,1), got {beta}"
+        assert _BETA_EPS < beta < 1.0 - _BETA_EPS, (
+            f"beta must lie in ({_BETA_EPS}, {1.0 - _BETA_EPS}) — the epsilon-squeezed sigmoid's "
+            f"open range, outside which its inverse is undefined; got {beta}")
         assert threshold > 0.0, f"threshold must be positive, got {threshold}"
         self.d_model = d_model
         self.alpha = alpha
@@ -80,9 +82,10 @@ class LIFReadout(nn.Module):
         else:
             self.register_buffer("threshold_raw", thr)
 
-        # Populated every forward (detached float) so training monitors can watch for the two
-        # failure modes that kill an SNN silently: total silence and saturation.
-        self.last_firing_rate = float("nan")
+        # Detached 0-d tensor written every forward; converted to float only when READ, so the
+        # forward never forces a GPU->host sync (which would contaminate Stage-22 latency).
+        # Read by training monitors watching for silence and saturation.
+        self._last_firing_rate = None
 
     @property
     def beta(self):
@@ -93,6 +96,13 @@ class LIFReadout(nn.Module):
     def threshold(self):
         """Firing threshold, clamped strictly positive."""
         return self.threshold_raw.clamp(min=_MIN_THRESHOLD)
+
+    @property
+    def last_firing_rate(self) -> float:
+        """Mean spike rate of the most recent forward (nan before the first). Host sync on read."""
+        if self._last_firing_rate is None:
+            return float("nan")
+        return float(self._last_firing_rate)
 
     def forward(self, x, mem=None):                       # x (N, L, C) -> (N, L, C), mem (N, C)
         assert x.ndim == 3, f"expected (N, L, C), got {tuple(x.shape)}"
@@ -122,7 +132,7 @@ class LIFReadout(nn.Module):
                 outs.append(mem_pre)
             spike_sum = spike_sum + spk.detach().float().mean()
 
-        self.last_firing_rate = float(spike_sum / max(length, 1))
+        self._last_firing_rate = spike_sum / max(length, 1)          # detached; no host sync
         return torch.stack(outs, dim=1), mem
 
     def extra_repr(self):
