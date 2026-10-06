@@ -58,9 +58,26 @@ spatial depths (1,1,1,1), 64×96 frame:
 
 Same ordering as the smoke reductions (4.0 > 3.8 > 2.65) and as the pre-registered ladder ordering `analog ≥ graded > spike`.
 
-### 3.3 Run-to-run spread and the 25k runs
+### 3.3 Spike-arm spread and budget (H1 / H2 of D4)
 
-*Pending (user-run; §6).*
+| run | epochs | loss (first 3 → last 3) | reduction | gate | stage-4 final rate | β max | git |
+|---|---|---|---|---|---|---|---|
+| run 1 (§3.1) | 150 | 21.03 → 7.92 | 2.65× | FAIL | 0.238 | 0.9033 | `0efe360` |
+| run 2 | 150 | 17.90 → 7.97 | 2.25× | FAIL | 0.215 | 0.9026 | `d74d351` |
+| run 3 | 150 | 22.44 → 9.50 | 2.36× | FAIL | 0.267 | 0.9035 | `d74d351` |
+| e300 | 300 | 22.10 → 4.47 | **4.95×** | PASS | 0.241 | 0.9044 | `d74d351` |
+
+- **H1 (noise) rejected.** All three 150-epoch runs miss the gate (2.25–2.65×, mean 2.42×). The FAIL is systematic, not a
+  draw. (`d74d351` differs from `0efe360` only in review fixes to bookkeeping/tests; model code is identical.)
+- **H2 (slow, not stuck) confirmed.** With twice the steps the spike arm reaches 4.95×, above analog's 150-step 4.0×; the
+  curve declines steadily with no plateau at the end, firing stays in band (0.21–0.27) and β stays far from its cap.
+- **Caveat.** analog (4.0×) and graded (3.8×) are single runs; their spread is unmeasured. If it is similar to spike's
+  (±0.2×) both remain clear of 3×.
+- Peak VRAM 4.37 GB and ~202 ms/step in every run (B = 2).
+
+### 3.4 25k short runs
+
+*Pending (user-run, launched 2026-10-06 evening; §6).*
 
 ## 4. Decision record
 
@@ -102,6 +119,9 @@ Same ordering as the smoke reductions (4.0 > 3.8 > 2.65) and as the pre-register
   diagnosis. The gate is *not* moved (no re-running at more epochs until it passes). The smoke gate exists to catch no-learning
   regressions; D4 shows the spike path learns. The kill-switch is decided on the 25k run (§2), which is the experiment that
   measures "trains stably". H1 is measured with numbered reruns (§6) as supporting evidence only.
+- **Outcome of the reruns (§3.3).** H1 rejected (2.25–2.65× over three runs: systematic), H2 confirmed (4.95× at 300 steps).
+  Reported result: *the spike arm fails the 150-step overfit gate reproducibly and passes it at twice the budget; the cause is
+  a ~3× weaker gradient through the binary readout, not a defect.*
 - **Thesis use.** Ch.5 §5.7 / Ch.6: first measured instance of the binarisation cost, before any full run; the gradient table is
   a mechanism-level explanation of the ladder gap.
 
@@ -133,7 +153,6 @@ Same ordering as the smoke reductions (4.0 > 3.8 > 2.65) and as the pre-register
 
 ## 6. Next
 
-1. Spike-smoke spread (H1): two more 150-epoch reruns (auto-numbered `_run2`, `_run3`) and one 300-epoch run (`_e300`, slow vs
-   stuck). Supporting evidence only; does not change the D4 verdict.
+1. ~~Spike-smoke spread (H1)~~ done (§3.3): FAIL systematic at 150 steps, PASS at 300 → slow, not stuck.
 2. 25k short runs, `spike` then `graded`, rung `[4]`, in tmux. Record val/AP at 5k…25k, `[spk-monitor]` lines, peak VRAM and
    it/s here; then the kill-switch call against §2 (due Sun 11 Oct).
