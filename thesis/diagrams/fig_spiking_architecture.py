@@ -144,7 +144,7 @@ rows = [
     ("S5-RVT  (reproduced baseline)", "MaxViT attention", False, "S5 diagonal SSM", False, "47.7", ""),
     ("EventSSM  (Thesis B)",          "ResNet-18 conv",   False, "Mamba-2",         False, "46.2", ""),
     ("PureSSM  (Thesis B)",           "BiMamba scan",     True,  "Mamba-2",         False, "46.4", ""),
-    ("Spiking-SSM  (Thesis C)",       "BiMamba scan",     False, "Mamba-2  +  LIF", True,  "?",    "target > 41"),
+    ("Spiking-SSM  (Thesis C)",       "BiMamba scan",     False, "Mamba-2  +  LIF", True,  "?",    "3 readout arms"),
 ]
 cx = [56, 430, 760, 1032]
 hy = GY + 34

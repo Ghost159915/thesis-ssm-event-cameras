@@ -93,7 +93,7 @@
 <rect x="760" y="791" width="260" height="30" rx="6" fill="#ede9fe" stroke="#6d28d9" stroke-width="2.2"/>
 <text x="890" y="811" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" font-style="normal" fill="#6d28d9" text-anchor="middle">Mamba-2  +  LIF</text>
 <text x="1084" y="811" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="middle">?</text>
-<text x="1200" y="811" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="11.5" font-weight="italic" font-style="normal" fill="#6d28d9" text-anchor="middle">target &gt; 41</text>
+<text x="1200" y="811" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="11.5" font-weight="italic" font-style="normal" fill="#6d28d9" text-anchor="middle">3 readout arms</text>
 <text x="56" y="868" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="12" font-weight="italic" font-style="normal" fill="#475569" text-anchor="start">PureSSM moved the SPATIAL axis; Spiking-SSM moves the TEMPORAL one - so the spiking block is spatial-agnostic and pairs with either backbone.</text>
 <text x="56" y="888" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="11.5" font-weight="italic" font-style="normal" fill="#475569" text-anchor="start">The caret marks the changed box. S5-RVT is the reproduced published baseline; EventSSM / PureSSM / Spiking-SSM are drop-in backbone swaps into its pipeline. mAP is COCO 0.50:0.95, Gen1 test split.</text>
 <text x="40" y="928" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="20" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="start">c</text>

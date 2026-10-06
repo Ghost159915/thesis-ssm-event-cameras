@@ -490,6 +490,16 @@ orthogonal, which is what allows them to be varied one at a time. Temporal block
 for the FPN-consumed stages 2, 3 and 4; stage~1 carries no temporal block, since a block there would
 contribute only dead parameters.
 
+The temporal blocks are per-scale \emph{taps} on the spatial pyramid, not links inside it. The pyramid is
+evaluated on every frame first; each temporal output then goes to the neck, while the next spatial stage
+continues from the per-frame features. This differs from RVT~\cite{gehrig2023recurrent}, where the
+recurrent output of each stage is the input of the next, so that deeper stages see temporally integrated
+features. Here the deeper spatial stages operate on single frames, and in exchange the whole spatial
+pyramid is stateless and can process all frames of a clip in one batched pass. The temporal output
+\emph{replaces} the stage features; there is no residual path around the temporal block. The design is
+identical in all three own models, so it does not confound their comparison; against the RVT-family
+baselines it is one of the architectural differences of the backbone.
+
 \section{The Four Models}
 \label{sec:four_models}
 
@@ -511,16 +521,92 @@ Spiking-SSM (this work) & BiMamba (identical) & Mamba-2 $+$ \textbf{LIF readout}
 \end{table}
 
 \subsection{EventSSM --- convolutional spatial, state-space temporal}
-\tbd{ResNet-18 stages with conv1 adapted 3$\to$20 channels by average projection; a causal Mamba-2
-block interleaved after each stage with $d_{model}$ equal to the stage width (64/128/256/512); state
-carried across clips through the baseline's LstmStates contract.}
+\label{subsec:eventssm}
+\textbf{Spatial mixer.} The spatial pyramid is an ImageNet-initialised ResNet-18~\cite{he2016deep}: a stem
+($7\times7$ stride-2 convolution, batch normalisation, ReLU, max-pooling) followed by four residual stages
+of widths 64/128/256/512 at strides 4/8/16/32, which on the padded $256\times320$ input produce maps from
+$64\times80$ down to $8\times10$. The pretrained first convolution expects three RGB channels. It is
+adapted to the 20 histogram channels by \emph{average projection}: the pretrained kernel
+$W\in\mathbb{R}^{64\times3\times7\times7}$ is averaged over its input channels, tiled across the 20 new
+channels and rescaled,
+\begin{equation}
+  W'_{:,c} \;=\; \frac{3}{20}\cdot\frac{1}{3}\sum_{k=1}^{3} W_{:,k}, \qquad c = 1,\dots,20,
+  \label{eq:avg_projection}
+\end{equation}
+so that the summed response of each filter to a spatially uniform input equals that of the original, and
+the pretrained edge and blob detectors are available to every bin and polarity. All later layers keep
+their ImageNet weights.
+
+\textbf{Temporal mixer.} One Mamba-2 layer~\cite{dao2024transformers} acts on each FPN-fed stage
+$s\in\{2,3,4\}$ at that stage's width $C_s\in\{128,256,512\}$, with state size $N=64$, expansion factor 2
+(so $2C_s/64$ heads of dimension $P=64$) and a causal convolution of width 4. The clip of shape
+$(L, B, C_s, h_s, w_s)$ is folded into $B\,h_s w_s$ independent sequences of length $L$, one per spatial
+location, and each head $j$ runs the selective recurrence
+\begin{align}
+  H^{(j)}_t &= \exp\!\big(\Delta^{(j)}_t a^{(j)}\big)\, H^{(j)}_{t-1} + \Delta^{(j)}_t\, x^{(j)}_t B_t^{\top},
+  \label{eq:mamba2_state}\\
+  y^{(j)}_t &= H^{(j)}_t C_t + D^{(j)} x^{(j)}_t,
+  \label{eq:mamba2_out}
+\end{align}
+where $x^{(j)}_t\in\mathbb{R}^{P}$ is the head's slice of the expanded and causally convolved input,
+$H^{(j)}_t\in\mathbb{R}^{P\times N}$ its state, $a^{(j)}<0$ a learned scalar decay,
+$\Delta^{(j)}_t=\mathrm{softplus}(\cdot)>0$ an input-dependent step, $B_t, C_t\in\mathbb{R}^{N}$
+input-dependent projections shared by all heads, and $D^{(j)}$ a learned skip weight. The heads are
+concatenated into $y_t$ and the layer outputs $W_{\mathrm{out}}\,\mathrm{RMSNorm}\big(y_t\odot\mathrm{SiLU}(z_t)\big)$,
+with $z_t$ a gate projected from the input. In contrast to S4 and S5, the decay
+$\exp(\Delta_t a)$ depends on the input; Section~\ref{sec:robustness} examines what that selectivity does
+when the event rate changes.
+
+\textbf{State.} Each temporal layer carries two tensors across clips for every spatial location: the
+last three pre-convolution inputs (the left context of the causal convolution) and the head states
+$\{H^{(j)}\}$. They are stored batch-major, which lets RVT's existing state container detach them between
+truncated-BPTT windows and zero them at recording boundaries without modification. Training and
+streaming evaluation use the same chunked scan kernel, which accepts an initial state and returns the
+final one, so there is no separate recurrent inference path that could drift from the trained model.
+The per-location state is large: it is the main term of the streaming-memory comparison in
+Section~\ref{sec:efficiency}. The full EventSSM detector has 19.18\,M parameters, 11.23\,M of them in
+ResNet-18 (Table~\ref{tab:efficiency}).
 
 \subsection{PureSSM --- state-space spatial, state-space temporal}
-\tbd{BiMamba spatial stages replace the ResNet conv at each stage. Convolution appears only as the
-stem and the downsampling layers (position information) plus a zero-initialised depthwise 3$\times$3
-in-block mix; all token \emph{mixing} is state-space. No BatchNorm anywhere --- LayerNorm family only.
-The scan is bidirectional because a frame's spatial sequence is complete: there is no causality
-constraint within a frame, and the module is stateless by construction.}
+\label{subsec:puressm}
+PureSSM replaces each ResNet stage with a stack of bidirectional Mamba-2 blocks and changes nothing else.
+Stage widths, strides, the temporal blocks (identical configuration), the state handling and everything
+downstream are those of EventSSM. Convolution remains only where it supplies position information: a stem
+of two $3\times3$ stride-2 convolutions ($20\to32\to64$ channels) and one $3\times3$ stride-2 convolution
+between consecutive stages. No explicit positional embedding is used, as in VMamba~\cite{liu2024vmamba}.
+All token \emph{mixing} is state-space. Normalisation is LayerNorm, with RMSNorm inside the scan; there is
+no batch normalisation anywhere. The stage depths are $(2,2,8,2)$, fourteen blocks in total, with
+stochastic depth~\cite{huang2016deep} rising linearly to 0.1. The model is trained from scratch.
+
+\textbf{Block.} Each block maps a feature map $X\in\mathbb{R}^{C\times h\times w}$ as
+\begin{align}
+  X' &= X + \mathrm{DWConv}_{3\times3}(X), \label{eq:bimamba_local}\\
+  X_{\mathrm{out}} &= X' + \mathrm{DropPath}\big(\mathrm{BiScan}(\mathrm{LN}(X'))\big). \label{eq:bimamba_block}
+\end{align}
+The depthwise convolution is zero-initialised, so every block starts as a pure global scan and learns how
+much local mixing to add. $\mathrm{BiScan}$ flattens the map into a sequence $u$ of $hw$ tokens, row-major
+in even blocks and column-major in odd blocks, so that consecutive blocks propagate information along both
+image axes, an alternation found effective in Mamba-ND~\cite{li2024mamband}. It then runs one Mamba-2 scan
+over $u$ and one over the reversed sequence~\cite{zhu2024vision}:
+\begin{equation}
+  \mathrm{BiScan}(u) \;=\; W_{\mathrm{out}}\,\mathrm{RMSNorm}\Big(\big[\,\overrightarrow{\mathrm{SSM}}(u)
+  + \mathrm{flip}\big(\overleftarrow{\mathrm{SSM}}(\mathrm{flip}(u))\big)\big]\odot\mathrm{SiLU}(z)\Big),
+  \label{eq:biscan}
+\end{equation}
+where each $\mathrm{SSM}$ is the recurrence of Equations~\eqref{eq:mamba2_state}--\eqref{eq:mamba2_out}
+started from a zero state. The two directions share the input projection, the gate $z$ and the output
+projection $W_{\mathrm{out}}$, but have their own causal convolution, decay $a$, step bias and skip weight
+$D$, so that each direction learns its own length scales. The spatial state size is 16, a quarter of the
+temporal blocks' 64, as small states suffice for 2-D scans~\cite{liu2024vmamba}. On the padded input the
+four stages scan sequences of 5{,}120, 1{,}280, 320 and 80 tokens.
+
+\textbf{Bidirectional in space, causal in time.} A frame is complete when it is processed, so there is no
+causality constraint within it: a token may depend on tokens on either side. The spatial scan also starts
+from a zero state for every frame and carries nothing forward, so the module is stateless by construction
+and its bidirectionality cannot leak information across time. Time is handled exclusively by the causal
+temporal blocks, which are identical in EventSSM and PureSSM; the comparison of Section~\ref{sec:acc_results}
+therefore isolates the spatial mixer. PureSSM has 16.33\,M parameters, 8.38\,M of them in the spatial
+pyramid, the fewest of the compared models (Table~\ref{tab:efficiency}).
 
 \subsection{Spiking-SSM --- a spiking temporal readout}
 \label{subsec:spiking_method}
@@ -1091,7 +1177,6 @@ Engineering at UNSW Sydney for providing access to computational resources and l
 
 \chapter{Mathematical Formulations}
 \label{app:maths}
-\label{app:maths}
 
 \section{Continuous-Time SSM}
 A classical linear SSM evolves a latent state vector $h(t) \in \mathbb{R}^N$ according to a continuous-time linear dynamical system \cite{gu2022efficiently, gu2023mamba}:
@@ -1179,7 +1264,6 @@ after a re-clone; the test suite and how to run the GPU-marked tests; checkpoint
 \tbd{Update this register for Thesis C. The Thesis-A risks about UAV flight testing and event-camera
 hardware no longer apply after the scope change; the live risks are now training instability in the
 spiking model, single-seed variance, and external dependence on INRC/Intel timelines.}
-\label{app:risk}
 
 \begin{table}[h!]
     \centering
