@@ -72,7 +72,7 @@ that every measured difference is attributable to a single architectural change.
 while being the smallest model (16.3\,M parameters), performing the least computation (10.1\,GFLOP,
 best accuracy-per-FLOP at 4.59), and closing roughly half of the large-object gap to the attention
 baseline ($\mathrm{AP}_L$ $+2.95$ over the convolutional hybrid). A gradient-based receptive-field
-probe attributes that gain to a learned spatial extent twice that of the convolutional stack.
+probe attributes that gain to a learned spatial extent up to twice that of the convolutional stack.
 Under a true tenfold change in event rate PureSSM retains 69.7\% of its accuracy against
 17.7\% for a ConvLSTM baseline, making it the most rate-robust model tested. An attempted
 reproduction of the inference-time $\Delta t$-rescaling compensation reported in the literature finds
@@ -178,7 +178,7 @@ in return?}
         that pipeline, giving a four-model ablation in which each measured difference is attributable
         to one isolated architectural change.
   \item \textbf{A causal mechanism for the large-object result:} a gradient-based effective-receptive-field
-        probe showing that the state-space spatial mixer sees roughly twice as far as the convolutional
+        probe showing that the state-space spatial mixer sees up to twice as far as the convolutional
         stack, and --- unlike the convolutional stack --- \emph{widens its field through training}.
   \item \textbf{A reproduction study of $\Delta t$-rescaling:} under the published checkpoint and code,
         the inference-time compensation reported to give SSMs their temporal generalisation does not
@@ -1165,11 +1165,12 @@ spike (binary)   & --- & --- & --- & --- \\
 \section{What the Four Models Show}
 \label{sec:what_shown}
 \tbd{Expand each of the following into a paragraph. (1) A pure state-space backbone is a viable
-detection backbone: with no attention and no spatial convolution it matches the convolutional hybrid
+detection backbone: with no attention and only a zero-initialised depthwise term for local mixing, it matches the convolutional hybrid
 overall while being the smallest, most compute-efficient and most rate-robust of the three.
 (2) The receptive field is the lever --- one controlled change moves large-object accuracy by $+2.95$,
-explained by a twice-wider learned field. (3) State-space temporal robustness is real, but the credited
-mechanism is wrong. (4) Efficiency is a genuine trade-space, not a free win. (5) PureSSM's honest
+explained by a learned field up to twice as wide (stage 3). (3) State-space temporal robustness is real,
+and under the published artefacts it does not need the inference-time $\Delta t$ compensation (option-A
+framing, decided 2026-10-06: make no misattribution claim). (4) Efficiency is a genuine trade-space, not a free win. (5) PureSSM's honest
 position relative to EventSSM: the community's proven recipe is state-space-temporal with a lightweight
 spatial mixer; PureSSM pushes to pure state-space spatial and buys smaller, more robust, leaner-FLOP and
 better $\mathrm{AP}_L$, paying wall-clock latency. Both are legitimate designs --- report the frontier,
@@ -1186,15 +1187,67 @@ public timeline, which is why NIR is used as the export boundary.}
 \section{Scope Change: the Obstacle-Avoidance Aim}
 \label{sec:scope_change}
 The fourth aim registered in Thesis~A --- integration with an obstacle-avoidance controller in
-simulation, and physical micro-UAV testing if feasible --- was not undertaken.
+simulation, and physical micro-UAV testing if feasible --- was not undertaken. It was to be evaluated by
+collision rate, avoidance latency and trajectory smoothness in AirSim or Gazebo. Two parts of the second
+aim were also not delivered: the 1Mpx dataset and latency on embedded hardware. Table~\ref{tab:aims} sets
+every registered aim against what this thesis delivers.
 
-\tbd{State the justification plainly and without apology, along these lines: the effort was redirected
-into a controlled architectural study that produced a causal mechanism result, a correction to the
-literature, and a hardware-relevant efficiency frontier --- none of which a simulator integration would
-have produced. The SWaP motivation is unchanged; what changed is that the evaluation is architectural
-rather than system-level, and a milliwatt-envelope neuromorphic result speaks to the original micro-UAV
-motivation more directly than a simulated avoidance demonstration would have. Examiners compare
-delivered work against registered aims, so this section must be explicit rather than silent.}
+\begin{table}[htbp]
+\centering
+\small
+\caption{Aims registered in Thesis~A against what was delivered.}
+\label{tab:aims}
+\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Aim} & \textbf{Registered} & \textbf{Delivered} \\
+\midrule
+1 Architecture & SSM detector, comparing S4/S5/Mamba variants &
+  Delivered: two Mamba detectors (EventSSM, PureSSM) and a spiking variant, compared against the S5
+  baseline (Chapter~\ref{ch:method}). \\
+2 Benchmarking & Gen1 and 1Mpx; accuracy, latency, memory, energy; CNN, RNN and transformer baselines;
+  embedded-hardware latency &
+  Delivered on Gen1 with all four metrics (Sections~\ref{sec:acc_results}, \ref{sec:efficiency}).
+  1Mpx deferred to future work (Section~\ref{sec:future_work}); latency and energy measured on a
+  desktop GPU, not embedded hardware. \\
+3 Temporal generalisation & Inference at frequencies other than training, without retraining &
+  Delivered and extended to two regimes, fixed cadence and true rate change, including a reproduction
+  of inference-time $\Delta t$-rescaling (Section~\ref{sec:robustness}). \\
+4 System integration & Obstacle-avoidance controller in simulation; micro-UAV flight if feasible &
+  Descoped (this section). \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The descope follows from what a closed-loop demonstration could and could not have measured. The
+detector is trained and evaluated on Gen1, recorded by a car-mounted $304\times240$ sensor with car and
+pedestrian classes. An avoidance loop needs obstacles detected from a UAV's viewpoint. Integrated in a
+simulator, the Gen1 detector would have faced objects and viewpoints it was never trained on, and the
+labelled UAV-related event datasets identified in this project's survey address the inverse problem of
+detecting drones from the ground rather than obstacles from the drone. A collision rate obtained under
+those conditions would have measured the domain gap, the controller and the simulator together, and
+could not have isolated the contribution of the state-space backbone, which is the question this thesis
+sets out to answer (Section~\ref{sec:rq}). The aim also depended on assets outside the project's
+control: event-camera simulation plugins, a stereo event sensor whose integration remained unresolved,
+micro-UAV hardware and flight approvals. Each additional model, by contrast, required about 30
+GPU-hours of training on a fixed pipeline under the project's own control.
+
+The effort was therefore redirected into the controlled architectural study. It produced a mechanism
+for the large-object result, in which the state-space spatial mixer learns a receptive field up to twice
+as wide as the convolutional stack's (Section~\ref{sec:erf}); a two-regime study of rate robustness that
+reproduces the robustness itself but not the inference-time compensation credited with it
+(Section~\ref{sec:robustness}); and an efficiency frontier that includes the results unfavourable to the
+proposed models (Section~\ref{sec:efficiency}). None of these would have come out of a simulated avoidance
+demonstration, whose outcome depends on many components other than the backbone.
+
+The micro-UAV motivation is unchanged; what changed is that the evaluation is architectural rather than
+system-level. Several results bear on that motivation directly. The event rate of a moving camera varies
+with its speed and the scene~\cite{gallego2020event}, so robustness to rate changes is a property a
+flying platform needs, and PureSSM is the most rate-robust model tested. Parameters, FLOPs, latency and
+energy are reported for every model, including the 31-fold larger streaming state of the Mamba models,
+which counts against them on a memory-constrained platform. The spiking model opens a path to
+neuromorphic hardware, whose energy is estimated here in simulation rather than measured on silicon
+(Section~\ref{sec:spiking_results}). What the thesis does not show is how any of the detectors behaves in
+a closed loop; that remains future work (Section~\ref{subsec:fw_closed_loop}).
 
 \section{Limitations}
 \label{sec:limitations}
@@ -1235,6 +1288,16 @@ hypothesis rather than ``HD is better'': higher-resolution event cameras suffer 
 and this thesis shows state-space detectors are the most temporally robust, so they should be uniquely
 positioned to exploit high-resolution sensors. Train on 1Mpx rather than zero-shotting from Gen1, or
 resolution and the temporal-noise penalty are confounded.}
+
+\subsection{Closed-loop evaluation on a UAV}
+\label{subsec:fw_closed_loop}
+The descoped fourth aim (Section~\ref{sec:scope_change}) becomes meaningful once a detector is trained on
+data from a UAV's viewpoint. The order of work would be: a labelled onboard event dataset or a simulator
+with event-camera rendering and obstacle labels; a detector from this thesis retrained on it through the
+same frozen pipeline; and only then an avoidance controller, evaluated by collision rate and avoidance
+latency. The rate-robustness result of Section~\ref{sec:robustness} predicts which backbone should degrade
+least as flight speed, and hence event rate, varies; a closed-loop study could test that prediction
+directly.
 
 \subsection{Neuromorphic deployment}
 \tbd{The spiking model in simulation is the contribution of this thesis; running it on Loihi~2 silicon
