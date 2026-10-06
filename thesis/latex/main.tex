@@ -574,7 +574,8 @@ Stage widths, strides, the temporal blocks (identical configuration), the state 
 downstream are those of EventSSM. Convolution remains only where it supplies position information: a stem
 of two $3\times3$ stride-2 convolutions ($20\to32\to64$ channels) and one $3\times3$ stride-2 convolution
 between consecutive stages. No explicit positional embedding is used, as in VMamba~\cite{liu2024vmamba}.
-All token \emph{mixing} is state-space. Normalisation is LayerNorm, with RMSNorm inside the scan; there is
+Apart from a zero-initialised $3\times3$ depthwise term in each block (Equation~\eqref{eq:bimamba_local}),
+all mixing between spatial locations is state-space. Normalisation is LayerNorm, with RMSNorm inside the scan; there is
 no batch normalisation anywhere. The stage depths are $(2,2,8,2)$, fourteen blocks in total, with
 stochastic depth~\cite{huang2016deep} rising linearly to 0.1. The model is trained from scratch.
 
@@ -892,19 +893,28 @@ concentrates in cars ($+1.16$, the class containing large and close instances) a
 mechanism rather than an aggregate coincidence. Overall mAP is essentially tied with EventSSM
 ($+0.21$, within single-seed noise); $\mathrm{AP}_L$ is the reportable win.
 
-\tbd{one paragraph interpreting this for a reader who has not read the tables: a pure state-space
-spatial backbone --- no attention, no spatial convolution --- matches the convolutional hybrid overall
-and beats it on large objects, while being the smallest model.}
+Put plainly: PureSSM's spatial backbone uses neither attention nor a convolutional feature hierarchy.
+Apart from the strided convolutions that downsample and a zero-initialised $3\times3$ depthwise term in
+each block, every interaction between image locations passes through a state-space scan. This backbone
+matches the convolutional hybrid on overall accuracy (46.43 against 46.22), is better where long-range
+context matters ($+2.95$ on large objects), and achieves this with the fewest parameters of the three
+models (16.33\,M, Table~\ref{tab:efficiency}). It remains 1.3~mAP below the attention-based baseline
+overall and 3.0 below it on large objects, having trained, as noted in Section~\ref{sec:training}, with
+half the baseline's batch size: the large-object gap is narrowed, not closed. Because EventSSM and
+PureSSM differ only in the spatial mixer, the large-object gain is attributable to that swap;
+Section~\ref{sec:erf} examines why.
 
 \section{Mechanism: Effective Receptive Field}
 \label{sec:erf}
-A gradient-based effective-receptive-field probe on the \emph{trained} backbones measures how much of
-the input each spatial mixer actually uses at the frame centre ($\sigma$ = RMS spatial spread, in input
-pixels).
+A gradient-based effective-receptive-field probe~\cite{luo2016understanding} on the \emph{trained}
+backbones measures how much of the input each spatial mixer actually uses at the frame centre: the
+gradient magnitude of the centre feature with respect to the input, averaged over 8 random inputs, with
+$\sigma$ the RMS spatial spread of that gradient mass in input pixels.
 
 \begin{table}[htbp]
 \centering
-\caption{Trained effective receptive field, and the change induced by training.}
+\caption{Trained effective receptive field, and the change induced by training, measured against a
+random initialisation of the same architecture.}
 \label{tab:erf}
 \begin{tabular}{lccc}
 \toprule
@@ -917,12 +927,34 @@ BiMamba (PureSSM)    & \textbf{85.6\,px} & \textbf{105.5\,px} & $\mathbf{+34.4}$
 \end{table}
 
 Two findings follow, and together they convert the $\mathrm{AP}_L$ \emph{number} into an explained
-\emph{mechanism}: the state-space mixer sees wider at every depth, so a large object spanning the frame
+\emph{mechanism}: the state-space mixer sees wider at both measured stages, so a large object spanning the frame
 falls inside its field and outside the convolutional stack's; and the state-space receptive field is
 \emph{learned} --- training widens it by 30--34\,px --- whereas the convolutional field is
 architecturally fixed and barely moves.
-\tbd{reference the ERF figure once it is placed in images/, and say plainly that a selective scan can be
-taught to exploit long-range context while a conv stack cannot.}
+Figure~\ref{fig:erf} shows the measured fields.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{images/fig_erf_trained.png}
+    \caption{Effective receptive field of the trained spatial backbones at the frame centre, stages 3
+    and 4: gradient magnitude of the centre feature with respect to the input (log colour scale, averaged
+    over 8 random inputs). $\sigma$ is the RMS spatial spread in input pixels. The BiMamba field is wider
+    at both stages and less concentrated on the centre.}
+    \label{fig:erf}
+\end{figure}
+
+The difference has a structural explanation. In a convolutional stack the effective receptive field is
+governed by kernel size and depth: it is approximately Gaussian and its extent grows only with the
+square root of the number of layers~\cite{luo2016understanding}, so training reshapes it little, here
+by 0.2~px at stage~3 and 6.2~px at stage~4. In a scan, every token can influence every other token
+through the forward and backward passes, and how far that influence reaches is set by the learned decay
+rates and step sizes of Equation~\eqref{eq:mamba2_state}. Training can lengthen it, and here widened it
+by 30--34~px. The state-space mixer's spatial reach is therefore a learned quantity, whereas the
+convolutional one is largely fixed by the architecture. Notably, the untrained BiMamba field is no wider
+than the ResNet's at stage~4 (75.4 against 78.2~px): the advantage is acquired in training, not built
+in. Two caveats apply. The probe uses random inputs rather than event data, and the untrained reference
+for ResNet-18 is a random initialisation rather than the ImageNet weights from which EventSSM was
+fine-tuned, so its $\Delta$ spans both pre-training and Gen1 training.
 
 \section{Temporal Robustness}
 \label{sec:robustness}
