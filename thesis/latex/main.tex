@@ -580,12 +580,50 @@ evidence by ground-truth-versus-prediction overlay videos.
 
 \section{Dataset}
 \label{sec:dataset}
-All experiments use the Prophesee Gen1 automotive detection dataset: event streams from a
-$304 \times 240$ event camera with bounding-box annotations for cars and pedestrians. The official
-train/validation/test splits are used throughout, and the test split is touched only for final
-reported numbers.
-\tbd{sequence counts, total duration, class balance, and a sentence on the label noise observed
-qualitatively in Chapter~\ref{ch:results}.}
+All experiments use the Prophesee Gen1 automotive detection dataset~\cite{detournemire2020large}:
+more than 39~h of driving recorded with a $304 \times 240$ ATIS event camera in urban, highway,
+suburban and rural scenes, with manual bounding-box annotations of cars and pedestrians at 1--4~Hz.
+The official train/validation/test splits are used throughout, and the test split is touched only for
+final reported numbers.
+
+Table~\ref{tab:gen1_stats} summarises the splits as the pipeline consumes them, i.e.\ after the RVT
+preprocessing~\cite{gehrig2023recurrent}, which stores each recording as 60-s chunks and already
+discards malformed boxes and boxes with a side shorter than 10~px or a diagonal shorter than 30~px, the
+size filter of the original evaluation protocol~\cite{detournemire2020large}. The counts were computed
+directly from the preprocessed label files; the total of 255{,}467 boxes is consistent with the
+``more than 255{,}000 labels'' of the dataset paper.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Gen1 splits as consumed by the training and evaluation pipeline (after RVT preprocessing and
+the size filter). ``Timestamps'' counts the distinct annotated instants.}
+\label{tab:gen1_stats}
+\begin{tabular}{lrrrrrr}
+\toprule
+Split & Chunks & Hours & Timestamps & Car boxes & Pedestrian boxes & Car share \\
+\midrule
+Train      & 1{,}458 & 24.30 &  72{,}370 & 131{,}592 & 16{,}839 & 88.7\,\% \\
+Validation &     429 &  7.15 &  20{,}329 &  37{,}909 &  2{,}823 & 93.1\,\% \\
+Test       &     470 &  7.83 &  30{,}605 &  58{,}512 &  7{,}792 & 88.2\,\% \\
+\midrule
+Total      & 2{,}357 & 39.28 & 123{,}304 & 228{,}013 & 27{,}454 & 89.3\,\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Two properties of the data shape every result in Chapter~\ref{ch:results}. First, the classes are
+strongly imbalanced: cars make up 89\,\% of all boxes, and the validation split, which drives checkpoint
+selection, contains only 2{,}823 pedestrian boxes. Second, the labels are sparse in time and incomplete.
+There are 123{,}304 annotated timestamps in 39.3~h, on average 0.87 per second of recording, so only
+about 4\,\% of the 50-ms prediction steps coincide with an annotation and are scored at all. Pedestrians
+are also visibly under-annotated: on one busy urban test chunk
+(\texttt{17-10-12\_16-51-41\_1647500000\_1707500000}) the labels contain 128 boxes at 53 timestamps,
+117 cars and only 11 pedestrians, while the event stream shows considerably more pedestrians
+(Section~\ref{sec:qualitative}). Because every model, the published baseline included, is trained and
+scored against the same labels, this noise lowers the attainable AP for all models rather than biasing
+the comparison between them. It does, however, make absolute pedestrian AP an underestimate: a correct
+detection of an unlabelled pedestrian is counted as a false positive (Section~\ref{sec:limitations}).
 
 \section{Metrics}
 \label{sec:metrics}
@@ -598,9 +636,13 @@ Section~\ref{sec:acc_results}.
 \textbf{Note on metric labelling.} The Thesis~A interim report tabulated the baseline as
 ``mAP@0.5 $=47.7$''. That figure is in fact COCO mAP@[0.50:0.95]; the corresponding $\mathrm{AP}_{50}$
 is 75.3. The label, not the number, was wrong, and is corrected throughout this document.
-\tbd{also reconcile the per-class split: the Thesis~A table reports car 56.8 / pedestrian 38.6,
-whereas the verified reproduction run reports car 63.9 / pedestrian 31.6. Both average to 47.7.
-Determine which run produced the Thesis-A figures and state the correct pair.}
+The per-class split in the same table (car 56.8 / pedestrian 38.6, listed against an identical
+``reference'' pair) was wrong in substance as well: it has no measured or published source. Neither the
+S5 paper~\cite{zubic2024state} nor RVT~\cite{gehrig2023recurrent} reports per-class AP on Gen1, and the
+RVT evaluator outputs class-averaged metrics only; a per-class read-out was added to it for this work.
+With that read-out, the published S5-RVT checkpoint gives car 63.9 / pedestrian 31.6
+($\mathrm{AP}_{50}$ 84.3 / 66.3). Their mean equals the overall 47.7, as it must under the COCO
+protocol, which averages AP over classes. Only this measured pair is used in this document.
 \end{quote}
 
 \section{Hardware and Software}
@@ -617,20 +659,106 @@ Determine which run produced the Thesis-A figures and state the correct pair.}
 \begin{quote}\small
 \textbf{Deviation from the Thesis~A plan.} Thesis~A proposed the UNSW Katana HPC cluster and an AMD
 ROCm workstation. Neither was used: the work moved to a local CUDA workstation and rented cloud GPUs.
-\tbd{one or two sentences on why --- Blackwell/cu128 toolchain requirements and the need for
-interactive iteration --- so the deviation is explained rather than merely visible.}
+The reasons are practical. The own models depend on the selective-scan kernels of
+\texttt{mamba-ssm} and \texttt{causal-conv1d}, which are compiled for one GPU architecture. The stack
+was built and verified once for Blackwell (\texttt{sm\_120}, CUDA~12.8); a rented RTX~5090 shares that
+architecture and ran the identical environment without rebuilding. Katana's V100 and A100 nodes would
+have required recompiling both kernels for \texttt{sm\_70}/\texttt{sm\_80}, replacing bf16 with fp16
+on the V100 (which has no bf16 support), porting the launch scripts to the cluster's PBS scheduler, and
+splitting every $\approx$30-hour run into resumable jobs under the 12-hour general walltime limit. The
+development process, short test-driven iterations against the real kernels, also needed interactive
+GPU access that a batch queue does not offer. The AMD RX~7700~XT (12~GB, ROCm) on which the Thesis~A
+reproduction ran was replaced by the RTX~5070~Ti before Thesis~B; all own-model work was developed on
+CUDA, the primary platform of the selective-scan kernels.
 \end{quote}
 
 \section{Training Protocol}
 \label{sec:training}
-\tbd{400k-step OneCycle, learning rate 2e-4, sequence length 21, batch 4, bf16 mixed precision,
-2 dataloader workers, truncated BPTT with state carried and detached across sub-sequences. State that
-this recipe is byte-identical across models --- it is part of what ``frozen pipeline'' means.}
+All own models are trained with one recipe, the Gen1 recipe of RVT~\cite{gehrig2023recurrent} as
+used for S5-RVT~\cite{zubic2024state}, executed by the same unmodified training code. Between own models
+the experiment configurations differ only in the backbone they select: the EventSSM and PureSSM
+recipe blocks are byte-identical, and the spiking configuration is held identical to PureSSM's by a
+test. This identity is part of what ``frozen pipeline'' means. Table~\ref{tab:recipe} sets the recipe
+against the published baseline.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Training recipe of the own models against the published S5-RVT baseline (published column
+from~\cite{gehrig2023recurrent,zubic2024state} and the authors' released configuration). Rows marked
+$\dagger$ are the only differences.}
+\label{tab:recipe}
+\begin{tabularx}{\textwidth}{l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X}
+\toprule
+ & Published S5-RVT & Own models (this work) \\
+\midrule
+Iterations                  & 400k                        & 400k \\
+Optimiser                   & Adam                        & AdamW, weight decay 0 ($\equiv$ Adam) \\
+Peak learning rate          & $2\times10^{-4}$            & $2\times10^{-4}$ \\
+Schedule                    & OneCycle, linear            & OneCycle, linear \\
+Sequence length (frames)    & 21                          & 21 \\
+Batching                    & mixed (stream + random)     & mixed (stream + random) \\
+Batch size$^{\dagger}$      & 8                           & 4 \\
+Precision$^{\dagger}$       & 32-bit                      & bf16 mixed \\
+Hardware                    & 1$\times$ A100              & RTX~5070~Ti (EventSSM), RTX~5090 (PureSSM) \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Optimisation uses AdamW with zero weight decay, which reduces to Adam~\cite{kingma2015adam}, under a
+OneCycle schedule~\cite{smith2017super} stepped every iteration: a linear warm-up over the first
+0.5\,\% of training (2{,}000 steps) from $10^{-5}$ to the peak rate $2\times10^{-4}$, then a linear decay
+to $2\times10^{-8}$ at step 400k, with momentum not cycled. Gradients are clipped to norm 1.0. Each
+training sample is a sequence of 21 consecutive 50-ms stacked-histogram frames (1.05~s). Batches are
+mixed~\cite{gehrig2023recurrent}: half of the samples are streamed, continuing their recording where the
+previous batch stopped with the recurrent state carried over and detached (truncated back-propagation
+through time over 21-frame windows), and half are drawn at random positions with the state reset to
+zero. The full validation split is evaluated every 10k steps (20k for EventSSM), and the checkpoint with
+the highest validation mAP is the one scored on the test split (step 320k for EventSSM, 310k for
+PureSSM). The spiking model of Section~\ref{subsec:spiking_method} uses the same recipe.
+
+Two deviations from the published recipe apply to every own model and are held fixed across them.
+\emph{Batch size 4 instead of 8:} batch 8 at sequence length 21 exceeds the 16~GB of the workstation
+GPU. The PureSSM run on the 32~GB cloud GPU kept batch 4 so that the own models stay comparable with
+each other. Over 400k steps the own models therefore see 1.6~million training sequences against the
+baseline's 3.2~million, which, if it matters, works against them in the baseline comparison of
+Section~\ref{sec:acc_results}. \emph{bf16 mixed precision instead of 32-bit,} for memory and
+throughput; with bf16 no gradient scaler is needed.
+
+A third difference is operational. The number of data-loading workers followed host memory (4 for
+EventSSM on the workstation, 6 for PureSSM on the cloud host). It changes no hyper-parameter, but under
+mixed batching it changes how the streamed recordings are partitioned across workers, and hence the
+order in which the data is seen. With one unseeded run per model, this is part of the run-to-run
+variation discussed in Section~\ref{sec:limitations}.
 
 \section{Reproducibility}
 \label{sec:reproducibility}
-\tbd{point at the runbooks and the pinned environment; note that all \texttt{external/} modifications
-are re-applied from \texttt{docs/patches/} after any re-clone, and that the test suite gates the code.}
+Everything needed to reproduce the numbers in Chapter~\ref{ch:results} is in the project repository.
+The software environment is pinned in \texttt{env/}: a conda specification and \texttt{pip} lock files,
+including a separate lock for the Mamba kernels. Three runbooks in \texttt{docs/runbooks/} cover the
+path end to end: \texttt{MVP\_Setup\_Guide\_Complete.md} (environment and Gen1 setup on a clean machine),
+\texttt{VALIDATION\_QUICKSTART.md} (re-running the baseline reproduction of
+Section~\ref{sec:baseline_repro}) and \texttt{Cloud\_Runbook\_5090.md} (bootstrapping a rented GPU for
+training). Two environment pitfalls are documented there because they fail silently or confusingly: the
+Mamba kernels must be installed without dependency resolution (\texttt{--no-deps
+--no-build-isolation}), since a default install upgrades PyTorch and its CUDA build and breaks the
+Blackwell stack; and loading full Lightning checkpoints under PyTorch $\geq 2.6$ requires
+\texttt{TORCH\_FORCE\_NO\_WEIGHTS\_ONLY\_LOAD=1}.
+
+The reference implementation (\texttt{external/ssms\_event\_cameras}) is not versioned in the
+repository. It is cloned at a pinned revision, and every local change to it, namely the Hydra
+configuration links for the new backbones, two preprocessing fixes and the inference-time $\Delta t$
+hook of Section~\ref{sec:robustness}, is stored as a patch in \texttt{docs/patches/} and re-applied after
+any re-clone. The frozen pipeline itself is not edited: new backbones enter through a registration hook
+(Section~\ref{sec:frozen_pipeline}).
+
+The code is gated by an automated test suite (\texttt{code/event\_ssm/tests/}; 249 CPU and 28 GPU tests
+at the time of writing). It checks, among other things, the recurrent-state contract across clips, the
+agreement of the training and streaming-evaluation paths, recipe identity of the spiking
+configuration with PureSSM's, and the null test that the spiking backbone with no spiking stage reduces numerically to
+PureSSM. Each experimental stage also has a decision record in \texttt{docs/notes/} that gives the
+measured evidence for every change. All results are single runs without a fixed seed
+(Section~\ref{sec:limitations}).
 
 
 \chapter{Results}
@@ -893,6 +1021,10 @@ delivered work against registered aims, so this section must be explicit rather 
         representation is not part of the ablation.
   \item \textbf{Precision mix} --- bf16 for own-models against fp16 for the baseline. Minor: all models
         reproduce their reference numbers.
+  \item \textbf{Half the baseline's batch size.} The own models trained at batch 4 against the published
+        baseline's 8 (Section~\ref{sec:training}), so they saw half as many training sequences. The
+        own-model-to-baseline gap may therefore be overstated; comparisons among own models are
+        unaffected.
   \item \tbd{spiking-specific limitations once Stage 20--22 have run --- binary information bottleneck,
         surrogate-gradient sensitivity, and the fact that energy is estimated rather than measured on
         silicon.}
