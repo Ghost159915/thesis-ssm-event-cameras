@@ -55,6 +55,28 @@ class SpikingSSMBlock(nn.Module):
         # the two halves of the state behave identically for any other caller too.
         return out, (ssm_state, mem.detach())
 
+    # Checkpoint arm contract (D14), the block-level half: `residual` is an ablation knob held as a
+    # plain attribute, so it must travel in the state_dict like the LIF's arm, or a residual-trained
+    # checkpoint would load strictly into a residual=False model. No override: it changes the
+    # architecture, not an operating point.
+    _EXTRA_STATE_VERSION = 1
+
+    def get_extra_state(self) -> dict:
+        return {"version": self._EXTRA_STATE_VERSION, "residual": bool(self.residual)}
+
+    def set_extra_state(self, state) -> None:
+        if not isinstance(state, dict) or state.get("version") != self._EXTRA_STATE_VERSION:
+            got = state.get("version") if isinstance(state, dict) else type(state).__name__
+            raise ValueError(f"SpikingSSMBlock: unsupported checkpoint extra-state version {got!r} "
+                             f"(this code reads version {self._EXTRA_STATE_VERSION})")
+        if "residual" not in state:
+            raise ValueError("SpikingSSMBlock: malformed checkpoint extra state, missing 'residual'")
+        if bool(state["residual"]) != bool(self.residual):
+            raise ValueError(
+                f"SpikingSSMBlock: the checkpoint was trained as a different ablation arm "
+                f"(residual: checkpoint={state['residual']!r} vs config={bool(self.residual)!r}). "
+                f"Re-run with the overrides the checkpoint was trained with.")
+
     @property
     def last_firing_rate(self):
         """Mean spike rate of the most recent forward — for the Stage-20 training monitors."""

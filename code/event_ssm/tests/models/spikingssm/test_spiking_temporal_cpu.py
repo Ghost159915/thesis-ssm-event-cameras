@@ -21,6 +21,15 @@ import torch
 import torch.nn as nn
 
 
+def _copy_tensors_across_arms(dst, src):
+    """Test-only weight copy between DIFFERENT ablation arms. A plain load_state_dict raises by
+    design since D14 (a checkpoint carries its arm), so the arm metadata is left behind; every
+    tensor key must still match exactly (strict on tensors)."""
+    sd = {k: v for k, v in src.state_dict().items() if not k.endswith("_extra_state")}
+    missing, unexpected = dst.load_state_dict(sd, strict=False)
+    assert not unexpected and all(k.endswith("_extra_state") for k in missing), (missing, unexpected)
+
+
 class _FakeMamba2(nn.Module):
     def __init__(self, d_model, **_kw):
         super().__init__()
@@ -117,10 +126,31 @@ def test_residual_switch(mods):
     x = torch.randn(4, 6, 32)
     plain = Block(d_model=32, residual=False).eval()
     res = Block(d_model=32, residual=True).eval()
-    res.load_state_dict(plain.state_dict())
+    _copy_tensors_across_arms(res, plain)                      # residual False -> True: cross-arm
     a, _ = plain(x)
     b, _ = res(x)
     assert torch.allclose(b, a + x, atol=1e-6), "residual must add the analog input back"
+
+
+def test_residual_is_stored_and_same_arm_round_trips(mods):
+    """D14: `residual` is an ablation knob, so the checkpoint records it (block-level extra state)."""
+    torch.manual_seed(0)
+    Block, _ = mods
+    src = Block(d_model=32, residual=True).eval()
+    sd = src.state_dict()
+    assert sd["_extra_state"] == {"version": 1, "residual": True}
+    dst = Block(d_model=32, residual=True).eval()
+    dst.load_state_dict(sd, strict=True)
+    x = torch.randn(4, 6, 32)
+    assert torch.equal(dst(x)[0], src(x)[0])
+
+
+def test_residual_mismatch_raises(mods):
+    Block, _ = mods
+    sd = Block(d_model=32, residual=False).state_dict()
+    with pytest.raises(ValueError, match="residual") as e:
+        Block(d_model=32, residual=True).load_state_dict(sd)
+    assert "ablation arm" in str(e.value)
 
 
 def test_gradients_flow_through_the_composition(mods):

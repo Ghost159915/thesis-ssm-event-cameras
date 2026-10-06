@@ -30,6 +30,11 @@ like the Mamba (conv, ssm) state; dim0 = N keeps it compatible with the backbone
 **Precision contract** (Stage-18 final review, D13): the recurrence always runs in fp32. `out`
 has the dtype of `x` (bf16 under the bf16-mixed launchers); the carried `mem` is always fp32.
 
+**Checkpoint arm contract** (D14): the state_dict carries the ablation arm (`_extra_state`:
+output_mode, reset, alpha, detach_reset, learn_beta, learn_threshold, and any NON-learned beta /
+threshold). Loading into a differently configured module raises `ValueError`; only a non-learned
+beta/threshold may be overridden by the config, and only with `SPIKING_ALLOW_ARM_OVERRIDE=1`.
+
 **Output modes** (an ablation axis, not decoration):
   * `spike`  — binary {0,1}. The neuromorphic target, and the strictest information bottleneck.
   * `graded` — s[t] * mem_pre[t]: fires sparsely but carries magnitude. This is the analogue of
@@ -43,6 +48,8 @@ has the dtype of `x` (bf16 under the bf16-mixed launchers); the carried `mem` is
                -> spike (cost of binarisation).
 """
 import math
+import os
+import warnings
 
 import torch
 import torch.nn as nn
@@ -53,6 +60,21 @@ _OUTPUT_MODES = ("spike", "graded", "analog")
 _RESET_MODES = ("subtract", "zero")
 _MIN_THRESHOLD = 1e-3
 _BETA_EPS = 1e-4          # keeps a learnable beta strictly inside (0,1) even at float32 saturation
+
+# Checkpoint arm contract (D14) — see LIFReadout.get_extra_state / set_extra_state.
+_EXTRA_STATE_VERSION = 1
+_ARM_KEYS = ("output_mode", "reset", "alpha", "detach_reset", "learn_beta", "learn_threshold")
+_OVERRIDE_ENV = "SPIKING_ALLOW_ARM_OVERRIDE"
+# Stored fixed beta/threshold are read back from float32 tensors; the worst round-trip error measured
+# over beta in [2e-4, 0.9998] on CPU and CUDA is 3.0e-7 relative, so 1e-5 cannot confuse two
+# operating points a sweep would ever distinguish, yet never trips on float32 noise.
+_FIXED_REL_TOL = 1e-5
+
+
+def _beta_to_logit(beta: float) -> float:
+    """Inverse of the epsilon-squeezed sigmoid, so a `beta` init is exactly the requested value."""
+    p = (beta - _BETA_EPS) / (1.0 - 2.0 * _BETA_EPS)
+    return math.log(p / (1.0 - p))
 
 
 class LIFReadout(nn.Module):
@@ -76,9 +98,12 @@ class LIFReadout(nn.Module):
         # (SpikingJelly `detach_reset`); exposed so the choice is ablatable, not baked in.
         self.detach_reset = detach_reset
 
-        # invert the epsilon-squeezed sigmoid so `beta` init is exactly the requested value
-        p = (beta - _BETA_EPS) / (1.0 - 2.0 * _BETA_EPS)
-        beta_logit = torch.full((d_model,), math.log(p / (1.0 - p)))
+        # The config-requested fixed values, kept because by the time `set_extra_state` runs the
+        # buffers already hold the CHECKPOINT values (PyTorch loads tensors first) — D14.
+        self._cfg_beta = float(beta)
+        self._cfg_threshold = float(threshold)
+
+        beta_logit = torch.full((d_model,), _beta_to_logit(beta))
         thr = torch.full((d_model,), float(threshold))
         if learn_beta:
             self.beta_logit = nn.Parameter(beta_logit)
@@ -110,6 +135,84 @@ class LIFReadout(nn.Module):
         if self._last_firing_rate is None:
             return float("nan")
         return float(self._last_firing_rate)
+
+    # ---- checkpoint arm contract (Stage-18 final review, D14) ----------------------------------
+    # RVT evaluation rebuilds the model from the CLI config and loads the checkpoint strictly, and
+    # output_mode/reset/alpha/detach_reset are plain attributes, so without this an analog-trained
+    # checkpoint is silently scored as `spike`. Conversely a NON-learned beta/threshold is a
+    # persistent buffer, so the checkpoint value silently overrode an eval-time
+    # `spiking.threshold=` and a post-hoc threshold sweep measured one operating point repeatedly.
+    # The arm therefore travels inside the state_dict (`<prefix>_extra_state`); tensor key names are
+    # unchanged.
+
+    def _arm(self) -> dict:
+        """The categorical ablation-arm settings this module was CONSTRUCTED with."""
+        return dict(output_mode=self.output_mode, reset=self.reset, alpha=float(self.alpha),
+                    detach_reset=bool(self.detach_reset),
+                    learn_beta=isinstance(self.beta_logit, nn.Parameter),
+                    learn_threshold=isinstance(self.threshold_raw, nn.Parameter))
+
+    def get_extra_state(self) -> dict:
+        state = {"version": _EXTRA_STATE_VERSION, **self._arm()}
+        # Only a NON-learned value is part of the arm: a learned one lives in the tensor and the
+        # config merely set its init. Read from the buffers (constant-filled per channel) rather
+        # than from the config, so the record states what the forward actually uses.
+        if not state["learn_beta"]:
+            state["beta"] = float(self.beta.detach().flatten()[0])
+        if not state["learn_threshold"]:
+            state["threshold"] = float(self.threshold_raw.detach().flatten()[0])
+        return state
+
+    def set_extra_state(self, state) -> None:
+        # PyTorch calls this AFTER this module's parameters/buffers were copied from the checkpoint
+        # (nn.Module._load_from_state_dict), so an override below can re-fill them from the config.
+        if not isinstance(state, dict) or state.get("version") != _EXTRA_STATE_VERSION:
+            got = state.get("version") if isinstance(state, dict) else type(state).__name__
+            raise ValueError(f"LIFReadout: unsupported checkpoint extra-state version {got!r} "
+                             f"(this code reads version {_EXTRA_STATE_VERSION})")
+        cfg = self._arm()
+        absent = [k for k in _ARM_KEYS if k not in state]
+        if absent:
+            raise ValueError(f"LIFReadout: malformed checkpoint extra state, missing {absent}")
+        mismatched = [k for k in _ARM_KEYS if state[k] != cfg[k]]
+        if mismatched:
+            detail = "; ".join(f"{k}: checkpoint={state[k]!r} vs config={cfg[k]!r}" for k in mismatched)
+            raise ValueError(
+                f"LIFReadout: the checkpoint was trained as a different ablation arm ({detail}). "
+                f"Re-run with the overrides the checkpoint was trained with. No override exists for "
+                f"these keys: they change the readout itself, not an operating point.")
+
+        # Categorical arm matches. Now the NON-learned operating point (learned values: never
+        # compared — the checkpoint holds the trained value, which is what must be evaluated).
+        diffs = []
+        for knob, learned, cfg_val in (("threshold", cfg["learn_threshold"], self._cfg_threshold),
+                                       ("beta", cfg["learn_beta"], self._cfg_beta)):
+            if learned:
+                continue
+            if knob not in state:
+                raise ValueError(f"LIFReadout: malformed checkpoint extra state, missing {knob!r} "
+                                 f"for a non-learned {knob}")
+            if not math.isclose(state[knob], cfg_val, rel_tol=_FIXED_REL_TOL):
+                diffs.append((knob, state[knob], cfg_val))
+        if not diffs:
+            return
+        detail = "; ".join(f"{k}: checkpoint={c:.6g} vs config={v:.6g}" for k, c, v in diffs)
+        if os.environ.get(_OVERRIDE_ENV) != "1":
+            raise ValueError(
+                f"LIFReadout: non-learned operating point differs from the checkpoint ({detail}). "
+                f"Refusing to guess which governs. For a deliberate post-hoc sweep (e.g. the Stage-22 "
+                f"threshold Pareto) set {_OVERRIDE_ENV}=1 and the CONFIG values will be used.")
+        msg = (f"[spiking] ARM OVERRIDE ({_OVERRIDE_ENV}=1): {detail} — the CONFIG values govern; "
+               f"the checkpoint values were discarded. Report this run as a post-hoc operating point.")
+        # loud on both channels: warnings can be filtered by a launcher, stdout lands in the run log
+        warnings.warn(msg, UserWarning, stacklevel=2)
+        print(msg, flush=True)
+        with torch.no_grad():
+            for knob, _, cfg_val in diffs:
+                if knob == "threshold":
+                    self.threshold_raw.fill_(cfg_val)
+                else:
+                    self.beta_logit.fill_(_beta_to_logit(cfg_val))
 
     def forward(self, x, mem=None):                       # x (N, L, C) -> (N, L, C), mem (N, C)
         assert x.ndim == 3, f"expected (N, L, C), got {tuple(x.shape)}"
