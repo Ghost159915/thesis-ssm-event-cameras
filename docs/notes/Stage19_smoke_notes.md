@@ -95,8 +95,23 @@ Values are val/AP from the ModelCheckpoint log lines (`'val/AP' reached …`). M
 per arm, every 200 backbone forwards incl. validation): **zero SILENT / SATURATED / non-finite lines** in either arm.
 Stage-4 firing rate: spike 0.18–0.25, stable (0.230 → 0.219); graded 0.09–0.24, **falling** (0.221 → 0.120): the graded
 readout learns to fire about half as often, plausibly because each spike carries its magnitude. β mean stayed at 0.900
-(to three decimals) in both arms: the learnable leak barely moves in 25k steps at LR 2e-4 (a scalar logit behind a
-sigmoid with derivative ≈ 0.09 at β = 0.9), so in practice β behaves as fixed at its initialisation over this budget.
+(to three decimals) in both arms.
+
+**D6. Why β does not move (checked in the 25k checkpoints, 2026-10-07).** Per channel, all 512 stage-4 leaks end in
+[0.8978, 0.9024] (spike) and [0.8971, 0.9056] (graded); the largest logit change is 0.028 / 0.065. *Correction:* an earlier
+version of this note blamed the sigmoid's small slope (≈ 0.09 at β = 0.9). That cannot be the cause: AdamW normalises
+each parameter's step to roughly the learning rate whatever the gradient's scale, so over this OneCycle schedule (peak
+2e-4) a logit with a consistently signed gradient could move by up to ≈ 2.5 (the area under the LR curve). The observed
+movement is < 3 % of that, so the gradient on β has **no consistent sign**: the loss is nearly flat along β.
+Most plausible reason (hypothesis, not tested): the Mamba-2 block upstream already performs learned, input-dependent
+temporal integration, so the LIF leak adds little that the loss can exploit; with β = 0.9 the membrane time constant is
+−1/ln 0.9 ≈ 9.5 frames ≈ 0.47 s, already comparable to the 21-frame (1.05 s) training window.
+Consequences: (i) not a stability problem — the arms train to PureSSM-level accuracy; (ii) the thesis must describe β as
+initialised at 0.9 and effectively unchanged by training, not as learned per-channel time constants; (iii) the
+PureSSM→analog step of the ladder measures the cost of a *fixed* 0.9 leak plus reset; (iv) a fixed, shared decay is the
+simpler case for neuromorphic deployment. Decision: no recipe change now — altering how β is trained mid-study would break
+comparability with the arms already run. A β-initialisation sweep (e.g. 0.5 / 0.9 / 0.99) is the test of the hypothesis,
+parked as optional Stage-22 / future work.
 
 ### 3.5 Kill-switch verdict (criterion pre-registered in the wrapper header, 2026-10-06)
 
