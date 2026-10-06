@@ -49,7 +49,11 @@ class SpikingSSMBlock(nn.Module):
         out, mem = self.lif(y, mem)
         if self.residual:
             out = out + x
-        return out, (ssm_state, mem)
+        # The carried membrane is a TBPTT boundary exactly like the Mamba state, which
+        # `temporal/_scan.py` returns detached: gradient flows through `mem` WITHIN this forward
+        # (the LIF time loop), never across calls. RVT detaches between steps anyway; this makes
+        # the two halves of the state behave identically for any other caller too.
+        return out, (ssm_state, mem.detach())
 
     @property
     def last_firing_rate(self):

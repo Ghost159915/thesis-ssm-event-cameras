@@ -135,6 +135,17 @@ def test_gradients_flow_through_the_composition(mods):
     assert blk.lif.beta_logit.grad is not None, "spiking parameters must train too"
 
 
+def test_carried_membrane_is_detached(mods):
+    """The carried `mem` is a TBPTT boundary exactly like the Mamba state (`temporal/_scan.py`
+    detaches it): gradient still flows through the membrane WITHIN a forward, never across calls."""
+    Block, _ = mods
+    blk = Block(d_model=32)
+    x = torch.randn(4, 6, 32, requires_grad=True)
+    out, (_, mem) = blk(x)
+    assert out.requires_grad, "within-forward gradient must be untouched"
+    assert not mem.requires_grad and mem.grad_fn is None
+
+
 def test_firing_rate_exposed_for_monitors(mods):
     Block, _ = mods
     blk = Block(d_model=32)
