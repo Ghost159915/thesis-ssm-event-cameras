@@ -125,6 +125,9 @@ withdrawn.** Two reasons, the second more serious than the first:
 
 * **`analog` ≈ 46.4** (PureSSM's number). This is a *diagnostic*: if the control arm does not land there,
   the integration is broken, not the science. Run it first.
+  > ⚠️ Revised 2026-10-06 (Stage 18): analog keeps leak+reset, so it is not a pure PureSSM copy; the
+  > integration diagnostic is now the spiking_stages=[] null test — see docs/notes/Stage18_integration_notes.md.
+  > The "both gaps" bullet below becomes three gaps: PureSSM→analog, analog→graded, graded→spike.
 * **Ordering `analog ≥ graded > spike`.**
 * **Report both gaps** — analog→graded (the cost of *sparsity*) and graded→spike (the cost of
   *binarisation*) — whatever their magnitude, including if they are larger than hoped.

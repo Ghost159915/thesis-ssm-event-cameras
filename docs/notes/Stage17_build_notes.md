@@ -134,6 +134,11 @@ provides that decomposition, and it is the thesis's central question stated as a
   the Loihi argument.
 * `analog` doubles as a **diagnostic**: it should land ≈ PureSSM (46.4). If it does not, the
   integration is wrong, not the science. Run it first at Stage 18.
+  > ⚠️ Revised 2026-10-06 (Stage 18): analog keeps leak+reset, so it is not a pure PureSSM copy; the
+  > integration diagnostic is now the spiking_stages=[] null test — see docs/notes/Stage18_integration_notes.md.
+  > The same revision applies to the wording "`analog` validates the integration" under *Recommended experiment
+  > order* below. Also superseded: Decision 3 above ("analog readout + beta→0 reproduces `MambaTemporalBlock` to
+  > 1e-3") — that test is now an exact identity, `block(x) == lif(MambaTemporalBlock(x))`, at 1e-5 (Stage 18, D6).
 
 ### 2. `threshold` — the energy–accuracy Pareto
 

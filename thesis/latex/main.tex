@@ -818,8 +818,10 @@ non-spiking spatial backbone) and therefore not a like-for-like competitor to th
 in Table~\ref{tab:snn_landscape}. Do NOT frame the result as beating or failing to beat SNN SOTA; that axis
 is wrong in both directions. (ii) the three-readout
 decomposition (spike / graded / analog), which separates the cost of sparsity from the cost of
-binarisation --- note that the analog arm should land near 46.4 and therefore doubles as a validation of
-the integration; (iii) firing rate and spike sparsity per stage; (iv) SOPs and the estimated energy,
+binarisation --- note that the analog arm shares the spiking membrane (leak and subtract-reset), so the
+step from PureSSM to the analog arm measures the cost of the neuron dynamics themselves, while integration
+correctness is established separately by the null test (\texttt{spiking\_stages = []} is numerically identical
+to PureSSM); (iii) firing rate and spike sparsity per stage; (iv) SOPs and the estimated energy,
 with the ANN-MAC versus SNN-SOP model stated explicitly, since sloppy energy accounting is the standard
 reviewer target.}
 
