@@ -39,14 +39,84 @@ def test_builder_dispatch_spikingssm(device):
 
 
 def test_lif_kwargs_flow_from_config(device):
+    """EVERY forwarded key is set to a NON-default value (LIFReadout defaults: beta 0.9,
+    alpha 2.0, learn_beta True, detach_reset True, ...), so a dropped or misspelled key in
+    `_LIF_KEYS` cannot hide behind a default — e.g. `spiking.beta=0.8` being silently ignored."""
     _register()
     import models.detection.recurrent_backbone as rb
-    bb = rb.build_recurrent_backbone(_cfg(output_mode="analog", threshold=0.5,
-                                          learn_threshold=True, reset="zero", residual=True))
-    blk = bb.temporal["4"]
-    assert blk.lif.output_mode == "analog" and blk.lif.reset == "zero" and blk.residual is True
-    assert torch.allclose(blk.lif.threshold, torch.full_like(blk.lif.threshold, 0.5))
-    assert isinstance(blk.lif.threshold_raw, torch.nn.Parameter)
+    bb = rb.build_recurrent_backbone(_cfg(
+        output_mode="analog", beta=0.7, threshold=0.5, alpha=4.0, learn_beta=False,
+        learn_threshold=True, reset="zero", detach_reset=False, residual=True))
+    assert bb.spiking_stages == (2, 3, 4)
+    for s in bb.spiking_stages:                       # every spiking stage, not just the last
+        blk = bb.temporal[str(s)]
+        lif = blk.lif
+        assert lif.output_mode == "analog", f"stage {s}"
+        assert torch.allclose(lif.beta, torch.full_like(lif.beta, 0.7), atol=1e-6), f"stage {s}"
+        assert not isinstance(lif.beta_logit, torch.nn.Parameter), f"stage {s}: learn_beta=False"
+        assert torch.allclose(lif.threshold, torch.full_like(lif.threshold, 0.5)), f"stage {s}"
+        assert isinstance(lif.threshold_raw, torch.nn.Parameter), f"stage {s}: learn_threshold=True"
+        assert lif.alpha == 4.0, f"stage {s}"
+        assert lif.reset == "zero", f"stage {s}"
+        assert lif.detach_reset is False, f"stage {s}"
+        assert blk.residual is True, f"stage {s}"
+
+
+def test_unknown_spiking_key_raises(device):
+    """A typo'd key must fail loudly: in an ablation a silently ignored key mislabels the arm."""
+    import pytest
+    _register()
+    import models.detection.recurrent_backbone as rb
+    cfg = _cfg()
+    cfg.spiking.outptu_mode = "analog"
+    with pytest.raises(ValueError, match="outptu_mode"):
+        rb.build_recurrent_backbone(cfg)
+
+
+def test_unknown_spiking_key_via_compose_raises(device):
+    """Same guard end-to-end: Hydra `+key` (append) composes fine, the builder must still reject."""
+    import pytest
+    from event_ssm.integration.smoke_harness import compose_smoke_config
+    _register()
+    import models.detection.recurrent_backbone as rb
+    cfg = compose_smoke_config(experiment="spikingssm", extra_overrides=[
+        "+model.backbone.spiking.outptu_mode=analog"])
+    with pytest.raises(ValueError, match="outptu_mode"):
+        rb.build_recurrent_backbone(cfg.model.backbone)
+
+
+def test_missing_spiking_block_uses_defaults(device):
+    """Documented behaviour (unchanged): no `spiking:` block -> LIF defaults on all temporal stages."""
+    _register()
+    import models.detection.recurrent_backbone as rb
+    cfg = _cfg()
+    del cfg["spiking"]
+    bb = rb.build_recurrent_backbone(cfg)
+    assert bb.spiking_stages == (2, 3, 4)
+    assert bb.temporal["4"].lif.output_mode == "spike"
+
+
+def _monitored_forward(monkeypatch, capsys, device, monitor):
+    if monitor:
+        monkeypatch.setenv("SPIKING_MONITOR", "1")
+        monkeypatch.setenv("SPIKING_MONITOR_EVERY", "1")
+    else:
+        monkeypatch.delenv("SPIKING_MONITOR", raising=False)
+    _register()
+    import models.detection.recurrent_backbone as rb
+    bb = rb.build_recurrent_backbone(_cfg()).to(device)
+    bb(torch.randn(1, 1, 20, 64, 96, device=device), None)
+    return capsys.readouterr().out
+
+
+def test_spiking_monitor_env_gate_attaches_via_builder(device, monkeypatch, capsys):
+    out = _monitored_forward(monkeypatch, capsys, device, monitor=True)
+    assert "[spk-monitor]" in out, f"no monitor line in: {out!r}"
+
+
+def test_no_spiking_monitor_env_no_monitor(device, monkeypatch, capsys):
+    out = _monitored_forward(monkeypatch, capsys, device, monitor=False)
+    assert "[spk-monitor]" not in out
 
 
 def test_compose_selects_spikingssm_and_sets_hw():

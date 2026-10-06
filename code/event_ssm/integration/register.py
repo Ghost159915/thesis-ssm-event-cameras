@@ -69,6 +69,14 @@ def register_backbone_builder():
             # duplicated rather than refactored so the PureSSM branch stays byte-identical.
             from event_ssm.models.puressm import BiMambaSpatialStages
             from event_ssm.models.spikingssm.backbone import SpikingSSMBackbone
+            spk = backbone_cfg.get("spiking", None) or {}
+            # Reject unknown `spiking:` keys (fail before the expensive build): in an ablation a
+            # silently ignored key mislabels the arm. A missing block still means "defaults".
+            allowed = set(_LIF_KEYS) | {"spiking_stages", "residual"}
+            unknown = set(spk) - allowed
+            if unknown:
+                raise ValueError(f"unknown backbone.spiking key(s) {sorted(unknown)}; "
+                                 f"allowed keys: {sorted(allowed)}")
             in_stages = backbone_cfg.get("in_stages", None)
             temporal_stages = tuple(in_stages) if in_stages is not None else (2, 3, 4)
             spatial = BiMambaSpatialStages(
@@ -78,7 +86,6 @@ def register_backbone_builder():
                 drop_path_rate=backbone_cfg.get("drop_path_rate", 0.1),
                 checkpoint_blocks=backbone_cfg.get("checkpoint_blocks", False),
             )
-            spk = backbone_cfg.get("spiking", None) or {}
             bb = SpikingSSMBackbone(
                 in_channels=backbone_cfg.input_channels,
                 d_state=backbone_cfg.get("d_state", 64),
