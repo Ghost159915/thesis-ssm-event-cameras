@@ -1,7 +1,7 @@
 # @package _global_
 # Canonical (tracked) Hydra EXPERIMENT config for the SpikingSSM backbone on Gen1 (Stage 18).
-# Byte-identical to experiment/gen1/puressm.yaml except the model group (recipe comparability —
-# enforced by tests/models/spikingssm/test_register_spikingssm.py).
+# Identical (OmegaConf-equal, test-enforced) to experiment/gen1/puressm.yaml except the model group
+# (recipe comparability — see tests/models/spikingssm/test_register_spikingssm.py).
 # Selected at runtime:  model=rnndet +experiment/gen1=spikingssm
 # Ablation arms via CLI, e.g.  model.backbone.spiking.output_mode=analog
 # For Hydra to find it, this file is symlinked into the (gitignored) RVT tree at

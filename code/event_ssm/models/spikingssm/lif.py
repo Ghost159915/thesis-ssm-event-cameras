@@ -32,8 +32,12 @@ like the Mamba (conv, ssm) state; dim0 = N keeps it compatible with the backbone
   * `graded` — s[t] * mem_pre[t]: fires sparsely but carries magnitude. This is the analogue of
                Loihi 2's graded spikes and of SpikeYOLO's integer-valued (I-LIF) trick, which is
                what lifted it to SNN SOTA on Gen1 — see the INRC proposal §3.3.
-  * `analog` — the membrane itself, no spiking. The **control arm**: A/B against `spike` measures
-               the exact accuracy cost of spiking, which is the thesis question.
+  * `analog` — the pre-reset membrane itself, no spike nonlinearity. It still applies leak (beta)
+               and the reset to the carried state, so it is NOT a copy of PureSSM's temporal
+               output (the `spiking_stages=[]` null test is that check). It is the non-spiking
+               twin sharing one membrane with graded/spike, which makes the results a ladder:
+               PureSSM -> analog (cost of the LIF dynamics) -> graded (cost of sparsity)
+               -> spike (cost of binarisation).
 """
 import math
 
@@ -128,7 +132,7 @@ class LIFReadout(nn.Module):
                 outs.append(spk)
             elif self.output_mode == "graded":
                 outs.append(spk * mem_pre)
-            else:                                          # analog control arm
+            else:                                          # analog: pre-reset membrane (leak+reset kept)
                 outs.append(mem_pre)
             spike_sum = spike_sum + spk.detach().float().mean()
 

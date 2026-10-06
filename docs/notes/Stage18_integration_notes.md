@@ -21,12 +21,12 @@ Stage 18 makes the Stage-17 spiking temporal block selectable as a drop-in recur
 | `SpikingSSMBackbone` | `code/event_ssm/models/spikingssm/backbone.py` | Subclass of the **unmodified** `ResNetMambaBackbone`. Swaps the temporal block on `spiking_stages` for `SpikingSSMBlock` (Mamba-2 + LIF readout) and overrides `forward` so every stage carries the correct state type. |
 | `_spk_state_to_bmajor` / `_spk_state_from_bmajor` | same file | Spiking-aware state reshape helpers for the `(mamba_state, mem)` tuple (RVT stores dim0 = B; the scan needs dim0 = N = B·h·w). |
 | `spiking_stats()` | same file | Per spiking stage: last firing rate, learned `beta` (mean/min/max) and `threshold` mean. Host sync — called at monitor cadence only. |
-| Registry dispatch | `code/event_ssm/integration/register.py` | Additive `"SpikingSSM"` branch in `build_recurrent_backbone`; config modifier widened to the third name. Existing branches byte-identical. |
+| Registry dispatch | `code/event_ssm/integration/register.py` | Additive `"SpikingSSM"` branch in `build_recurrent_backbone`; config modifier widened to the third name. Existing branches byte-identical. Unknown keys under `backbone.spiking` raise `ValueError` (D12). |
 | `attach_spiking_monitor` | `code/event_ssm/integration/monitors.py` | Firing-rate watch: prints `[spk-monitor]` line each `every_n` forwards, warns on SILENT (< 0.01) and SATURATED (> 0.90), logs to W&B when a run is active. Default off. |
 | Model config | `code/event_ssm/configs/spikingssm_yolox/default.yaml` | PureSSM model config + a `backbone.spiking` block. |
-| Experiment config | `code/event_ssm/configs/experiment/gen1/spikingssm.yaml` | Recipe byte-identical to `puressm.yaml` (only the model group differs). |
+| Experiment config | `code/event_ssm/configs/experiment/gen1/spikingssm.yaml` | Recipe identical (OmegaConf-equal, test-enforced) to `puressm.yaml`; only the model group differs. |
 | Symlink recipe | `docs/patches/README.md` ("Stage 18" section) | Re-creates the two Hydra symlinks into the gitignored `external/` RVT tree after a re-clone. |
-| Tests | `code/event_ssm/tests/models/spikingssm/` | 18 new non-GPU tests, 13 GPU tests in `test_backbone_gpu.py` (see §6). |
+| Tests | `code/event_ssm/tests/models/spikingssm/` | 23 new non-GPU tests, 13 GPU tests in `test_backbone_gpu.py` (see §6). |
 
 **Selection (train, test-eval and the Stage-10 benchmark use the same launchers as every other model):**
 
@@ -89,7 +89,7 @@ model group differs from PureSSM.
 | Integration null test (no flag needed in training) | `spiking_stages=[]` | Numerically the PureSSM backbone; proven by `test_no_spiking_stages_equals_puressm`. |
 | Energy–accuracy Pareto | `model.backbone.spiking.threshold=<value>` | Higher threshold gives sparser firing, fewer SOPs, lower energy. Do not report a single operating point. |
 | Analog bypass (escape hatch) | `model.backbone.spiking.residual=True` | **Must be reported if used**: it weakens the spiking claim. |
-| Other LIF knobs | `...spiking.{beta,alpha,learn_beta,learn_threshold,reset,detach_reset}` | Forwarded verbatim to `LIFReadout` through `_LIF_KEYS` in `register.py`. |
+| Other LIF knobs | `...spiking.{beta,alpha,learn_beta,learn_threshold,reset,detach_reset}` | Forwarded verbatim to `LIFReadout` through `_LIF_KEYS` in `register.py`; each is pinned by a test at a non-default value. A misspelled key under `spiking:` raises `ValueError` (D12). |
 | Silence/saturation watch | `SPIKING_MONITOR=1 SPIKING_MONITOR_EVERY=200` | Env vars, default off, zero overhead when unset. Composes with `PURESSM_MONITOR=1` (spatial norms). |
 | Local 16 GB card | `model.backbone.checkpoint_blocks=True` | As for PureSSM, whose Stage-11 probe measured 8.55 GB for checkpointed training and whose Stage-12 smoke used this override. The LIF time loop adds activations on the spiking stages: **re-measure peak VRAM at Stage 19** rather than assuming PureSSM's figure carries over. |
 
@@ -99,9 +99,9 @@ model group differs from PureSSM.
 
 | Check | Result |
 |---|---|
-| Full default suite, `pytest code/event_ssm/tests/ -q` (repo root) | **161 passed, 25 deselected (gpu-marked), 27 warnings in 72.05 s** — 0 failures. Baseline before Stage 18 was 143 non-GPU tests; 161 − 143 = **18 new non-GPU tests** (lif +5, `test_backbone_cpu` 3, `test_register_spikingssm` 6, `test_spiking_monitor` 4). |
+| Full default suite, `pytest code/event_ssm/tests/ -q` (repo root) | **166 passed, 25 deselected (gpu-marked), 27 warnings in 75.42 s** — 0 failures (re-run after the D12 fix round; 161 passed in 72.05 s before it). Baseline before Stage 18 was 143 non-GPU tests; 166 − 143 = **23 new non-GPU tests** (lif +5, `test_backbone_cpu` 3, `test_register_spikingssm` 11, `test_spiking_monitor` 4). |
 | Spiking GPU session, `pytest code/event_ssm/tests/models/spikingssm/ -m gpu -q` (RTX 5070 Ti idle at the guard: 2–8 % utilisation, 1.3–1.5 GiB resident, no compute processes listed by `nvidia-smi`) | **22 passed, 49 deselected in 33.42 s** = 9 Stage-17 gpu tests + 13 in `test_backbone_gpu.py` (the 7 tests planned for Task 2 became 13 through parametrisation over output mode and over the ladder, plus the D11 hardening). A second, independent run reproduced **22 passed in 34.58 s**. |
-| Spiking package, all tests | 71 collected = 49 non-GPU + 22 GPU. |
+| Spiking package, all tests | 76 collected = 54 non-GPU + 22 GPU. |
 | Frozen packages, `git diff --stat main -- code/event_ssm/models/eventssm code/event_ssm/models/puressm code/event_ssm/temporal code/event_ssm/backbone` | **Empty (exit 0)** — nothing in the frozen model/temporal/backbone code is modified. |
 | Files changed vs `main` under `code/event_ssm/` | Only: `models/spikingssm/{__init__,backbone,lif}.py`, `integration/{register,monitors}.py` (additive), two new config files, and tests under `tests/models/spikingssm/`. Plus `docs/patches/README.md` (symlink recipe). |
 | Task-1 deferred item "GPU parity test tolerance tightened 1e-3 to 1e-5, unverified on GPU" | **Verified**: `test_ssm_path_matches_the_non_spiking_block` passes at 1e-5 (both GPU runs). No relaxation needed. |
@@ -240,10 +240,11 @@ Format for every item: symptom or question, evidence, root cause or options cons
     reported whatever their size.
 - **Where the reframing was applied:** `CLAUDE.md` pre-registration bullet (a) and (c); `thesis/latex/main.tex` `\tbd` in
   `sec:spiking_results`; dated inline notes in `docs/plans/2026-09-07-thesis-c-plan.md` and `docs/notes/Stage17_build_notes.md`.
-- **Known stale wording that could not be edited under this stage's constraints** (code and frozen documents; see §5):
-  `lif.py` module docstring ("`analog` … the control arm … no spiking"), the `# analog = control arm, should ≈ PureSSM 46.4` comment in
-  `configs/spikingssm_yolox/default.yaml:26`, and the spec/plan quotations of that comment. The comment is wrong in the sense of D9;
-  the behaviour is as described here.
+- **Stale wording, now corrected (comment-only, this commit; see D12).** The `lif.py` module docstring and the inline comment on the
+  analog branch ("`analog` … the control arm"), and the `# analog = control arm, should ≈ PureSSM 46.4` comment in
+  `configs/spikingssm_yolox/default.yaml:26`, were wrong in the sense of D9 and were rewritten; the behaviour was always as described
+  here. The spec/plan quotations of that comment are frozen documents and remain as written. No logic changed; all Stage-17 LIF tests
+  pass untouched.
 - **Thesis use.** Ch.3 Methodology (readout modes; what each arm holds fixed), Ch.5 §5.7 results structure (a four-rung ladder with
   three gaps) and Ch.6 Discussion (what "the cost of spiking" decomposes into).
 
@@ -272,6 +273,32 @@ Format for every item: symptom or question, evidence, root cause or options cons
 - **Result.** GPU session 13/13 in `test_backbone_gpu.py` at that commit; 22/22 for the whole spiking GPU set at the head of the branch.
 - **Thesis use.** Reproducibility/testing appendix (verification coverage of the ablation configurations; why a parity test must guard
   against NaN).
+
+### D12. Review finding: silent-misconfiguration paths in the config-to-model wiring
+
+- **Finding (Task-4 review, important).** `test_lif_kwargs_flow_from_config` set only `output_mode`, `threshold`, `learn_threshold`,
+  `reset` and `residual` to non-default values; `beta`, `alpha`, `learn_beta` and `detach_reset` were tested *at* their `LIFReadout`
+  defaults. If any of them stopped being forwarded (for example dropped from `_LIF_KEYS`), `spiking.beta=0.8` would have been silently
+  ignored in an ablation run and the test would still have passed. The code was correct; the regression net had a hole.
+- **Minor findings.** (i) Unknown keys under `spiking:` were silently dropped by `{k: spk[k] for k in _LIF_KEYS if k in spk}`: a
+  typo'd `+model.backbone.spiking.outptu_mode=analog` composed (Hydra's `+` appends a new key) and ran the *default* arm. A plain,
+  non-`+` CLI typo already fails loudly through Hydra struct mode, so only the append form and hand-written configs were exposed.
+  (ii) The `SPIKING_MONITOR` / `SPIKING_MONITOR_EVERY` env wiring in the builder had no test.
+- **Why it matters.** In an ablation study the dangerous failure is not a crash but a run that silently measures the wrong arm and is
+  reported under the right label.
+- **Decision (user, 2026-10-06): fix all three before merge.** Implemented in commit `dc7f56c`:
+  - all eight `_LIF_KEYS` plus `residual` are set to non-default values (`analog`, `beta=0.7`, `threshold=0.5`, `alpha=4.0`,
+    `learn_beta=False`, `learn_threshold=True`, `reset=zero`, `detach_reset=False`, `residual=True`) and asserted on **every** spiking
+    stage, not only the last. Mutation check: removing any one of `beta`, `alpha`, `learn_beta`, `detach_reset` from the forwarded set
+    makes the test fail at stage 2 (all four verified);
+  - the SpikingSSM branch raises `ValueError` listing the unknown and the allowed keys, before the (expensive) spatial stack is built.
+    A missing `spiking:` block keeps its documented behaviour (LIF defaults on every temporal stage), now pinned by a test. Tested at
+    builder level and end-to-end through Hydra compose with a `+`-appended typo;
+  - the env gate is tested both ways (`[spk-monitor]` line appears with `SPIKING_MONITOR=1`, absent when unset), mirroring
+    `tests/test_monitors.py`.
+- **Result.** 5 new tests; default suite 161 to 166 passed. The ResNetMamba and PureSSM branches and the frozen packages are untouched.
+- **Thesis use.** Ch.4 Experimental Setup and the reproducibility appendix (configuration-integrity safeguards: an ablation arm cannot
+  be mislabelled by a misspelled or unforwarded key).
 
 ### 4.1 Measured streaming-parity numbers (D8 and D11)
 
@@ -303,8 +330,8 @@ passes with ≥ 4× headroom on the Mamba-state and membrane carry. The residual
 ## 5. Known limitations and deferred items
 
 Source: the subagent-driven-development ledger. "Fixed" entries are closed in this branch; "Open" entries were not addressed by a
-fix commit and remain **"see final review"** (the whole-branch review had not reported when this note was written, and the Task-4
-review was still in progress; any Task-4 findings are therefore not listed here).
+fix commit and remain **"see final review"** (the whole-branch review had not reported when this note was written). The Task-4
+review findings are listed below (D12).
 
 | Origin | Item | Status |
 |---|---|---|
@@ -321,7 +348,12 @@ review was still in progress; any Task-4 findings are therefore not listed here)
 | Task 3 | A NaN firing rate trips neither SILENT nor SATURATED (NaN comparisons are False); in practice a NaN membrane gives rate 0 and SILENT fires, but `if not (rate >= silence)` would make it explicit | Open — see final review |
 | Task 3 | Monitor boilerplate (cadence guard, W&B try/except) mirrors the spatial monitor | **Parked** (same ruling family as D4: append-only constraint) |
 | Task 3 | No tests for the W&B key format / `commit=False`, boundary rates exactly 0.01 and 0.90, suppression when `spiking_stats` raises, or a repeat at the second cadence tick | Open — see final review |
-| Stage 18 (D9) | Stale "analog = control arm, should ≈ PureSSM 46.4" wording in `lif.py` docstring and `configs/spikingssm_yolox/default.yaml:26` (code, not editable in the documentation task) | Open — comment-only fix recommended before Stage 19 |
+| Stage 18 (D9) | Stale "analog = control arm, should ≈ PureSSM 46.4" wording in `lif.py` docstring and `configs/spikingssm_yolox/default.yaml:26` | **Fixed** (comment-only, D12 docs commit) |
+| Task 4 | `test_lif_kwargs_flow_from_config` tested beta/alpha/learn_beta/detach_reset only at their defaults | **Fixed** `dc7f56c` (D12) |
+| Task 4 | Unknown keys under `backbone.spiking` silently ignored (typo'd `+...spiking.outptu_mode` ran the default arm) | **Fixed** `dc7f56c` (D12) |
+| Task 4 | `SPIKING_MONITOR` env wiring untested | **Fixed** `dc7f56c` (D12) |
+| Task 4 | A missing `spiking:` block silently uses the `LIFReadout` defaults (all temporal stages spiking, `spike` mode) | Known limitation, kept by decision: the shipped config always carries the block and the behaviour is pinned by `test_missing_spiking_block_uses_defaults` |
+| Task 4 | The widened name tuple in `register_config_modifier` is one 118-character line | Cosmetic, left as is (the Stage-12 one-line style) |
 | D10 | `main.tex` duplicate labels, `[h!]` float, untracked `supervisor_report/` | Open — outside Stage-18 scope |
 
 ---
@@ -336,9 +368,9 @@ review was still in progress; any Task-4 findings are therefore not listed here)
 | `test_spiking_temporal.py` | – | 9 | real Mamba-2 kernels (Stage 17); parity test rewritten per D6 |
 | `test_backbone_cpu.py` | 3 | – | state-helper round-trip is exact; `None` passes through; subset validation |
 | `test_backbone_gpu.py` | – | 13 | block placement; forward/backward with gradient reaching the spatial stem; streaming parity (3 modes × 2 ladders = 6); strict no-spike carry (2 ladders); null test ≡ PureSSM; RVT detach/reset (2 ladders) |
-| `test_register_spikingssm.py` | 6 | – | builder dispatch; LIF kwargs flow from config; Hydra compose selects the model and sets `in_res_hw = (256, 320)`, `num_classes = 2`; CLI override selects an arm; recipe parity; model-config parity |
+| `test_register_spikingssm.py` | 11 | – | builder dispatch; all eight LIF keys plus `residual` flow from config at non-default values on every spiking stage; unknown `spiking:` key raises (builder and Hydra compose); missing block uses defaults; `SPIKING_MONITOR` env gate on and off; Hydra compose selects the model and sets `in_res_hw = (256, 320)`, `num_classes = 2`; CLI override selects an arm; recipe parity; model-config parity |
 | `test_spiking_monitor.py` | 4 | – | `every_n < 1` raises at attach; report at cadence; SILENT/SATURATED flags; detach handle stops reporting |
-| **Total** | **49** (of 161 in the whole suite) | **22** | |
+| **Total** | **54** (of 166 in the whole suite) | **22** | |
 
 ---
 
