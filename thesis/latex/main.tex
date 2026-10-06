@@ -1331,19 +1331,64 @@ a closed loop; that remains future work (Section~\ref{subsec:fw_closed_loop}).
 \label{ch:conclusion}
 
 \section{Summary of Contributions}
-\tbd{Restate the contributions from Section~\ref{sec:contributions} as achieved outcomes, with the
-headline numbers. Keep it to one page.}
+This thesis asked what the spatial mixer of an event-camera detector's backbone contributes when
+everything else is held fixed. The contributions listed in Section~\ref{sec:contributions} were achieved
+as follows.
+
+\begin{enumerate}
+  \item \textbf{A verified baseline.} The published S5-RVT checkpoint reproduces at Gen1 test mAP 47.72
+        ($\mathrm{AP}_{50}$ 75.28), an exact match, which validates the pipeline, preprocessing and
+        evaluator used for every other number in this thesis (Section~\ref{sec:baseline_repro}).
+  \item \textbf{Two original detectors in a controlled ablation.} EventSSM (ResNet-18 spatial, Mamba-2
+        temporal) reaches 46.22~mAP and PureSSM (bidirectional Mamba spatial, identical temporal path)
+        46.43, trained with one recipe through the same unmodified pipeline, so that their difference is
+        attributable to the spatial mixer alone (Section~\ref{sec:acc_results}).
+  \item \textbf{A mechanism for the large-object result.} Replacing the convolutional spatial mixer with
+        a state-space one raises $\mathrm{AP}_L$ from 44.70 to 47.65, closing about half of EventSSM's
+        large-object gap to the baseline. The state-space mixer's effective receptive field is twice as
+        wide at stage~3 (85.6 against 41.8~px) and grew by 30--34~px in training, against at most 6.2~px
+        for the convolutional stack (Section~\ref{sec:erf}).
+  \item \textbf{A reproduction study of $\Delta t$-rescaling.} Without compensation, the state-space
+        models retain 62--70\,\% of their accuracy at a true tenfold event-rate increase, PureSSM the most
+        (69.7\,\%), against 17.7\,\% reported for a ConvLSTM. Under the published checkpoint and code, the
+        inference-time compensation did not recover accuracy at any tested point and cost 9--13~mAP at the
+        tenfold rate, and the published 200\,Hz result (39.84) could not be reproduced; the best
+        reproduction was 29.67 (Section~\ref{sec:robustness}).
+  \item \textbf{An efficiency frontier.} PureSSM is the smallest model (16.33\,M parameters) with the
+        fewest FLOPs (10.12\,G) and the best accuracy per GFLOP (4.59), but the slowest in eager execution
+        (37\,Hz, 181\,Hz with CUDA-graph replay); EventSSM is the fastest (79 and 210\,Hz) and uses the least
+        energy per frame (0.438\,J); both Mamba models carry a 144\,MB streaming state against the
+        baseline's 4.7\,MB (Section~\ref{sec:efficiency}).
+  \item \textbf{A spiking state-space detector.} A spiking variant whose temporal readout is a
+        leaky integrate-and-fire layer, with three readout modes that decompose the cost of spiking, was
+        built as a drop-in backbone for the same pipeline and verified by tests, including that it reduces
+        numerically to PureSSM when no stage spikes (Section~\ref{subsec:spiking_method}).
+        \needsgpu{state its headline numbers here (mAP per readout, firing rate, SOPs, estimated energy)
+        once Stages 21--22 have run.}
+\end{enumerate}
+
+Taken together, the results show that a state-space model can serve as the spatial mixer as well as the
+temporal one, that its advantage lies where its learned receptive field predicts, and that its efficiency
+must be judged against the constraint that binds a given deployment rather than on a single axis.
 
 \section{Future Work}
 \label{sec:future_work}
 
 \subsection{High-resolution generalisation}
-\tbd{Train on Prophesee 1Mpx ($1280\times720$, ${\sim}5.6\times$ Gen1) to test whether the
-$\mathrm{AP}_L$ and receptive-field advantage grows with resolution. Frame it as a falsifiable
-hypothesis rather than ``HD is better'': higher-resolution event cameras suffer greater temporal noise,
-and this thesis shows state-space detectors are the most temporally robust, so they should be uniquely
-positioned to exploit high-resolution sensors. Train on 1Mpx rather than zero-shotting from Gen1, or
-resolution and the temporal-noise penalty are confounded.}
+Every result here is on Gen1 at $304\times240$. The natural next dataset is the Prophesee 1Mpx
+dataset~\cite{perot2020learning}, recorded at $1280\times720$ (about 12.6 times Gen1's pixel count) with
+car, pedestrian and two-wheeler labels. It would test whether the large-object and receptive-field
+advantage of the state-space spatial mixer grows with resolution, where objects span more pixels and the
+spatial scans become longer. The question should be posed as a falsifiable hypothesis rather than an
+expectation that more pixels help. Gehrig and Scaramuzza~\cite{gehrig2022high} show that at high speed and
+in low light, higher-resolution event cameras produce more temporal noise, because each pixel fires more
+often, and can be outperformed by lower-resolution ones; learning-based methods trained on realistic,
+noisy data largely overcome that penalty. The state-space detectors of this thesis retained 62--70\,\% of
+their accuracy at a tenfold rate change (Section~\ref{sec:robustness}), so the hypothesis is that they
+lose least to the temporal noise of a high-resolution sensor and therefore gain most from its resolution.
+The models should be trained on 1Mpx rather than transferred from Gen1 without retraining; zero-shot
+transfer would confound the change of resolution with the temporal-noise penalty that training on the
+target data removes.
 
 \subsection{Closed-loop evaluation on a UAV}
 \label{subsec:fw_closed_loop}
@@ -1356,14 +1401,32 @@ least as flight speed, and hence event rate, varies; a closed-loop study could t
 directly.
 
 \subsection{Neuromorphic deployment}
-\tbd{The spiking model in simulation is the contribution of this thesis; running it on Loihi~2 silicon
-is the natural continuation. Set out the concrete path --- INRC membership via a supervising principal
-investigator, NIR export, benchmarking on the neuromorphic research cloud before requesting hardware ---
-and note the Lava archival as a live risk to the toolchain.}
+The spiking detector is evaluated in simulation in this thesis; running it on Loihi~2 is the natural
+continuation. Access to Intel's neuromorphic hardware is through the Intel Neuromorphic Research
+Community (INRC). Research memberships are held by a principal investigator who is a permanent employee of
+a research organisation; students are added to an existing project, and the participation agreement is
+executed between Intel and the organisation rather than the individual~\cite{intel2026inrc}. The concrete
+path is therefore: the supervisor applies as principal investigator with a project proposal, for which a
+two-page draft has been prepared; the model is exported through NIR~\cite{pedersen2024neuromorphic}; it is
+benchmarked first through the remote access to Intel's neuromorphic research cloud that membership
+provides, and dedicated hardware is requested only afterwards. Two technical steps from
+Section~\ref{sec:neuro_case} lie on this path: a fixed-step or on-chip-computed form of the selective
+decay, and a decision on where the non-spiking spatial backbone runs. The toolchain itself is a live
+risk. With Lava archived and its successor SDK unscheduled~\cite{intel2026lava}, the NIR export boundary
+is what keeps the work retargetable.
 
 \subsection{Representation and tokenisation}
-\tbd{Every model here inherits a fixed stacked-histogram tokeniser. Activity-driven tokenisation paired
-with a rate-robust state-space backbone is a ready-made follow-up.}
+Every model in this thesis inherits the same fixed tokeniser, a 20-channel stacked histogram over 50-ms
+windows, so the representation lies outside the ablation (Section~\ref{sec:limitations}). Two directions
+follow. Learned representations, such as the event spike tensor~\cite{gehrig2019end}, could replace the
+fixed histogram within the same frozen pipeline. More promising is activity-driven tokenisation, which
+processes only the regions where events occur, as in the token selection of SMamba~\cite{yang2025smamba}
+or in asynchronous sparse and graph-based detectors~\cite{messikommer2020event,schaefer2022aegnn}.
+Section~\ref{sec:what_shown} found that event sparsity brings no speed-up on a GPU, because every frame is
+processed densely; a tokeniser that skips inactive regions would turn that sparsity into saved
+computation. A state-space backbone suits a variable number of tokens per frame, since a scan accepts
+sequences of any length, and its rate robustness matters here as well, because the number of active
+tokens rises and falls with the event rate.
 
 \subsection{Toward a fully spiking detector}
 \label{subsec:fw_fullspike}
@@ -1381,11 +1444,24 @@ traversal order as pseudo-time --- which discards the global context that produc
 large-object result --- or (ii) adopting a neuron whose state dynamics \emph{are} the structured recurrence,
 so that space and time are handled by one mechanism.
 
-\tbd{Option (ii) is the interesting one and points at the SiLIF line of work; expand this into a short
-paragraph naming the concrete design and the open problem, rather than leaving it as a gesture. Also record
-the two experiments that would most sharpen the present contribution if time had allowed: whether spiking
-preserves the rate-robustness measured in Section~\ref{sec:robustness}, and where in the backbone hierarchy
-spiking costs the most. See \texttt{docs/notes/Stage17\_build\_notes.md}.}
+Option~(ii) has a concrete starting point. SiLIF~\cite{fabre2025silif} makes the correspondence between a
+leaky integrate-and-fire neuron and a diagonal state-space model exact for a two-state adaptive neuron, and
+gives that neuron an S4-style parametrisation: continuous-time decays trained in logarithmic form, a
+learnable per-neuron discretisation step and, in a complex-valued variant, oscillatory dynamics. It reports
+state-of-the-art accuracy among spiking neuron models on speech benchmarks. A SiLIF-type neuron whose state
+\emph{is} the structured recurrence could replace both the temporal Mamba block and its LIF readout, so that
+time is handled by a single spiking mechanism. The open problem is the spatial axis: SiLIF neurons
+integrate causally, as every spiking neuron does, so a bidirectional spatial scan would still have to be
+expressed as two causal passes over a traversal order treated as pseudo-time, and whether that preserves
+the global context behind the large-object result is untested.
+
+Two experiments would most sharpen the present contribution. The first is whether spiking preserves the
+rate robustness of Section~\ref{sec:robustness}. The spiking readout integrates over the same clip time as
+the Mamba block, but its leak and threshold are learned at the training rate, and it is not known whether
+they transfer to a tenfold rate change as well as the uncompensated recurrence does. The second is where in
+the backbone hierarchy spiking costs most. The implementation already allows spiking to be enabled stage by
+stage, from stage~4 alone to stages 3--4 and stages 2--4, so the cost per stage can be measured directly
+with the same recipe.
 
 \chapter*{Acknowledgments}
 \addcontentsline{toc}{chapter}{Acknowledgments}
