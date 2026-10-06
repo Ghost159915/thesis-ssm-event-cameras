@@ -1092,9 +1092,39 @@ platform is the number to watch.
 
 \section{Qualitative Results}
 \label{sec:qualitative}
-\tbd{ground-truth-versus-prediction overlay videos on 12 large-car sequences; a contact sheet figure;
-and the recurring observation of Gen1 label noise (missing and late boxes), which caps achievable AP and
-is a dataset limitation worth stating.}
+To see the large-object behaviour behind the $\mathrm{AP}_L$ result, the twelve test recordings with the
+most large-car instances were selected (a large car being a ground-truth car box covering at least 10\,\%
+of the $304\times240$ frame), and ground-truth-versus-prediction overlay videos were rendered for both
+own models. Figure~\ref{fig:qualitative} shows the top-ranked recording (180 large-car instances) as
+eight evenly spaced frames, not selected by hand. The videos and the remaining eleven recordings are
+reproducible from the repository (\path{code/event_ssm/scripts/stage16_render_gt_vs_pred.sh}).
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{images/fig_qualitative_large_car.png}
+    \caption{Ground truth against predictions on the test recording with the most large-car instances
+    (\texttt{18-03-29\_13-15-02\_500000\_60500000}), eight evenly spaced frames from its 60~s; top
+    EventSSM, bottom PureSSM. Events of 33~ms are drawn by polarity (red/blue). Solid boxes are ground
+    truth (car green, pedestrian orange), each held for up to 250~ms after its annotation; dashed boxes
+    are predictions with their confidence (car magenta, pedestrian yellow), shown down to the
+    evaluator's threshold of 0.1.}
+    \label{fig:qualitative}
+\end{figure}
+
+Four observations recur across the recordings. First, close cars that generate events are detected
+by both models with high confidence (0.81--0.93 in Figure~\ref{fig:qualitative}). Second, detections
+persist when the scene goes quiet. At 25.7~s and 34.3~s almost no events fall on the car, because an
+event camera reports only change, yet both models keep it at 0.70--0.90 confidence: the object is
+carried by the recurrent state rather than seen in the current frame. Third, at the start of a
+recording, with the state still empty and few events (1{,}675 in the first frame), both models emit
+low-confidence car boxes (0.1--0.4) where there is no ground truth. Fourth, the ground truth itself
+flickers: with annotations about once per second (Section~\ref{sec:dataset}), a box appears in a
+rendered frame only when an annotation falls within the 250~ms hold. Pedestrians and distant objects
+visible in the events are frequently unlabelled; a correct detection of one counts as a false positive
+and lowers the measured AP of every model alike. On these frames the two models behave very similarly,
+as expected from their identical temporal path; the frames illustrate the behaviour, while the
+difference between the models rests on the quantitative $\mathrm{AP}_L$ result of
+Section~\ref{sec:acc_results}.
 
 \section{Spiking SSM Detector}
 \label{sec:spiking_results}
