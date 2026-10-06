@@ -195,6 +195,11 @@ Interpretation, with its limits:
 
 1. ~~Spike-smoke spread (H1)~~ done (§3.3): FAIL systematic at 150 steps, PASS at 300 → slow, not stuck.
 2. ~~25k short runs~~ done (§3.4): **kill-switch PASS** (§3.5).
-3. Next (user decision): the Stage-20 plan — which rung (`[4]` passed at ~zero cost; `[2,3,4]` is the config default and
+3. **Decided (user, 2026-10-07): all checks first.** 25k on the full rung `[2,3,4]` for all three arms, in the order
+   spike → graded → analog (≈ 4 h each, run back to back in tmux), judged by the same pre-registered criterion as §3.5
+   (firing band not gated for analog). Only then the Stage-20 full runs. Rationale: `[4]` spikes only the 8×10 map, a weak
+   spiking claim; `[2,3,4]` is the configuration default and the headline candidate, and analog had not yet trained on
+   full data.
+4. Superseded by 3 — original wording: the Stage-20 plan — which rung (`[4]` passed at ~zero cost; `[2,3,4]` is the config default and
    the more meaningful spiking claim but untested) and which arms at which budget (timeline: graded at 400k, spike and
    analog at 100k), local (~2.3 days per 400k incl. validation) or rented 5090 (~27 h).
