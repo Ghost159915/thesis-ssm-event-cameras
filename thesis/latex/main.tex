@@ -1335,7 +1335,8 @@ spike (binary)   & --- & --- & --- & --- \\
 \section{What the Four Models Show}
 \label{sec:what_shown}
 \textbf{A pure state-space spatial backbone is a viable detection backbone.} PureSSM uses no attention,
-and its only local spatial mixing is a zero-initialised depthwise term in each block. It nonetheless
+and apart from strided downsampling convolutions its only local spatial mixing is a zero-initialised
+depthwise term in each block. It nonetheless
 matches the convolutional hybrid on overall accuracy (46.43 against 46.22, Table~\ref{tab:accuracy})
 with the fewest parameters (16.33\,M) and the fewest FLOPs (10.03\,G) of the three models, and it is the
 most robust of them to a true change in event rate (69.7\,\% retention at a tenfold rate,
@@ -1355,7 +1356,7 @@ probe.
 
 \textbf{State-space temporal processing is robust to the event rate.} All three state-space models
 keep 62--70\,\% of their accuracy at a true tenfold rate without any compensation, against 17.7\,\%
-reported for the ConvLSTM (Table~\ref{tab:regime2}). Under the published artefacts this robustness does
+reported for the ConvLSTM under the authors' unreleased preprocessing (Table~\ref{tab:regime2}). Under the published artefacts this robustness does
 not depend on the inference-time $\Delta t$ compensation, which lowered accuracy at every tested
 operating point (Section~\ref{subsec:f2}); whether it behaves differently under the unreleased
 preprocessing cannot be settled from the released material. For a platform whose event rate varies with
@@ -1431,7 +1432,9 @@ every registered aim against what this thesis delivers.
   baseline (Chapter~\ref{ch:method}). \\
 2 Benchmarking & Gen1 and 1Mpx; accuracy, latency, memory, energy; CNN, RNN and transformer baselines;
   embedded-hardware latency &
-  Delivered on Gen1 with all four metrics (Sections~\ref{sec:acc_results}, \ref{sec:efficiency}).
+  Delivered on Gen1 with all four metrics (Sections~\ref{sec:acc_results}, \ref{sec:efficiency}); the
+  RNN (ConvLSTM) baseline enters only through its published rate result.\needsgpu{decision D1: replace with
+  the measured ConvLSTM baseline}
   1Mpx deferred to future work (Section~\ref{sec:future_work}); latency and energy measured on a
   desktop GPU, not embedded hardware. \\
 3 Temporal generalisation & Inference at frequencies other than training, without retraining &
@@ -1477,15 +1480,23 @@ a closed loop; that remains future work (Section~\ref{subsec:fw_closed_loop}).
 \section{Limitations}
 \label{sec:limitations}
 \begin{itemize}
-  \item \textbf{Single seed, no error bars.} Overall-mAP deltas between own-models ($\pm0.2$--$0.7$) sit
-        within run-to-run variation; only effects well outside it are reported as findings.
-  \item \textbf{One dataset.} All results are on Gen1: low resolution, daytime, two classes, ego-motion.
+  \item \textbf{Single seed, no error bars.} Each model was trained once, so run-to-run variation is
+        unmeasured. Overall-mAP differences below about 1~mAP are treated as not distinguishable; larger
+        effects, such as the $\mathrm{AP}_L$ gain and the robustness gaps, are reported, but they also rest
+        on single runs. A second seed of the own models would bound the variation.
+  \item \textbf{One dataset.} All results are on Gen1: low resolution, an automotive viewpoint, two classes, ego-motion.
         Generalisation across resolution, domain and conditions is untested.
   \item \textbf{Label noise} in Gen1 caps achievable AP and adds a qualitative confound.
   \item \textbf{Fixed representation.} Every model inherits the stacked-histogram tokeniser; the
         representation is not part of the ablation.
-  \item \textbf{Precision mix} --- bf16 for own-models against fp16 for the baseline. Minor: all models
-        reproduce their reference numbers.
+  \item \textbf{Precision mix} --- bf16 mixed precision for the own models against 32-bit training for
+        the published baseline (Table~\ref{tab:recipe}). Its effect on accuracy was not measured; like the
+        batch size, it affects only the comparison against the baseline.
+  \item \textbf{Initialisation of the spatial mixers.} EventSSM's ResNet-18 starts from ImageNet weights,
+        while PureSSM's BiMamba stack is trained from scratch with stochastic depth. The EventSSM--PureSSM
+        comparison therefore isolates the spatial mixer \emph{as instantiated}, including its
+        initialisation. Pre-training would be expected to favour the convolutional model, so it is unlikely
+        to explain PureSSM's large-object gain, but the two factors are not separated.
   \item \textbf{Half the baseline's batch size.} The own models trained at batch 4 against the published
         baseline's 8 (Section~\ref{sec:training}), so they saw half as many training sequences. The
         own-model-to-baseline gap may therefore be overstated; comparisons among own models are
@@ -1511,7 +1522,8 @@ as follows.
   \item \textbf{Two original detectors in a controlled ablation.} EventSSM (ResNet-18 spatial, Mamba-2
         temporal) reaches 46.22~mAP and PureSSM (bidirectional Mamba spatial, identical temporal path)
         46.43, trained with one recipe through the same unmodified pipeline, so that their difference is
-        attributable to the spatial mixer alone (Section~\ref{sec:acc_results}).
+        attributable to the spatial mixer as instantiated, including its initialisation
+        (Section~\ref{sec:acc_results}).
   \item \textbf{A mechanism for the large-object result.} Replacing the convolutional spatial mixer with
         a state-space one raises $\mathrm{AP}_L$ from 44.70 to 47.65, closing about half of EventSSM's
         large-object gap to the baseline. The state-space mixer's effective receptive field is twice as
@@ -1519,7 +1531,8 @@ as follows.
         for the convolutional stack (Section~\ref{sec:erf}).
   \item \textbf{A reproduction study of $\Delta t$-rescaling.} Without compensation, the state-space
         models retain 62--70\,\% of their accuracy at a true tenfold event-rate increase, PureSSM the most
-        (69.7\,\%), against 17.7\,\% reported for a ConvLSTM. Under the published checkpoint and code, the
+        (69.7\,\%), against 17.7\,\% reported for a ConvLSTM under the authors' unreleased preprocessing. Under
+        the published checkpoint and code, the
         inference-time compensation did not recover accuracy at any tested point and cost 9--13~mAP at the
         tenfold rate, and the published 200\,Hz result (39.84) could not be reproduced; the best
         reproduction was 29.67 (Section~\ref{sec:robustness}).
@@ -1603,7 +1616,7 @@ The detector reported here is a \textbf{hybrid}: the temporal readout spikes, th
 This is a deliberate design choice rather than a limitation of effort --- the governing principle is to
 \emph{spike the axis that is actually time}. Spikes are causal events in time, and the temporal block
 already unrolls over clip time, so the readout adds no timestep dimension; fully spiking detectors must
-introduce an artificial one and pay a multiplicative compute cost for it (SpikeYOLO uses $T=5$).
+introduce an artificial one and pay a multiplicative compute cost for it (SpikeYOLO uses four or five timesteps, Table~\ref{tab:snn_landscape}).
 
 Extending to a fully spiking model therefore runs into a specific, nameable obstacle rather than a merely
 practical one: the spatial mixer is a \emph{bidirectional} scan whose sequence axis is space, not time.
@@ -1701,7 +1714,7 @@ Event streams are converted to a $B$-bin voxel grid $V \in \mathbb{R}^{B \times 
 \begin{equation}
     V_b(x, y) = \sum_k p_k \cdot \max(0, 1 - |(B-1) \cdot t_k / T - b|) \cdot \delta(x-x_k) \cdot \delta(y-y_k)
 \end{equation}
-where $T$ is the total window duration, $B=10$ bins for the Gen1 dataset, and $\delta$ selects the matching pixel position. Each bin is independently normalised to zero mean and unit variance.
+where $T$ is the total window duration, $B=10$ bins for the Gen1 dataset, and $\delta$ selects the matching pixel position. In the Thesis~A proposal, each bin was additionally to be normalised to zero mean and unit variance.
 
 % --- Appendix C: Draft Thesis Outline ---
 
@@ -1746,8 +1759,8 @@ repository. Every local change to it is stored in \path{docs/patches/} and re-ap
 Hydra configuration links that register the new backbones, two preprocessing fixes, and the inference-time
 $\Delta t$ hook of Section~\ref{subsec:f2}.
 
-\textbf{Tests.} The suite is run from the repository root, \texttt{pytest code/event\_ssm/tests/} (249 CPU
-tests at the time of writing), and the GPU tests with \texttt{-m gpu} on an otherwise idle GPU (28 tests).
+\textbf{Tests.} The suite is run from the repository root, \texttt{pytest code/event\_ssm/tests/} (394 CPU
+tests on 7 October 2026), and the GPU tests with \texttt{-m gpu} on an otherwise idle GPU (29 tests).
 Running \texttt{pytest} from inside \path{code/event_ssm} instead lets the project's \texttt{models} package
 shadow RVT's and produces spurious import errors.
 
@@ -1799,7 +1812,7 @@ for the spiking model and the write-up.
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{images/Ghantt Chart.png}
-    \caption{Project Gantt chart showing the week-by-week schedule across all thesis phases. Thesis~A (Weeks 1--12) covers the literature review and MVP baseline reproduction. Thesis~B (Weeks 13--27) covers architecture design, dataset preparation, model training and benchmarking, temporal generalisation evaluation, and simulation integration. Thesis~C (Weeks 28--40) covers thesis writing and final submission. Diamond markers (M1--M5) indicate key milestone deliverables.}
+    \caption{Project Gantt chart showing the week-by-week schedule across all thesis phases. Thesis~A (Weeks 1--12) covers the literature review and MVP baseline reproduction. Thesis~B (Weeks 13--27) covers architecture design, dataset preparation, model training and benchmarking, temporal generalisation evaluation, and simulation integration. Thesis~C (Weeks 28--40) covers thesis writing and final submission. Diamond markers (M1--M5) indicate key milestone deliverables. The chart and Table~\ref{tab:timeline} were prepared separately in Thesis~A and differ in some week ranges; both are reproduced as registered.}
     \label{fig:gantt}
 \end{figure}
 
@@ -1807,7 +1820,7 @@ for the spiking model and the write-up.
 
 \chapter{Risk Assessment}
 \label{app:risk}
-Table~\ref{tab:risk_assessment} is the risk register for Thesis~C, with each risk's status on 6 October
+Table~\ref{tab:risk_assessment} is the risk register for Thesis~C, with each risk's status on 7 October
 2026. The Thesis-A risks concerning event-camera hardware, obstacle-avoidance integration and injury during
 UAV flight testing were retired by the scope change of Section~\ref{sec:scope_change}, and the compute risk
 by moving from the Katana cluster to a local workstation and rented GPUs of the same architecture
@@ -1822,8 +1835,8 @@ by moving from the Katana cluster to a local workstation and rented GPUs of the 
     \begin{tabularx}{\textwidth}{|>{\RaggedRight\arraybackslash}p{3.2cm}|l|l|>{\RaggedRight\arraybackslash}X|}
         \hline
         \rowcolor[gray]{0.9} \textbf{Risk} & \textbf{Likelihood} & \textbf{Impact} & \textbf{Mitigation and status} \\ \hline
-        Spiking model does not train stably & Medium & High & A kill-switch fixed before training: if the model is not training stably by 11~October, it is frozen as a simulated proof of concept and effort moves to the write-up. Spiking is introduced stage by stage, and the residual bypass is reported if used. \emph{Status:} in overfitting tests the dense and graded readouts pass; the binary readout learns more slowly (it receives about a third of the dense readout's gradient) and passes with twice the steps; 25k-step runs in progress. \\ \hline
-        Single-seed variance & High & Medium & Each model is trained once. Claims are restricted to effects well outside the observed run-to-run variation ($\pm0.2$--$0.7$~mAP), such as $\mathrm{AP}_L$ differences, and are reported as single-seed (Section~\ref{sec:limitations}). \\ \hline
+        Spiking model does not train stably & Medium & High & A kill-switch fixed before training: if the model is not training stably by 11~October, it is frozen as a simulated proof of concept and effort moves to the write-up. Spiking is introduced stage by stage, and the residual bypass is reported if used. \emph{Status:} criteria met. In overfitting tests the dense and graded readouts pass, and the binary readout, which receives about a third of the dense readout's gradient, passes with twice the steps. In 25k-step runs with spiking at stage~4 the spike and graded readouts reached 0.345 and 0.343 validation mAP against 0.351 for PureSSM under the same schedule, with no silent or saturated stage; runs with spiking at stages 2--4 are under way. \\ \hline
+        Single-seed variance & High & Medium & Each model is trained once. Run-to-run variation is unmeasured; overall-mAP differences below about 1~mAP are treated as not distinguishable, and only larger effects, such as $\mathrm{AP}_L$ differences, are reported as findings, as single-seed results (Section~\ref{sec:limitations}). \\ \hline
         Training environment breaks & Medium & High & The hand-built Blackwell stack is pinned (Appendix~\ref{app:repro}); dependency resolution is disabled for the kernel packages; runbooks and patches rebuild it from scratch. \\ \hline
         Long run lost to a crash or out-of-memory kill & Medium & Medium & Full-state checkpoint resumption, validated in earlier runs; data-loader workers capped for host memory; a rented GPU of the same architecture as fallback. \\ \hline
         Write-up completed late & Medium & High & Writing runs in parallel with the experiments, and every non-spiking section is drafted before the spiking results arrive; the kill-switch caps the time the spiking strand can take. \\ \hline
