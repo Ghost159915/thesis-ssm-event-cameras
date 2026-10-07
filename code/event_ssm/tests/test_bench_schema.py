@@ -79,3 +79,73 @@ def test_spikingssm_kinds_and_checkpoint(tmp_path):
                                            ("puressm", ["puressm"])])
 def test_existing_model_selections_are_unchanged(models, kinds):
     assert s10.kinds_for(s10.parse_args(["--models", models])) == kinds
+
+
+# ---- review fixes: protect the citable results, arm provenance, units, monitors --------------------------------
+import json
+
+
+def test_all_plus_spikingssm_selection(tmp_path):
+    ck = tmp_path / "x.ckpt"; ck.write_bytes(b"")
+    a = s10.parse_args(["--models", "all+spikingssm", "--spikingssm-ckpt", str(ck)])
+    assert s10.kinds_for(a) == ["eventssm", "baseline", "puressm", "spikingssm"]
+
+
+def test_spikingssm_ckpt_without_spikingssm_is_an_error(tmp_path):
+    ck = tmp_path / "x.ckpt"; ck.write_bytes(b"")
+    with pytest.raises(SystemExit):
+        s10.parse_args(["--models", "all", "--spikingssm-ckpt", str(ck)])
+
+
+@pytest.mark.parametrize("ap", ["46.2", "0", "-0.1"])
+def test_spikingssm_test_ap_must_be_a_fraction(tmp_path, ap):
+    ck = tmp_path / "x.ckpt"; ck.write_bytes(b"")
+    with pytest.raises(SystemExit):
+        s10.parse_args(["--models", "spikingssm", "--spikingssm-ckpt", str(ck), "--spikingssm-test-ap", ap])
+
+
+def test_spikingssm_ckpt_is_stored_absolute(tmp_path, monkeypatch):
+    ck = tmp_path / "x.ckpt"; ck.write_bytes(b"")
+    monkeypatch.chdir(tmp_path)
+    a = s10.parse_args(["--models", "spikingssm", "--spikingssm-ckpt", "x.ckpt"])
+    assert a.spikingssm_ckpt == str(ck.resolve())
+
+
+@pytest.mark.parametrize("models, tag, expected", [
+    ("all", None, "results/stage10"),
+    ("puressm", None, "results/stage10"),
+    ("spikingssm", "graded_s234", "results/stage22/graded_s234"),
+    ("all+spikingssm", "spike_s4", "results/stage22/spike_s4_with_ann"),
+])
+def test_default_out_dir_keeps_spiking_runs_away_from_stage10(tmp_path, models, tag, expected):
+    ck = tmp_path / "x.ckpt"; ck.write_bytes(b"")
+    argv = ["--models", models] + (["--spikingssm-ckpt", str(ck)] if tag else [])
+    out = s10.resolve_out(s10.parse_args(argv), tag)
+    assert out == s10.REPO / expected
+
+
+def test_explicit_out_dir_wins(tmp_path):
+    a = s10.parse_args(["--models", "all", "--out", str(tmp_path)])
+    assert s10.resolve_out(a, None) == tmp_path
+
+
+def test_refuses_to_overwrite_results_with_a_different_model_set(tmp_path):
+    f = tmp_path / "bench_results.json"
+    f.write_text(json.dumps({"schema": 1, "models": {"eventssm": {}, "baseline": {}, "puressm": {}}}))
+    with pytest.raises(SystemExit):
+        s10.guard_overwrite(f, ["spikingssm"])
+    s10.guard_overwrite(f, ["eventssm", "baseline", "puressm"])     # same set: a deliberate re-run
+    s10.guard_overwrite(tmp_path / "absent.json", ["spikingssm"])   # nothing to protect
+
+
+@pytest.mark.parametrize("var", ["SPIKING_MONITOR", "PURESSM_MONITOR"])
+def test_refuses_to_benchmark_with_training_monitors_on(monkeypatch, var):
+    monkeypatch.setenv(var, "1")
+    with pytest.raises(SystemExit):
+        s10.check_env()
+
+
+def test_env_check_passes_when_monitors_are_off(monkeypatch):
+    for v in ("SPIKING_MONITOR", "PURESSM_MONITOR"):
+        monkeypatch.delenv(v, raising=False)
+    s10.check_env()

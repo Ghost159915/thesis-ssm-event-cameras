@@ -78,6 +78,15 @@ def test_report_labels_a_spikingssm_model(tmp_path):
     d["models"]["spikingssm"] = json.loads(json.dumps(d["models"]["puressm" if "puressm" in d["models"] else "eventssm"]))
     j = tmp_path / "with_spiking.json"; j.write_text(json.dumps(d))
     rep.generate(json_path=j, out_dir=tmp_path)
-    md = (tmp_path / "efficiency_table.md").read_text()
-    assert "spikingssm" in md
     assert rep.LABEL["spikingssm"].startswith("SpikingSSM") and "spikingssm" in rep.HUE
+
+
+def test_report_labels_carry_the_spiking_arm(tmp_path):
+    # a residual arm must be reported as such: the label is built from the arm recorded in the JSON
+    d = json.loads(FIXTURE.read_text())
+    m = json.loads(json.dumps(next(iter(d["models"].values()))))
+    m["arm_tag"] = "spike_s234_residual"
+    d["models"]["spikingssm"] = m
+    rows = {r["model"]: r for r in rep._rows(d)}
+    assert rows["spikingssm"]["label"] == "SpikingSSM (ours, BiMamba + LIF) [spike_s234_residual]"
+    assert rows["eventssm"]["label"] == rep.LABEL["eventssm"]

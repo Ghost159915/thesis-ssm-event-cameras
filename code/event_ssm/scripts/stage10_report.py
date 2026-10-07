@@ -48,6 +48,12 @@ def _add_baseline_ratios(rows: list) -> None:
             r["vs_baseline"] = " / ".join(parts)
 
 
+def _label(kind: str, m: dict) -> str:
+    """Display label; a SpikingSSM entry carries its arm tag (a residual arm must be reported as such)."""
+    base = LABEL.get(kind, kind)
+    return f"{base} [{m['arm_tag']}]" if m.get("arm_tag") else base
+
+
 def _rows(d: dict) -> list:
     rows = []
     for kind, m in d["models"].items():
@@ -55,7 +61,7 @@ def _rows(d: dict) -> list:
         gflops = m["flops"]["total_gflops"]
         bf = m["latency"]["bf16"]
         rows.append({
-            "model": kind, "test_ap": ap,
+            "model": kind, "label": _label(kind, m), "test_ap": ap,
             "params_m": m["params_m"]["total"],
             "gflops_total": gflops,
             "gflops_counted": m["flops"]["counted_gflops"],
@@ -139,7 +145,7 @@ def _fig_pareto(rows, out_dir):
         # task-7-report.md Step 6).
         radius_pts = (marker_pts2 / 3.141592653589793) ** 0.5
         dagger = "†" if r.get("flops_incomplete") else ""
-        ax.annotate(f"{LABEL.get(r['model'], r['model'])}\n{r['params_m']:.1f}M · {r['gflops_total']:.1f}{dagger} GFLOPs",
+        ax.annotate(f"{r['label']}\n{r['params_m']:.1f}M · {r['gflops_total']:.1f}{dagger} GFLOPs",
                     (r["lat_full_p50_ms"], r["test_ap"] * 100), textcoords="offset points",
                     xytext=(radius_pts + 6, -4), fontsize=8.5, color=INK2)
     ax.set_xlabel("Full-pipeline latency p50 (ms, bf16, B=1 streaming)", color=INK2)
@@ -177,7 +183,7 @@ def _fig_components(d, out_dir):
             bottom += v
         ax.annotate(f"Σ {bottom:.2f} ms", (xi, bottom), ha="center", va="bottom",
                     fontsize=9, color=INK2)
-    ax.set_xticks(list(xs)); ax.set_xticklabels([LABEL.get(k, k) for k in kinds], color=INK2)
+    ax.set_xticks(list(xs)); ax.set_xticklabels([_label(k, d["models"][k]) for k in kinds], color=INK2)
     ax.set_ylabel("Latency p50 (ms, bf16, B=1)", color=INK2)
     ax.set_title("Per-component latency (stacked)", color=INK)
     ax.grid(True, axis="y", color=GRID, lw=0.8)

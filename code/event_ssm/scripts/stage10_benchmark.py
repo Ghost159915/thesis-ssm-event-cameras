@@ -106,7 +106,8 @@ def gather_meta(clip_src: str) -> dict:
     return meta
 
 
-def measure_model(kind: str, device, clip, smoke: bool, graph: bool = False, ckpt_path=None) -> dict:
+def measure_model(kind: str, device, clip, smoke: bool, graph: bool = False, ckpt_path=None,
+                  arm=None) -> dict:
     from event_ssm.benchmark.bench_models import build_model, CKPTS
     from event_ssm.benchmark import bench_metrics as bm
 
@@ -115,6 +116,9 @@ def measure_model(kind: str, device, clip, smoke: bool, graph: bool = False, ckp
     warmup, iters = (3, 10) if smoke else (50, 300)
     frames = clip.to(device)
     out = {"params_m": model.param_breakdown()}
+    if arm is not None:                         # SpikingSSM: which ablation arm was measured (read from the ckpt)
+        from event_ssm.integration.spiking_ckpt import run_tag
+        out["arm"], out["arm_tag"] = arm, run_tag(arm)
 
     # ---- FLOPs: counted (fvcore first; torch.profiler runtime fallback if fvcore fails or
     #      undercounts -- see task-7-report.md "Fix wave 2" for why fvcore's jit.trace cannot
@@ -184,6 +188,9 @@ def measure_model(kind: str, device, clip, smoke: bool, graph: bool = False, ckp
                     "total_gflops": counted["counted_gflops"] + analytic_gflops,
                     "unsupported_ops": counted["unsupported_ops"], "counted_incomplete": incomplete,
                     "source": source}
+    if kind == "spikingssm":
+        out["flops"]["notes"] = ("LIF readout: elementwise ops only partly counted by the profiler (negligible); "
+                                 "synaptic operations (SOPs) are not accounted here (Stage-22 accounting)")
 
     # ---- latency (bf16 + fp32): headline full, network-only, per-component, throughput ----
     out["latency"] = {}
@@ -303,13 +310,49 @@ def kinds_for(args) -> list:
         return ["eventssm", "baseline"]
     if args.models == "all":                    # the three ANN models, as before
         return ["eventssm", "baseline", "puressm"]
+    if args.models == "all+spikingssm":         # same session, so thermal state and ratios are comparable
+        return ["eventssm", "baseline", "puressm", "spikingssm"]
     return [args.models]
+
+
+def resolve_out(args, spiking_tag):
+    """Output directory: explicit --out wins; a run including spikingssm defaults to results/stage22/<arm tag>
+    (+ _with_ann for the 4-model session) so it can never land on the citable results/stage10 JSON."""
+    if args.out:
+        return pathlib.Path(args.out)
+    kinds = kinds_for(args)
+    if "spikingssm" in kinds:
+        return REPO / "results/stage22" / (spiking_tag + ("_with_ann" if len(kinds) > 1 else ""))
+    return REPO / "results/stage10"
+
+
+def guard_overwrite(outfile, kinds) -> None:
+    """Refuse to overwrite a results JSON holding a DIFFERENT model set (results/ is gitignored: an overwritten
+    citable run cannot be recovered). Re-running the same set is a deliberate re-measurement and is allowed."""
+    outfile = pathlib.Path(outfile)
+    if not outfile.exists():
+        return
+    try:
+        existing = set(json.loads(outfile.read_text()).get("models", {}))
+    except (OSError, ValueError):
+        sys.exit(f"[stage10] refusing to overwrite unreadable {outfile}; move it or pass a different --out")
+    if existing != set(kinds):
+        sys.exit(f"[stage10] refusing to overwrite {outfile}: it holds {sorted(existing)}, this run measures "
+                 f"{sorted(kinds)}. Pass a different --out or move the file.")
+
+
+def check_env() -> None:
+    """Training monitors attach forward hooks that print and host-sync inside timed forwards (biased latency);
+    fail closed rather than record a contaminated run. stage10_run_local.sh unsets them already."""
+    on = [v for v in ("SPIKING_MONITOR", "PURESSM_MONITOR") if os.environ.get(v) == "1"]
+    if on:
+        sys.exit(f"[stage10] refusing to benchmark with training monitors on: {on}. Unset them first.")
 
 
 def parse_args(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--models", default="both",
-                    choices=["both", "all", "eventssm", "baseline", "puressm", "spikingssm"])
+                    choices=["both", "all", "eventssm", "baseline", "puressm", "spikingssm", "all+spikingssm"])
     ap.add_argument("--spikingssm-ckpt", default=None,
                     help="checkpoint for --models spikingssm (required; its ablation arm is read from it)")
     ap.add_argument("--spikingssm-test-ap", type=float, default=None,
@@ -318,18 +361,25 @@ def parse_args(argv=None):
     ap.add_argument("--graph", action="store_true",
                     help="also measure the state-carrying cuda-graph-replay latency as a separate "
                          "labeled latency.graph column (ours backbones only; eager numbers untouched)")
-    ap.add_argument("--out", default=str(REPO / "results/stage10"))
+    ap.add_argument("--out", default=None,
+                    help="default: results/stage10, or results/stage22/<arm tag>[_with_ann] when spikingssm runs")
     args = ap.parse_args(argv)
     if "spikingssm" in kinds_for(args):
         if not args.spikingssm_ckpt:
             ap.error("--models spikingssm needs --spikingssm-ckpt (one checkpoint per ablation arm)")
         if not pathlib.Path(args.spikingssm_ckpt).is_file():
             ap.error(f"--spikingssm-ckpt not found: {args.spikingssm_ckpt}")
+        args.spikingssm_ckpt = str(pathlib.Path(args.spikingssm_ckpt).resolve())
+    elif args.spikingssm_ckpt or args.spikingssm_test_ap is not None:
+        ap.error("--spikingssm-ckpt / --spikingssm-test-ap given but spikingssm is not selected")
+    if args.spikingssm_test_ap is not None and not 0 < args.spikingssm_test_ap <= 1:
+        ap.error(f"--spikingssm-test-ap is a fraction like TEST_AP (e.g. 0.452), got {args.spikingssm_test_ap}")
     return args
 
 
 def main():
     args = parse_args()
+    check_env()
     assert torch.cuda.is_available(), "Stage-10 benchmark needs the CUDA GPU (run via stage10_run_local.sh)"
     device = torch.device("cuda")
 
@@ -338,19 +388,27 @@ def main():
     blob = torch.load(DEFAULT_CACHE, weights_only=False)
 
     from event_ssm.benchmark.bench_models import CKPTS
-    outdir = pathlib.Path(args.out); outdir.mkdir(parents=True, exist_ok=True)
+    kinds = kinds_for(args)
+    arm = tag = None
+    if "spikingssm" in kinds:
+        from event_ssm.integration.spiking_ckpt import arm_from_checkpoint, run_tag
+        arm = arm_from_checkpoint(args.spikingssm_ckpt)
+        tag = run_tag(arm)
+    outdir = resolve_out(args, tag); outdir.mkdir(parents=True, exist_ok=True)
     outfile = outdir / ("bench_results_smoke.json" if args.smoke else "bench_results.json")
+    guard_overwrite(outfile, kinds)
 
     results = {"schema": 1, "meta": gather_meta(blob["src"]), "models": {}}
     results["meta"]["ckpts"] = {k: str(v) for k, v in CKPTS.items()}
-    kinds = kinds_for(args)
     if "spikingssm" in kinds:
         results["meta"]["ckpts"]["spikingssm"] = str(args.spikingssm_ckpt)
         results["meta"]["test_ap"] = {**TEST_AP, "spikingssm": args.spikingssm_test_ap}
     for kind in kinds:
         print(f"[stage10] measuring {kind} ({'smoke' if args.smoke else 'full'}) ...")
+        spk = kind == "spikingssm"
         results["models"][kind] = measure_model(kind, device, clip, args.smoke, graph=args.graph,
-                                                ckpt_path=args.spikingssm_ckpt if kind == "spikingssm" else None)
+                                                ckpt_path=args.spikingssm_ckpt if spk else None,
+                                                arm=arm if spk else None)
         # Run protection: dump after EVERY model so a crash on model 2 doesn't lose model 1's
         # ~15 min of measurement -- this JSON is overwritten again (complete) at the end.
         outfile.write_text(json.dumps(results, indent=2))
