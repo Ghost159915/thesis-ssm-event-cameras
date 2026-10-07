@@ -32,7 +32,8 @@ def fake_repo(tmp_path):
     repo = tmp_path / "repo"
     stub = repo / "code" / "event_ssm" / "scripts" / "stage7_eval.py"
     stub.parent.mkdir(parents=True)
-    stub.write_text("import sys\nfor a in sys.argv[1:]:\n    print('ARG ' + a)\n")
+    stub.write_text("import os, sys\nfor a in sys.argv[1:]:\n    print('ARG ' + a)\n"
+                    "print('ENV MAMBA_STEP_SCALE=' + str(os.environ.get('MAMBA_STEP_SCALE')))\n")
     (repo / "external" / "ssms_event_cameras" / "RVT").mkdir(parents=True)
     conda = tmp_path / "conda.sh"
     conda.write_text("conda() { :; }\n")
@@ -68,17 +69,40 @@ def test_eval_uses_the_arm_from_the_checkpoint(fake_repo, tmp_path):
     assert "model.backbone.spiking.output_mode=graded" in args
     assert "model.backbone.spiking.spiking_stages=[2,3,4]" in args
     repo, _ = fake_repo
-    logs = list((repo / "results" / "stage21_test_eval" / "graded_s234").glob("test_eval_abc123_*.txt"))
+    logs = list((repo / "results" / "stage21_test_eval" / "graded_s234").glob("test_eval_abc123_step100000_*.txt"))
     assert len(logs) == 1 and "model.backbone.spiking.output_mode=graded" in logs[0].read_text()
 
 
-def test_passthrough_args_follow_the_arm(fake_repo, tmp_path):
-    # Stage-22 threshold sweeps pass an override after the arm (the LIF contract decides what is allowed)
+def test_posthoc_threshold_sweep_is_filed_separately(fake_repo, tmp_path):
+    # Stage-22 sweeps of a NON-learned threshold: allowed only with the explicit env flag, and never filed as the
+    # canonical test eval of the arm
     p = _ckpt(tmp_path, (4,), "spike")
-    r = _run(fake_repo, [str(p), "model.backbone.spiking.threshold=0.8"])
+    r = _run(fake_repo, [str(p), "model.backbone.spiking.threshold=0.8"], {"SPIKING_ALLOW_ARM_OVERRIDE": "1"})
     assert r.returncode == 0, r.stderr
     args = [l[4:] for l in r.stdout.splitlines() if l.startswith("ARG ")]
     assert args[-1] == "model.backbone.spiking.threshold=0.8"
+    repo, _ = fake_repo
+    assert list((repo / "results" / "stage21_test_eval" / "spike_s4_posthoc").glob("test_eval_*.txt"))
+    assert not (repo / "results" / "stage21_test_eval" / "spike_s4").exists()
+
+
+@pytest.mark.parametrize("extra, env", [
+    (["model.backbone.spiking.threshold=0.8"], {}),                         # missing the explicit flag
+    (["model.backbone.spiking.beta=0.5"], {"SPIKING_ALLOW_ARM_OVERRIDE": "1"}),   # learned: would be ignored
+    (["model.postprocess.confidence_threshold=0.1"], {}),                   # recipe key
+])
+def test_bad_extra_args_stop_before_evaluation(fake_repo, tmp_path, extra, env):
+    p = _ckpt(tmp_path, (4,), "spike")
+    r = _run(fake_repo, [str(p), *extra], env)
+    assert r.returncode != 0
+    assert "ARG " not in r.stdout
+
+
+def test_stage9_dt_hook_is_unset(fake_repo, tmp_path):
+    p = _ckpt(tmp_path, (4,), "spike")
+    r = _run(fake_repo, [str(p)], {"MAMBA_STEP_SCALE": "10"})
+    assert r.returncode == 0, r.stderr
+    assert "ENV MAMBA_STEP_SCALE=None" in r.stdout
 
 
 def test_missing_checkpoint_stops_before_evaluation(fake_repo, tmp_path):

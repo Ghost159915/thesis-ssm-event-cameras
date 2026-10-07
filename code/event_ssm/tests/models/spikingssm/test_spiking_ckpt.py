@@ -143,3 +143,80 @@ def test_cli_rejects_bad_usage():
     r = subprocess.run([sys.executable, "-m", "event_ssm.integration.spiking_ckpt", "argv", "x.ckpt"],
                        capture_output=True, text=True, env={"PYTHONPATH": code}, timeout=120)
     assert r.returncode == 2 and "usage" in r.stderr
+
+
+# ---- review fixes ------------------------------------------------------------------------------------------
+from event_ssm.integration.spiking_ckpt import classify_extra_args
+
+
+def test_fixed_beta_arm_overrides_include_beta():
+    arm = arm_from_state_dict(_sd((4,), lif_extra={"learn_beta": False, "beta": 0.8999999761581421}))
+    assert "model.backbone.spiking.beta=0.8999999761581421" in hydra_overrides(arm)
+
+
+def test_stages_disagreeing_on_residual_are_refused():
+    sd = _sd((3, 4))
+    sd[f"{P}3._extra_state"] = {"version": 1, "residual": True}
+    with pytest.raises(ValueError, match="residual"):
+        arm_from_state_dict(sd)
+
+
+def test_pre_contract_spiking_checkpoint_gets_a_clear_message():
+    sd = {f"{P}4.lif.beta_logit": torch.zeros(4)}            # spiking weights, no extra state (pre Stage-18 D14)
+    with pytest.raises(ValueError, match="predates"):
+        arm_from_state_dict(sd)
+
+
+def test_non_default_arm_round_trips_through_the_config_into_the_lif():
+    # overrides -> Hydra compose -> the LIF kwargs register.py passes -> the LIF's own arm record
+    from event_ssm.integration.smoke_harness import compose_smoke_config
+    from event_ssm.integration.register import _LIF_KEYS
+    from event_ssm.models.spikingssm.lif import LIFReadout
+    lif_extra = {"reset": "zero", "detach_reset": False, "alpha": 3.0, "learn_beta": False,
+                 "beta": 0.8999999761581421, "threshold": 0.5}
+    arm = arm_from_state_dict(_sd((3, 4), "graded", residual=True, lif_extra=lif_extra))
+    cfg = compose_smoke_config(experiment="spikingssm", extra_overrides=hydra_overrides(arm))
+    spk = cfg.model.backbone.spiking
+    assert list(spk.spiking_stages) == [3, 4] and spk.residual is True
+    rebuilt = LIFReadout(8, **{k: spk[k] for k in _LIF_KEYS if k in spk}).get_extra_state()
+    expected = _lif("graded", **lif_extra)
+    # a fixed beta is stored through its logit, so it returns within float32 noise; the arm contract compares
+    # fixed beta/threshold with a 1e-5 relative tolerance for exactly this reason (lif.py _FIXED_REL_TOL)
+    for k in ("beta", "threshold"):
+        assert rebuilt.pop(k) == pytest.approx(expected.pop(k), rel=1e-5)
+    assert rebuilt == expected
+
+
+@pytest.mark.parametrize("arm_extra, args, allow, verdict", [
+    ({}, [], False, "canonical"),
+    ({}, ["--cfg", "job"], False, "canonical"),
+    ({}, ["hydra.verbose=true"], False, "canonical"),
+    ({}, ["model.backbone.spiking.threshold=0.8"], True, "posthoc"),     # threshold not learned (default)
+])
+def test_extra_args_allowed(arm_extra, args, allow, verdict):
+    arm = arm_from_state_dict(_sd((4,), lif_extra=arm_extra))
+    assert classify_extra_args(arm, args, allow_override=allow) == verdict
+
+
+@pytest.mark.parametrize("arm_extra, args, allow, needle", [
+    ({}, ["model.backbone.spiking.beta=0.5"], True, "learned"),            # beta is learned: would be ignored
+    ({"learn_threshold": True}, ["model.backbone.spiking.threshold=0.8"], True, "learned"),
+    ({}, ["model.backbone.spiking.threshold=0.8"], False, "SPIKING_ALLOW_ARM_OVERRIDE"),
+    ({}, ["model.postprocess.confidence_threshold=0.1"], True, "not allowed"),
+    ({}, ["use_test_set=0"], True, "not allowed"),
+    ({}, ["batch_size.eval=8"], True, "not allowed"),
+])
+def test_extra_args_refused(arm_extra, args, allow, needle):
+    arm = arm_from_state_dict(_sd((4,), lif_extra=arm_extra))
+    with pytest.raises(ValueError, match=needle):
+        classify_extra_args(arm, args, allow_override=allow)
+
+
+def test_cli_error_is_a_message_not_a_traceback(tmp_path):
+    p = tmp_path / "puressm.ckpt"
+    torch.save({"state_dict": {f"{P}4.layers.0.A_log": torch.zeros(2)}}, p)
+    code = str(pathlib.Path(__file__).resolve().parents[4])
+    r = subprocess.run([sys.executable, "-m", "event_ssm.integration.spiking_ckpt", "tag", str(p)],
+                       capture_output=True, text=True, env={"PYTHONPATH": code}, timeout=120)
+    assert r.returncode == 1
+    assert "Traceback" not in r.stderr and "not a SpikingSSM checkpoint" in r.stderr

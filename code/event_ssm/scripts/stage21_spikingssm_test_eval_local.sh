@@ -8,11 +8,14 @@
 #
 #   bash stage21_spikingssm_test_eval_local.sh /abs/path/epoch=...-val_AP=....ckpt
 #   BATCH=2 bash stage21_spikingssm_test_eval_local.sh <ckpt>                      # if VRAM is tight
-#   bash stage21_spikingssm_test_eval_local.sh <ckpt> model.backbone.spiking.threshold=0.8
-#        (extra Hydra args are appended AFTER the arm; for Stage-22 sweeps of a NON-learned threshold/beta, which
-#         the arm contract only allows with SPIKING_ALLOW_ARM_OVERRIDE=1)
+#   SPIKING_ALLOW_ARM_OVERRIDE=1 bash stage21_spikingssm_test_eval_local.sh <ckpt> model.backbone.spiking.threshold=0.8
 #
-# Log: results/stage21_test_eval/<arm tag>/test_eval_<run id>_<timestamp>.txt. Needs an idle GPU; the user runs it.
+# Extra arguments are allow-listed (spiking_ckpt.classify_extra_args): `--cfg job`, `hydra.verbose=...`, and a
+# post-hoc sweep of a NON-learned threshold/beta with SPIKING_ALLOW_ARM_OVERRIDE=1. A learned knob is refused (the
+# model would silently ignore the override), as is anything that changes the recipe. Post-hoc runs are filed under
+# <arm tag>_posthoc/, never as the arm's canonical test eval.
+# Log: results/stage21_test_eval/<arm tag>[_posthoc]/test_eval_<run id>_step<N>_<timestamp>.txt. Needs an idle GPU;
+# the user runs it.
 set -euo pipefail
 
 set +u                                               # conda activate.d references unbound vars
@@ -40,6 +43,8 @@ BATCH="${BATCH:-4}"
 # arm + full evaluator argument list, both read from the checkpoint (fails here, before any evaluation, for a
 # non-spiking or malformed checkpoint)
 TAG="$(python -m event_ssm.integration.spiking_ckpt tag "$CKPT")"
+VERDICT="$(python -m event_ssm.integration.spiking_ckpt check-extra "$CKPT" "$@")"   # exits 1 on a refused arg
+[[ "$VERDICT" == "posthoc" ]] && TAG="${TAG}_posthoc"
 EVAL_ARGV_TXT="$(python -m event_ssm.integration.spiking_ckpt argv "$CKPT" "$DATASET" "$BATCH")"
 mapfile -t EVAL_ARGV <<< "$EVAL_ARGV_TXT"
 
@@ -48,7 +53,9 @@ RUN_ID="ckpt"
 [[ "$(basename "$CKPT_DIR")" == "checkpoints" ]] && RUN_ID="$(basename "$(dirname "$CKPT_DIR")")"
 RESULTS="$REPO/results/stage21_test_eval/$TAG"
 mkdir -p "$RESULTS"
-OUT="$RESULTS/test_eval_${RUN_ID}_$(date +%Y%m%d_%H%M%S).txt"
+STEP="NA"
+[[ "$(basename "$CKPT")" =~ step=([0-9]+) ]] && STEP="${BASH_REMATCH[1]}"
+OUT="$RESULTS/test_eval_${RUN_ID}_step${STEP}_$(date +%Y%m%d_%H%M%S).txt"
 
 cd "$REPO/external/ssms_event_cameras/RVT"          # as the Stage-14 eval (run outputs land under RVT/)
 {

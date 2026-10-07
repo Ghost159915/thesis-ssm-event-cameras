@@ -11,12 +11,17 @@ CLI (for the bash evaluation launcher):
     python -m event_ssm.integration.spiking_ckpt overrides <ckpt>  -> one Hydra override per line
     python -m event_ssm.integration.spiking_ckpt argv <ckpt> <dataset> <batch>
                                                                   -> the full stage7_eval.py argument list
+    python -m event_ssm.integration.spiking_ckpt check-extra <ckpt> [args...]
+                                                                  -> canonical | posthoc, or exit 1
+Errors print one line to stderr and exit 1 (no traceback).
 """
+import os
 import sys
 
 _PREFIX = "mdl.backbone.temporal."
 _LIF_SUFFIX = ".lif._extra_state"
-# readout settings in config order; beta/threshold are present in the checkpoint only when not learned
+# readout settings emitted after output_mode/stages/residual; beta/threshold are in the checkpoint only when not
+# learned (a learned value lives in the weights, and the config only sets its initialisation)
 _LIF_FIELDS = ("reset", "alpha", "detach_reset", "learn_beta", "learn_threshold", "beta", "threshold")
 
 
@@ -29,6 +34,9 @@ def arm_from_state_dict(sd: dict) -> dict:
     for spiking stages built as different arms (the config cannot express per-stage arms), or for a spiking stage
     missing its block state."""
     lif = {_stage(k): v for k, v in sd.items() if k.startswith(_PREFIX) and k.endswith(_LIF_SUFFIX)}
+    if not lif and any(k.startswith(_PREFIX) and ".lif." in k for k in sd):
+        raise ValueError("spiking weights without LIF extra state: the checkpoint predates the checkpoint arm "
+                         "contract (Stage-18 D14) and its arm cannot be read")
     if not lif:
         raise ValueError("no LIF extra state in the checkpoint: not a SpikingSSM checkpoint "
                          "(evaluate EventSSM/PureSSM with their own launchers)")
@@ -78,6 +86,33 @@ def build_eval_argv(ckpt: str, dataset: str, batch: int, arm: dict) -> list:
             "model.postprocess.confidence_threshold=0.001", *hydra_overrides(arm)]
 
 
+_SWEEPABLE = ("threshold", "beta")
+_ALWAYS_OK = ("--cfg", "job")
+
+
+def classify_extra_args(arm: dict, args, allow_override: bool) -> str:
+    """Extra Hydra arguments for an evaluation of this arm. Allowed: `--cfg job`, `hydra.verbose=...`, and a
+    post-hoc sweep of a NON-learned threshold/beta, the latter only with SPIKING_ALLOW_ARM_OVERRIDE=1 (the LIF
+    arm contract's own gate). Returns "posthoc" when such a sweep is present, else "canonical"; raises ValueError
+    for anything else, including an override of a LEARNED knob, which the model would silently ignore."""
+    posthoc = False
+    for a in args:
+        if a in _ALWAYS_OK or a.startswith("hydra.verbose="):
+            continue
+        knob = next((k for k in _SWEEPABLE if a.startswith(f"model.backbone.spiking.{k}=")), None)
+        if knob is None:
+            raise ValueError(f"argument {a!r} is not allowed: it could change the evaluation recipe or the arm of a "
+                             f"run filed under this arm's tag")
+        if arm.get(f"learn_{knob}", True):
+            raise ValueError(f"{knob} is learned in this checkpoint: an override would be silently ignored (the "
+                             f"trained value is in the weights), so a sweep would measure one operating point")
+        if not allow_override:
+            raise ValueError(f"overriding the non-learned {knob} is a post-hoc sweep and requires "
+                             f"SPIKING_ALLOW_ARM_OVERRIDE=1")
+        posthoc = True
+    return "posthoc" if posthoc else "canonical"
+
+
 def arm_from_checkpoint(path: str) -> dict:
     import torch
     ck = torch.load(path, map_location="cpu", mmap=True, weights_only=False)
@@ -86,18 +121,27 @@ def arm_from_checkpoint(path: str) -> dict:
 
 def main(argv=None) -> int:
     argv = sys.argv[1:] if argv is None else argv
-    ok = (len(argv) == 2 and argv[0] in ("tag", "overrides")) or (len(argv) == 4 and argv[0] == "argv")
+    ok = ((len(argv) == 2 and argv[0] in ("tag", "overrides")) or (len(argv) == 4 and argv[0] == "argv")
+          or (len(argv) >= 2 and argv[0] == "check-extra"))
     if not ok:
         print("usage: python -m event_ssm.integration.spiking_ckpt {tag|overrides} <ckpt>\n"
-              "       python -m event_ssm.integration.spiking_ckpt argv <ckpt> <dataset> <batch>", file=sys.stderr)
+              "       python -m event_ssm.integration.spiking_ckpt argv <ckpt> <dataset> <batch>\n"
+              "       python -m event_ssm.integration.spiking_ckpt check-extra <ckpt> [args...]", file=sys.stderr)
         return 2
-    arm = arm_from_checkpoint(argv[1])
-    if argv[0] == "tag":
-        print(run_tag(arm))
-    elif argv[0] == "overrides":
-        print("\n".join(hydra_overrides(arm)))
-    else:
-        print("\n".join(build_eval_argv(argv[1], argv[2], int(argv[3]), arm)))
+    try:
+        arm = arm_from_checkpoint(argv[1])
+        if argv[0] == "tag":
+            print(run_tag(arm))
+        elif argv[0] == "overrides":
+            print("\n".join(hydra_overrides(arm)))
+        elif argv[0] == "argv":
+            print("\n".join(build_eval_argv(argv[1], argv[2], int(argv[3]), arm)))
+        else:
+            allow = os.environ.get("SPIKING_ALLOW_ARM_OVERRIDE") == "1"
+            print(classify_extra_args(arm, argv[2:], allow_override=allow))
+    except ValueError as e:
+        print(f"[spiking_ckpt] ERROR: {e}", file=sys.stderr)
+        return 1
     return 0
 
 
