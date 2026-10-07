@@ -198,6 +198,35 @@ def _fig_components(d, out_dir):
     plt.close(fig)
 
 
+def _sop_table_md(d: dict):
+    """Stage-22 SOP / energy table for SpikingSSM rows (None when there are none). Operation-count estimate."""
+    rows = [(k, m) for k, m in d["models"].items() if "sop" in m]
+    if not rows:
+        return None
+    head = ("| Model | Op class | Nonzero rate per stage (min–max over clips) | Spike-fed MACs (M) | Driven ops (M) "
+            "| Dense MACs (G) | Est. energy (mJ/frame) | Dense twin (mJ/frame) | Saving (%) | Ceiling (%) |")
+    lines = [head, "|" + "---|" * 10]
+    source = ""
+    for kind, m in rows:
+        s = m["sop"]
+        if "error" in s:
+            lines.append(f"| {_label(kind, m)} | error: {s['error']} |" + " — |" * 8)
+            continue
+        source = s["constants"]["source"]
+        rates = ", ".join(f"s{st} {v['rate']:.3f} ({v['rate_min_clip']:.3f}–{v['rate_max_clip']:.3f})"
+                          + ("" if v["binary"] else " non-binary") for st, v in s["rates"]["stages"].items())
+        lines.append(f"| {_label(kind, m)} | {s['op_class']} | {rates} | {s['spike_fed_total'] / 1e6:.2f} "
+                     f"| {s['driven_ops'] / 1e6:.2f} | {s['dense']['total_macs'] / 1e9:.3f} "
+                     f"| {s['energy_j'] * 1e3:.3f} | {s['energy_dense_j'] * 1e3:.3f} | {s['saving'] * 100:.2f} "
+                     f"| {s['ceiling'] * 100:.2f} |")
+    lines += ["", "*Operation-count estimate. Driven ops = nonzero rate × spike-fed MACs, priced as accumulates "
+              "(AC: binary spikes, no residual) or as MACs (graded, analog, residual). Each LIF neuron costs one MAC "
+              "per frame. Dense twin = the same network priced dense (PureSSM-equivalent). Ceiling = the saving at "
+              "zero activity. Memory traffic is not modelled; sparse-MAC savings assume zero-skipping hardware. "
+              f"Constants: {source}.*"]
+    return "\n".join(lines)
+
+
 def generate(json_path, out_dir) -> list:
     json_path, out_dir = pathlib.Path(json_path), pathlib.Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -207,6 +236,9 @@ def generate(json_path, out_dir) -> list:
     with open(out_dir / "efficiency_table.csv", "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
         w.writeheader(); w.writerows(rows)
+    sop_md = _sop_table_md(d)
+    if sop_md:
+        (out_dir / "sop_table.md").write_text(sop_md + "\n")
     _fig_pareto(rows, out_dir)
     _fig_components(d, out_dir)
     print(f"[stage10-report] wrote table + figures to {out_dir}")

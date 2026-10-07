@@ -88,3 +88,12 @@ def test_profiler_counts_toy_conv():
     # applied inside profiler_network_flops.
     assert abs(r["counted_gflops"] - 110592 / 1e9) / (110592 / 1e9) < 0.10
     assert r["source"] == "torch.profiler"
+
+
+def test_profiler_flops_carry_a_per_op_breakdown():
+    from event_ssm.benchmark import bench_metrics as bm
+    conv = torch.nn.Conv2d(3, 4, 3, bias=False)
+    x = torch.randn(1, 3, 8, 8)
+    r = bm.profiler_network_flops(lambda: conv(x), device=None)
+    assert r["by_op"]["aten::conv2d"] == 2 * 6 * 6 * 4 * 3 * 3 * 3
+    assert sum(r["by_op"].values()) / 1e9 == pytest.approx(r["counted_gflops"])

@@ -138,6 +138,7 @@ def measure_model(kind: str, device, clip, smoke: bool, graph: bool = False, ckp
     for p in model.detector.parameters():
         p.requires_grad_(False)
     net_only = NetOnly(model)
+    by_op = None                                  # per-op profiler FLOPs; feed the Stage-22 SOP accounting
     try:
         try:
             # frames[0:1] (not frames[0]): full_step/network_step/components each do exactly one
@@ -159,6 +160,7 @@ def measure_model(kind: str, device, clip, smoke: bool, graph: bool = False, ckp
             # analytic add-on below regardless of which path counted the rest.
             try:
                 prof_counted = bm.profiler_network_flops(lambda: net_only(frames[0:1]), device=device)
+                by_op = prof_counted.get("by_op")
                 if prof_counted["counted_gflops"] > 0.0:
                     counted = {**counted, "counted_gflops": prof_counted["counted_gflops"]}
                     source = prof_counted["source"]
@@ -300,6 +302,11 @@ def measure_model(kind: str, device, clip, smoke: bool, graph: bool = False, ckp
                      "j_per_frame": delta_w * elapsed / max(count["n"], 1),
                      "frames": count["n"], "seconds": elapsed}
 
+    # ---- Stage 22: SOP / energy accounting, LAST so its forward hooks can never touch a timed section (the
+    # train-mode VRAM forward above cannot change the spike outputs: the SpikingSSM backbone has no BatchNorm) ----
+    if kind == "spikingssm":
+        out["sop"] = sop_section(model, arm, by_op, smoke)
+
     del model
     torch.cuda.empty_cache()
     return out
@@ -339,6 +346,23 @@ def guard_overwrite(outfile, kinds) -> None:
     if existing != set(kinds):
         sys.exit(f"[stage10] refusing to overwrite {outfile}: it holds {sorted(existing)}, this run measures "
                  f"{sorted(kinds)}. Pass a different --out or move the file.")
+
+
+def sop_section(model, arm, by_op, smoke: bool) -> dict:
+    """Stage-22 `sop` block for a SpikingSSM arm. Like the FLOP fallback, a failure is recorded, printed and
+    reported, never allowed to abort the rest of the run."""
+    from event_ssm.benchmark import sop
+    if not by_op:
+        print("[stage10] WARNING: SOP accounting skipped: no per-op profiler FLOPs")
+        return {"error": "no per-op profiler FLOPs (the torch.profiler fallback did not run)"}
+    k, warm, n = (2, 4, 8) if smoke else (sop.RATE_CLIPS, sop.RATE_WARMUP, sop.RATE_FRAMES)
+    try:
+        from event_ssm.benchmark.bench_clip import iter_rate_clips
+        rates = sop.measure_nonzero_rates(model, iter_rate_clips(k=k, n_frames=warm + n), warmup=warm)
+        return sop.sop_block(model.detector, arm, by_op, rates)
+    except Exception as e:
+        print(f"[stage10] WARNING: SOP accounting failed: {e}")
+        return {"error": str(e)[:300]}
 
 
 def check_env() -> None:

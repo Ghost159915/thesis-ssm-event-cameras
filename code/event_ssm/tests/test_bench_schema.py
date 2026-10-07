@@ -149,3 +149,18 @@ def test_env_check_passes_when_monitors_are_off(monkeypatch):
     for v in ("SPIKING_MONITOR", "PURESSM_MONITOR"):
         monkeypatch.delenv(v, raising=False)
     s10.check_env()
+
+
+def test_sop_section_records_an_error_without_per_op_flops():
+    out = s10.sop_section(model=None, arm={}, by_op=None, smoke=True)
+    assert "error" in out and "per-op" in out["error"]
+
+
+def test_sop_section_records_an_error_instead_of_aborting(monkeypatch):
+    from event_ssm.benchmark import bench_clip, sop as sop_mod
+    def boom(*a, **k):
+        raise ValueError("non-binary")
+    monkeypatch.setattr(bench_clip, "iter_rate_clips", lambda **k: iter(()))   # no dependence on the Gen1 data
+    monkeypatch.setattr(sop_mod, "measure_nonzero_rates", boom)
+    out = s10.sop_section(model=None, arm={"spiking_stages": [4]}, by_op={"aten::conv2d": 2}, smoke=True)
+    assert out == {"error": "non-binary"}

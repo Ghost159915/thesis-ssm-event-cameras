@@ -193,5 +193,9 @@ def profiler_network_flops(step_fn, *, device) -> dict:
     # The flops annotation lives on the CPU-side aten:: event even when CUDA activity is also
     # captured (CUDA kernel events carry no flops field of their own), so summing across all
     # profiled events never double-counts a GPU op.
-    total = sum(e.flops for e in prof.events() if getattr(e, "flops", None))
-    return {"counted_gflops": total / 1e9, "source": "torch.profiler"}
+    by_op: dict = {}
+    for e in prof.events():
+        if getattr(e, "flops", None):
+            by_op[e.name] = by_op.get(e.name, 0) + int(e.flops)
+    # by_op feeds the Stage-22 dense-MAC count (benchmark/sop.py separates MAC ops from elementwise ones)
+    return {"counted_gflops": sum(by_op.values()) / 1e9, "source": "torch.profiler", "by_op": by_op}

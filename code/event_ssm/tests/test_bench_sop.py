@@ -26,6 +26,7 @@ def test_spike_fed_macs_match_the_traced_consumers(det):
     dims, strides = det.backbone.get_stage_dims(stages), det.backbone.get_strides(stages)
     feats = {s: torch.rand(1, c, 256 // st, 320 // st) for s, c, st in zip(stages, dims, strides)}
     taint, macs = {id(t): s for s, t in feats.items()}, collections.Counter()
+    alive = []          # keep every tainted tensor referenced: a freed tensor's id() is reused by later tensors
     move = {"cat", "view", "reshape", "contiguous", "__getitem__", "__get__", "permute", "flatten", "to"}
 
     class Tracer(TorchFunctionMode):
@@ -37,6 +38,7 @@ def test_spike_fed_macs_match_the_traced_consumers(det):
             if hit and name in move:
                 if isinstance(out, torch.Tensor):
                     taint[id(out)] = hit[0]
+                    alive.append(out)
             elif hit:
                 assert name == "conv2d", f"unexpected op {name} reads a raw stage output"
                 w = args[1]
@@ -265,3 +267,25 @@ def test_sop_block_residual_spike_arm_is_priced_as_macs(det):
     arm = {"output_mode": "spike", "residual": True, "spiking_stages": [3, 4]}
     b = sop.sop_block(det, arm, {"aten::conv2d": 8_000_000_000}, _rates([3, 4], rate=1.0, binary=False))
     assert b["op_class"] == "MAC" and b["acs"] == 0
+
+
+from event_ssm.benchmark.bench_models import REPO
+
+SPIKE_S4 = REPO / "external/ssms_event_cameras/RVT/RVT/ax1lj36q/checkpoints/epoch=000-step=25000-val_AP=0.34.ckpt"
+
+
+@pytest.mark.gpu
+@pytest.mark.skipif(not SPIKE_S4.exists(), reason="Stage-19 spike [4] checkpoint not present")
+def test_sop_on_a_real_spike_checkpoint():
+    from event_ssm.benchmark import bench_metrics as bm
+    from event_ssm.benchmark.bench_clip import iter_rate_clips
+    from event_ssm.integration.spiking_ckpt import arm_from_checkpoint
+    dev = torch.device("cuda")
+    model = build_model("spikingssm", device=dev, load_ckpt=True, ckpt_path=SPIKE_S4)
+    arm = arm_from_checkpoint(str(SPIKE_S4))
+    rates = sop.measure_nonzero_rates(model, iter_rate_clips(k=2, n_frames=12), warmup=4)
+    assert 0.0 < rates["stages"][4]["rate"] < 1.0 and rates["stages"][4]["binary"] is True
+    by_op = bm.profiler_network_flops(lambda: model.network_step(torch.zeros(1, 20, 256, 320, device=dev), None),
+                                      device=dev)["by_op"]
+    b = sop.sop_block(model.detector, arm, by_op, rates)
+    assert b["op_class"] == "AC" and 0.0 < b["saving"] < b["ceiling"] < 0.01
