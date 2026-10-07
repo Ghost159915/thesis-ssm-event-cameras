@@ -1,220 +1,138 @@
-# Thesis fact-check — `thesis/latex/main.tex` (59 pp), 2026-10-07
+# Thesis fact-check and fix tracker — `thesis/latex/main.tex`
 
-**Scope:** every chapter and appendix of the PDF. Every number and claim was checked against its primary source:
-- **Own measurements:** the result JSONs and docs (`results/stage10/bench_results.json`,
-  `docs/results/Stage{9,15,16}*.md`, `proofs/out/u5_erf_extent.md`).
-- **Implementation claims:** the code and released configs (RVT `config/`, `modules/detection.py`,
-  `data/utils/representations.py`, `code/event_ssm/...`).
-- **Data:** the data files (Gen1 label files).
-- **Literature:**
-  - the cited papers' own text, for 56 local PDFs in `thesis/references/papers/`;
-  - vendor or venue pages, for three items with no local copy.
+**Started 2026-10-07.** Two passes:
+1. **Full read.** Every chapter, table, figure and appendix.
+2. **Deep pass.** Every citation against the cited paper (56 local PDFs, plus the web for 14 items), bibliography
+   integrity, numbers repeated across chapters, and the facts each fix relies on.
 
-Line numbers refer to `main.tex` as of commit `d58e439`. **Nothing in the thesis has been changed by this check.**
+Line numbers are those of `main.tex` at commit `d58e439` (before the fixes).
 
-## Verified correct (no action)
+**Status key:**
+- **open:** not yet fixed;
+- **fixed:** done, with its commit;
+- **DECISION:** needs the user's choice; options are in the chat and recorded here once decided.
 
-**Own measurements: every one matches its source.**
-- **Accuracy:** the accuracy table (all 21 values), the −5.96 gap, ≈ half closed, car +1.16 / pedestrian −0.76, and
-  −1.29 / −3.01 to the baseline.
-- **ERF:** σ 41.8 / 84.4 / 85.6 / 105.5, Δ +0.2 / +6.2 / +34.4 / +30.1, untrained 78.2 / 75.4, and 8 samples.
-- **Robustness:** regime-1 and regime-2 values, retentions, the `tab:dt_comp` differences, and AP_L −14.3 / −7.7 /
-  +3.58.
-- **Efficiency:** latency, Hz, J/frame, state 144.5 vs 4.69 MB (31×), and CUDA-graph 210 / 181 Hz. Parameters are
-  19.18 (11.23) / 18.19 / 16.33 (8.38) M. FLOPs (corrected today) are 12.71 / 11.06 / 10.03 G.
-- **Dataset:** the Gen1 split table arithmetic, 0.87 annotations/s, ≈ 4 % of steps scored, and the busy test chunk
-  128 / 53 / 117 / 11 (re-read from its label file).
-- **Recipe:** checked against the released config (lr 2e-4, warm-up 0.5 %, final 2e-8 via RVT's reinterpretation of
-  `final_div_factor`, clip 1.0, batch 8, fp32).
-- **Implementation:** the stacked-histogram definition (cut-off 10, floor/clamp binning, polarity-major channels).
-- **Environment and checkpoints:** environment versions, the pinned commit `7c871b5`, and all three checkpoint
-  SHA-256 prefixes.
-- **Qualitative figure:** all claims (confidences 0.81–0.93, 0.70–0.90 at 25.7 / 34.3 s, 1,675 events, 0.11–0.36
-  false boxes).
+## What was verified correct
 
-**Implementation descriptions in Ch. 3, all matching the code:**
-- the tap wiring, with no residual;
-- the 3/20 average projection;
-- the Mamba-2 and BiScan equations, with per-direction parameters;
-- stem 20→32→64;
-- drop-path 0.1;
-- row/column alternation;
-- no BatchNorm;
-- the arctan surrogate with α = 2;
-- graded = s·m_pre.
+**Own measurements:** every one matches its source.
+- **Accuracy:** all 21 table values, the −5.96 gap, ≈ half closed, car +1.16 / pedestrian −0.76, and −1.29 / −3.01 to
+  the baseline.
+- **ERF:** σ 41.8 / 84.4 / 85.6 / 105.5 and Δ +0.2 / +6.2 / +34.4 / +30.1; untrained 78.2 / 75.4; 8 samples.
+- **Robustness:** regime 1/2, retentions, the `tab:dt_comp` differences, and AP_L −14.3 / −7.7 / +3.58.
+- **Efficiency:** latency, Hz, J, state 144.5 vs 4.69 MB (31×), CUDA-graph 210 / 181 Hz, parameters, and the
+  corrected FLOPs (12.71 / 11.06 / 10.03 G).
+- **Dataset:** Gen1 split arithmetic, 0.87 annotations/s, ≈ 4 % of steps scored, and the busy chunk 128 / 53 / 117 / 11
+  from the label file.
+- **Recipe:** checked against the released config (lr, warm-up, final 2e-8 via RVT's reinterpretation, clip 1.0,
+  batch 8, fp32).
+- **Stacked histogram:** checked against the RVT code (cut-off 10, binning, channel order).
+- **Environment and checkpoints:** versions, the pinned commit `7c871b5`, and the three checkpoint hashes.
+- **Qualitative figure:** every claim.
+
+**Ch. 3 implementation descriptions:** all match the code.
 
 **Literature, checked against the papers:**
-- **Zubic et al.:**
-  - S5-ViT-B 47.7 (Table 1) / 47.71 (Table 2), so "exact match" holds;
-  - 3.76 mAP drop and ">20" for others (21.25);
-  - 33 % faster training;
-  - 39.84 at 200 Hz, and RVT 47.16 → 8.35 (17.7 %).
-- **RVT:** 47.2 mAP; under 12 ms; "over 5 times faster than ASTMNet".
-- **SMamba:** 50.4; −23 % FLOPs; ConvLSTM in time.
-- **Meyer et al.:** 1000× energy; 75× latency and throughput.
-- **Vision Mamba:** 2.8×; −86.8 % memory.
-- **S4:** sCIFAR 91.13; Path-X.
-- **BioDrone (Xu et al.):** 96.1 % detection rate.
-- **Gehrig & Scaramuzza 2022:** learning on noisy data overcomes the noise penalty.
-- **HsVT:** authors Xu et al., ICML 2025.
-- **Gen1 (de Tournemire 2020):** 39 h; 1–4 Hz manual labels; > 255k labels.
-- **SNN table:** re-verified 2026-10-06.
+- **Zubic et al.:** 47.7 / 47.71; 3.76 mAP; ">20" (21.25); 33 % faster training; 39.84 @200 Hz; RVT 47.16 → 8.35.
+- **RVT:** 47.2; under 12 ms; "over 5× faster than ASTMNet".
+- **Mamba-family and vision-SSM numbers:** SMamba 50.4 / −23 % / ConvLSTM; Meyer 1000× / 75×; Vision Mamba 2.8× /
+  86.8 %; S4 91.13.
+- **UAV-related works:** BioDrone 96.1 %; Gehrig & Scaramuzza 2022; EVDodge (real-world tests, shallow networks).
+- **Spiking:** HsVT (Xu et al., ICML 2025); SpikingSSMs (90 % sparsity, LRA / WikiText-103); SiLIF (two-state, S4
+  parametrisation, speech state of the art).
+- **Sensors and datasets:** Gallego 140 vs 60 dB; DSEC (Gen3.1 VGA, ≈ 60 cm, VLP-16 LiDAR); Gen1 (39 h, 1–4 Hz,
+  > 255k labels); Speck idle 0.42 mW.
+- **Other citations:** Cannici (LSTM), S5 (parallel scan, no FFT), PlainMamba, Shiba, EV-FlowNet, Petráček.
 
-## HIGH — claims that are wrong or logically unsupported
+**Bibliography:** 76 entries, no "and others"; two uncited leftovers (L15).
 
-1. **"Every measured difference is attributable to a single architectural change."**
-   - **Where:** abstract l.66–68; contribution 2, l.177–178; §3.1 l.591 ("only one component is ever allowed to change")
-     and l.605.
-   - **Why it's wrong:** S5-RVT → EventSSM changes the spatial mixer (MaxViT → ResNet-18) **and** the temporal mixer
-     (S5 → Mamba-2). The recipe also differs (batch 4 vs 8, bf16 vs fp32; `tab:recipe` says so itself).
-   - **What holds:** only EventSSM ↔ PureSSM (and PureSSM ↔ spiking arms) is a single-component change. Restrict the
-     claim to the own-model comparisons.
-2. **"No prior work has evaluated a fully recurrence-free (and convolution-free) selective Mamba architecture …
-   These constitute the primary architectural contributions of this thesis."**
-   - **Where:** l.337; Gap 1, l.381.
-   - **Why it's wrong:** EventSSM and PureSSM both carry temporal Mamba state across windows (they are recurrent).
-     EventSSM is a CNN, and PureSSM has a convolutional stem and downsampling.
-   - This is Thesis-A plan text that contradicts Ch. 3. §2.16 retires Gaps 2 and 4 but does not correct this premise.
-3. **The ConvLSTM comparison crosses implementations, and it is the abstract's headline.**
-   - **Where:** abstract l.73 ("69.7 % … against 17.7 % for a ConvLSTM baseline"); `tab:regime2` (ConvLSTM column);
-     §5.4.3; §6.1 l.1327; Ch. 7 contribution 4.
-   - **Where the number comes from:** 8.35 / 17.7 % is Zubic et al.'s Table-2 figure. It comes from their 200 Hz
-     experiment, run through their unreleased preprocessing.
-   - **Why that matters:** §5.4.3 shows that pipeline cannot be reproduced, and that the released code behaves
-     differently: their S5 retains 83.5 % there against our 62.2 %. The SSM columns are our own true-rate
-     measurements. The Stage-16 record labels the column "ConvLSTM (paper)"; the thesis drops the label.
-   - **Fix, either:**
-     - (a) label it "published, authors' protocol" everywhere and soften the abstract; or
-     - (b) evaluate the public RVT checkpoint on our true-rate test set: one GPU evaluation, which also closes the
-       "RNN baseline" item of Aim 2.
-4. **Vidal et al. 2018 (`vidal2018ultimate`) is mis-described.**
-   - **Where:** l.343, "monocular depth estimation … transfer learning from conventional vision datasets".
-   - **What the paper is:** *Ultimate SLAM?*, events + frames + IMU visual-inertial odometry (VIO). No transfer
-     learning or depth network.
+## HIGH
 
-## MEDIUM — factual or citation errors
+| ID | Where | Problem | Fix | Status |
+|---|---|---|---|---|
+| H1 | abstract l.66–68; contrib. 2 l.177–178; §3.1 l.591, l.605 | "Every measured difference is attributable to a single architectural change." S5-RVT → EventSSM changes both mixers, batch 8→4 and fp32→bf16. | Restrict to own-model comparisons; state what differs against the baseline. | open |
+| H2 | §2.6 l.337; Gap 1 l.381; §2.16 l.564 | Claims a "recurrence-free, convolution-free" Mamba detector as the contribution. Own models carry temporal state (recurrent); EventSSM is a CNN; PureSSM has a conv stem. | Rewrite §2.6 claim to the real contribution; correct Gap 1's premise in §2.16 (Thesis-A list kept as history). | open |
+| H3 | abstract l.73; `tab:regime2`; §5.4.3; §6.1; Ch.7 contrib. 4 | ConvLSTM 17.7 % is Zubic et al.'s figure from their unreleased 200 Hz preprocessing; the SSM columns are our true-rate measurements. Cross-implementation, and it is the abstract headline. | **DECISION D1** | DECISION |
+| H4 | l.343 | Vidal et al. 2018 described as transfer-learned monocular depth estimation; it is events + frames + IMU visual-inertial odometry (Ultimate SLAM). | Rewrite. | open |
 
-5. **Gen1 is attributed to Perot et al.**
-   - **Where:** l.264 ("introduced the Gen1 and 1Mpx … datasets") and l.359 (`\cite{perot2020learning}` for Gen1).
-   - **Correct source:** Gen1 is de Tournemire et al. 2020 (`detournemire2020large`, already in the bib); Perot 2020
-     introduced 1Mpx.
-6. **Perot et al.'s RED is mischaracterised.** l.264 lists it under "Frame-Conversion Approaches" with "reliance on
-   fixed-window accumulation remained a limiting factor". The paper's detector is **recurrent** (ConvLSTM layers).
-   "Learned event representations … anchor-free head" is not supported by the paper text either.
-7. **The Falanga citation doesn't contain the quoted figures.**
-   - **Where:** l.148, l.345.
-   - **What's attributed:** "motion segmentation …, ≈ 3.5 ms latency, relative speeds up to 10 m/s" is cited to
-     `falanga2019fast`.
-   - **What the cited paper is:** *How fast is too fast? The role of perception latency*, RA-L 2019. Its text contains
-     no 3.5 ms figure; those results are Falanga, Kleber & Scaramuzza, *Science Robotics* 2020.
-8. **Mamba's speed figure is misquoted.**
-   - **Where:** l.313, "2–8× faster inference than comparable transformer models" [gu2023mamba].
-   - **What the paper says:** "5× higher throughput than Transformers". The 2–8× figure is Mamba-2's SSD against
-     Mamba's scan.
-9. **`innocenti2021temporal` is an action-recognition paper** (Temporal Binary Representation, ICPR). It is cited for
-   "improved performance on detection benchmarks" (l.250) and as a representation "shown promise" (l.254).
-10. **Iacono et al. 2018 is not automotive.** l.262 says "on automotive datasets"; the paper is on the iCub humanoid
-    robot.
-11. **`messikommer2020event` is the wrong citation.** It is cited for "detection frameworks [that] adopted …
-    recurrent feature extractors" (l.276). The paper is asynchronous sparse convolution, and is cited correctly at
-    l.1588.
-12. **E2VID's architecture is misdescribed.** l.276 says "ConvGRU layers"; the cited CVPR 2019 paper is a UNet with a
-    recurrent connection, and the journal version uses ConvLSTM.
-13. **The micro-UAV weight class is unsupported by its citation.** l.145 says "micro UAVs … less than 250 grams"
-    [floreano2015science]; Floreano & Wood call "micro" flying robots < a few grams, with tens to hundreds of grams
-    as "macro". 250 g is a regulatory threshold, so cite a regulator or drop the citation (also l.368).
-14. **Loihi 2 is cited to a paper that doesn't cover it.** l.372, "Loihi 2 … supports on-chip learning"
-    [davies2021advancing]; the 2021 survey never mentions Loihi 2. Cite `orchard2021efficient`.
-15. **GenX320 power is wrong.** l.220 says "as little as 2 mW"; Prophesee's product brief gives ≈ 3 mW typical and
-    36 µW in ultra-low-power mode.
-16. **BioDrone is attributed and described inconsistently.**
-    - **Authors:** the same work is "Xu et al." at l.347 but "Li et al." at l.351.
-    - **Hardware:** l.351 calls it "neuromorphic … specialised hardware not yet available at the micro-UAV scale".
-      It is an FPGA bio-inspired pipeline flown on a drone.
-17. **The SMamba inference goes beyond the paper.** l.335, "SMamba thus demonstrates that selective Mamba outperforms
-    fixed-parameter SSMs for spatial feature extraction". SMamba compares against attention backbones; there is no
-    fixed-parameter SSM spatial baseline.
-18. **An old sentence contradicts the thesis's own landscape.** l.270, "SNN … detection accuracy generally lags behind
-    state-of-the-art" contradicts §2.12 and `tab:snn_landscape` (gap closed: SpikeDet 47.6, HsVT 47.8).
-19. **The noise band is circular.**
-    - **Where:** l.999–1000 "run-to-run variation (empirically ±0.2–0.7 mAP between own-models)"; also l.1031,
-      l.1460 and the risk register.
-    - **The problem:** there are no seed replicates. The source (`Thesis_Progress_Writeup.md` l.241) gives ±0.2–0.7 as
-      the observed differences *between models*, so the "noise" is defined by the differences it is used to dismiss.
-    - **Fix:** state it as an assumption, or cite a published seed-variance figure.
-20. **AP_L is judged against an overall-mAP noise band.** l.1026–1031: size-stratified AP over fewer instances is
-    noisier. The class-level "signature" (car +1.16, pedestrian −0.76) sits at the edge of the assumed band.
-21. **The label-noise reasoning contradicts itself.** l.853–857 says the noise "lowers the attainable AP for all models
-    rather than biasing the comparison". The next sentence explains that detecting an unlabelled pedestrian counts as
-    a false positive, which penalises a better detector more. Soften the claim.
-22. **The Limitations misstate the baseline's precision.** l.1467 says "fp16 for the baseline"; `tab:recipe` and the
-    released config say **32-bit**. "All models reproduce their reference numbers" does not apply to own models.
-23. **A confound is missing from the Limitations.** EventSSM is ImageNet-pretrained; PureSSM is trained from scratch
-    with DropPath 0.1. Both facts are stated in §3.2–3.3, but "attributable to the spatial mixer alone" (l.752; Ch. 7
-    contribution 2) should read "the spatial mixer as instantiated", with the pretraining difference listed as a
-    limitation.
-24. **The scope change hasn't propagated.** l.152 ("This thesis investigates … object detection and autonomous
-    obstacle avoidance on micro-UAVs") and l.392 (the research space includes avoidance) contradict §1.3 and §6.3.
-25. **Gap 3 is over-claimed as addressed.** l.564 says Thesis-A Gap 3 (benchmarking on constrained micro-UAV hardware)
-    is "addressed by the efficiency study". The efficiency study ran on a desktop RTX 5070 Ti.
-26. **The step-count arithmetic is wrong.** l.440, "4×2 outperforms 5×1 despite the same total of 8–10 steps". By the
-    table, 4×2 = 8 steps and 5×1 = 5.
-27. **The bin-count rationale is post hoc.** l.256 justifies B = 10 by "prior work [perot2020learning]" and "the
-    memory budget of the target hardware". The same paragraph says it was inherited from the frozen RVT pipeline:
-    cite RVT and drop the memory-budget reason.
-28. **Zubic et al.'s claims are presented as settled fact.** l.150, l.320–326 ("have recently demonstrated …
-    maintained performance … uniquely advantageous") carry no hedge, while §5.4 shows the compensation does not
-    reproduce. Use "report".
-29. **The qualitative-figure caption misstates the threshold.** It says boxes are "shown down to the evaluator's
-    threshold of 0.1". The AP evaluation uses 0.001 (`stage7`/`stage14` eval scripts); 0.1 is RVT's default
-    inference threshold, used for rendering.
+## MEDIUM
 
-## LOW — stale, imprecise or cosmetic
+| ID | Where | Problem | Fix | Status |
+|---|---|---|---|---|
+| M1 | l.264, l.359 | Gen1 attributed to Perot et al.; it is de Tournemire et al. 2020. | Cite `detournemire2020large`. | open |
+| M2 | l.264 | Perot's RED is filed under frame conversion with a "fixed-window accumulation" limitation; RED is recurrent (ConvLSTM). | Re-describe as recurrent. | open |
+| M3 | l.148, l.345, l.351, l.370, l.385 | The 3.5 ms, 10 m/s and motion segmentation are from Falanga, Kleber & Scaramuzza, *Science Robotics* 2020, not the cited RA-L 2019 latency analysis. | Add `falanga2020dynamic`; keep the 2019 paper for the latency analysis. | open |
+| M4 | l.313 | Mamba "2–8× faster inference than transformers": the paper says 5× higher throughput; 2–8× is Mamba-2's SSD vs Mamba's scan. | Correct both, citing `dao2024transformers`. | open |
+| M5 | l.250, l.254 | `innocenti2021temporal` is action recognition, cited for "detection benchmarks". | Re-describe. | open |
+| M6 | l.262 | Iacono et al. described as automotive; it is the iCub humanoid robot. | Correct. | open |
+| M7 | l.276 | `messikommer2020event` (asynchronous sparse conv) cited for recurrent detection feature extractors. | Cite RED + RVT. | open |
+| M8 | l.274, l.276 | E2VID described with "ConvGRU layers"; CVPR paper is a recurrent UNet (journal version: ConvLSTM). | Correct. | open |
+| M9 | l.145, l.368 | "Micro UAVs < 250 g" cited to Floreano & Wood, who call micro < a few grams. | Cite CASA Part 101 (micro RPA ≤ 250 g); keep Floreano for the applications sentence. | open |
+| M10 | l.372 | Loihi 2 claim cited to the 2021 Loihi survey (no Loihi 2). | Split: Loihi → `davies2021advancing`; Loihi 2 → `orchard2021efficient`. | open |
+| M11 | l.220 | GenX320 "as little as 2 mW"; vendor: ≈ 3 mW typical, 36 µW lowest-power mode. | Correct + cite product brief. | open |
+| M12 | l.347 vs l.351 | BioDrone is "Xu et al." then "Li et al."; called "neuromorphic … specialised hardware not available at micro-UAV scale"; it is an FPGA bio-inspired pipeline flown on a drone. | Correct. | open |
+| M13 | l.335 | "SMamba demonstrates selective Mamba outperforms fixed-parameter SSMs for spatial features": SMamba compares against attention. | Reword. | open |
+| M14 | l.270 | "SNN detection accuracy generally lags behind" contradicts §2.12 (gap closed). | Reword. | open |
+| M15 | l.999–1000, l.1031, l.1460, risk register | "Run-to-run variation (±0.2–0.7)" was never measured; it is the spread between models (circular). | **DECISION D2** | DECISION |
+| M16 | l.1026–1031 | AP_L judged against an overall-mAP noise band; class signature near the band. | Reword (with D2). | DECISION |
+| M17 | l.853–857, l.1262 | "Label noise lowers AP for all models rather than biasing the comparison", then explains how it penalises better detectors. | Reword. | open |
+| M18 | l.1467 | Limitations: "fp16 for the baseline": recipe table and config say 32-bit; "all models reproduce their reference numbers". | Correct. | open |
+| M19 | l.752, l.1037, l.1486, Limitations | ImageNet-pretrained ResNet vs from-scratch BiMamba (+ DropPath) is a second difference in the "spatial mixer only" comparison. | Wording now; **DECISION D3** on an extra experiment. | open + DECISION |
+| M20 | l.152, l.392 | Intro still investigates "object detection and autonomous obstacle avoidance"; Thesis-A research space includes avoidance. | Rewrite to the current framing. | open |
+| M21 | l.564 | Gap 3 (constrained-hardware benchmarking) "addressed by the efficiency study" (desktop GPU). | "Addressed in part". | open |
+| M22 | l.440 | "4×2 outperforms 5×1 despite the same total of 8–10 steps": totals are 8 vs 5. | Correct. | open |
+| M23 | l.256 | B = 10 justified by "prior work [Perot]" and "target hardware memory budget"; it is inherited from RVT. | Correct. | open |
+| M24 | l.150, l.278, l.320, l.324–326 | Zubic et al.'s claims stated as established fact; §5.4 does not reproduce the compensation. | "Report" + forward reference. | open |
+| M25 | `fig:qualitative` caption | "Evaluator's threshold of 0.1": AP evaluation uses 0.001; 0.1 is RVT's default inference threshold. | Correct. | open |
+| M26 | l.259 | "Four paradigms … [zheng2023deep]": Zheng et al. use three input-format categories. | Reword. | open |
+| M27 | l.368 | "Cortex-M … as little as 192 kB of memory [niculescu]": not in the cited paper. | Reword to what the paper supports. | open |
 
-- **Stale test counts:** l.990 and Appendix B l.1700 say "249 CPU / 28 GPU tests"; it is now **394 / 29**.
-- **Stale risk register:** the spiking-model status says "25k-step runs in progress". They finished, and the
-  kill-switch PASSED (spike 0.345 / graded 0.343 on rung [4]).
-- **Regime-1 table precision:**
-  - S5-RVT 0.25× shown as 41.0 (source 40.95), so +0.71 reads as +0.65;
-  - mixed 1- vs 2-decimal columns;
-  - PureSSM 1× 46.45 vs 46.43 (rebuilt test set) is unexplained;
-  - "4× … 12 ms" should be 12.5 ms.
-- **ERF wording overstated:**
-  - l.1072, "falls … outside the convolutional stack's [field]": σ is an RMS spread, not a boundary;
-  - l.1150, the rate robustness "must originate … the same global receptive field": the origin follows from the
-    design, but the RF link is untested (§6.1 hedges it correctly).
-- **Imprecise model descriptions:**
-  - l.758, "signals leaving the block are sparse binary events" is true for the spike readout only;
-  - the `tab:four_models` caption ("bold = what changes") is not followed for S5-RVT → EventSSM (two changes, nothing
-    bold);
-  - l.1312, "its only local spatial mixing is a zero-initialised depthwise term" ignores the strided stem/downsample
-    convs (§5.2 says it correctly).
-- **Contradicted by own results or sources:**
-  - l.1460, Gen1 "daytime": the dataset covers "different weather and illumination conditions";
-  - l.375, "SSMs … predictable and modest resource requirements": own result 144 MB state, 31× the baseline.
-- **Citation or labelling details:**
-  - l.323, "CVPR 2024 Spotlight": CVPR's virtual site lists the paper as a poster; drop it unless sourced;
-  - l.341, "(EVO)": `rebecq2017real` is the BMVC visual-inertial odometry paper, and EVO is a different paper;
-  - l.359, 1Mpx "cars and pedestrians": it has 7 classes, and RVT uses 3;
-  - l.150, Transformers "impractical for deployment on micro-UAVs" [vaswani]: Vaswani supports only the quadratic
-    cost;
-  - l.1569, "SpikeYOLO uses T = 5": the table lists 5×1 and 4×2.
-- **Aims table, Aim 2:** the registered "RNN baseline" was not evaluated by us (fixable together with HIGH 3b).
-- **Thesis-A carry-overs:**
-  - the Gantt caption weeks disagree with `tab:timeline`;
-  - the voxel-grid "each bin normalised independently" is not Zhu et al.'s scheme.
-- **Cosmetic:** l.363 is a run-on sentence ("…system the trained detection model…").
-- **Acknowledgments (user's call):** they thank the School for "computational resources"; compute was the own
-  workstation and rented cloud.
+## LOW
 
-## Not verifiable from available sources
+| ID | Where | Problem | Status |
+|---|---|---|---|
+| L1 | l.990, App. B | Test counts 249 / 28 → 394 / 29. | open |
+| L2 | risk register | "25k-step runs in progress": finished; kill-switch passed. | open |
+| L3 | `tab:regime1` + text | S5 0.25× shown as 41.0 (40.95) so +0.71 reads +0.65; PureSSM 46.45 vs 46.43 unexplained; "12 ms" should be 12.5 ms. | open |
+| L4 | l.1072 | "Falls … outside the convolutional stack's [field]": σ is a spread, not a boundary. | open |
+| L5 | l.1150 | Rate robustness "must originate … the same global receptive field": RF link untested. | open |
+| L6 | l.758 | "Signals leaving the block are sparse binary events": spike readout only. | open |
+| L7 | `tab:four_models` caption | "Bold = what changes" not followed for S5-RVT → EventSSM. | open |
+| L8 | l.1312 | "Only local spatial mixing is a zero-init depthwise term": ignores strided convs. | open |
+| L9 | l.1460 | Gen1 "daytime": dataset covers varied weather and illumination. | open |
+| L10 | l.375 | "Predictable and modest resource requirements": own result 144 MB state. | open |
+| L11 | l.323 | "CVPR 2024 Spotlight": CVPR site lists a poster. | open |
+| L12 | l.341 | "(EVO)" naming for the BMVC VIO paper. | open |
+| L13 | l.359 | 1Mpx "cars and pedestrians": 7 classes, RVT uses 3. | open |
+| L14 | l.150 | "Impractical on micro-UAVs [Vaswani]": Vaswani supports only the quadratic cost. | open |
+| L15 | bib | `tian2019fcos`, `lin2017focal` uncited leftovers (harmless). | open |
+| L16 | l.1569 | "SpikeYOLO uses T = 5": table lists 5×1 and 4×2. | open |
+| L17 | `fig:gantt` caption | Week ranges disagree with `tab:timeline`. | open |
+| L18 | `fig:voxel_grid` caption; App. A | Per-bin normalisation is not Zhu et al.'s scheme. | open |
+| L19 | l.363 | Run-on sentence. | open |
+| L20 | l.313 | "Particularly advantageous for SWaP [gu2023mamba, patro]": our claim, not theirs. | open |
+| L21 | `tab:aims` | Aim 2 "RNN baseline" not evaluated by us (tied to D1). | DECISION |
+| L22 | bib `zhong2026spike` | Venue IEEE TCDS 2026 unconfirmed (only arXiv 2410.17268 found). | open |
 
-- The `zhou2023dtlif` description (Chinese-language journal).
-- SynSense Speck "idle power below 1 mW".
-- "AMD RX 7700 XT on which the Thesis A reproduction ran" (l.903). The project record has the reproduction on the
-  RTX 5070 Ti.
-- Zubic's 3.76 mAP: the local PDF says 3.76, while one web abstract snippet says 3.31 (possible version difference).
+## Decisions needed
 
-Sources for the web-checked items: [GenX320 product brief](https://prophesee.ai/wp-content/uploads/2025/01/GENX320-Product-Brief-2025-DICE-OK.pdf),
-[Zubic CVPR 2024 virtual page](https://cvpr.thecvf.com/virtual/2024/poster/29604),
-[de Tournemire et al. 2020](https://arxiv.org/abs/2001.08499).
+- **D1:** H3 and L21, the ConvLSTM comparison.
+- **D2:** M15 and M16, the noise band.
+- **D3:** M19, the pretraining confound: wording only, or an extra experiment.
+- **D4:** l.903, whether the Thesis-A reproduction ran on the AMD RX 7700 XT.
+- **D5:** the Acknowledgments' "computational resources" wording.
+
+## Not verifiable
+
+- **`zhou2023dtlif` description:** Chinese-language journal; the local PDF yields no English text on the mechanism.
+
+Web sources:
+- [Falanga et al. 2020, Science Robotics (UZH news)](https://www.news.uzh.ch/en/articles/2020/Moving_robot.html)
+- [CASA Part 101 micro RPA guide](https://www.casa.gov.au/sites/default/files/2021-08/part-101-micro-excluded-rpa-operations-plain-english-guide.pdf)
+- [Mamba-2 (Dao & Gu, ICML 2024)](https://proceedings.mlr.press/v235/dao24a.html)
+- [GenX320 product brief](https://prophesee.ai/wp-content/uploads/2025/01/GENX320-Product-Brief-2025-DICE-OK.pdf)
+- [Speck power (CAS news)](https://english.cas.cn/newsroom/cas_media/202406/t20240604_664741.shtml)
+- [Zubic CVPR 2024 page](https://cvpr.thecvf.com/virtual/2024/poster/29604)
+- [de Tournemire et al. 2020](https://arxiv.org/abs/2001.08499)
+- [SpikingSSMs (AAAI 2025)](https://ojs.aaai.org/index.php/AAAI/article/view/34245)
+- [SPikE-SSM (arXiv)](https://arxiv.org/abs/2410.17268)
+- [SiLIF (arXiv)](https://arxiv.org/abs/2506.06374)

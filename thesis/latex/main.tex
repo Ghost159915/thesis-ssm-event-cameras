@@ -64,8 +64,9 @@ as the natural sequence model for this data, but existing results confound sever
 changes at once, leaving it unclear what an SSM actually contributes. This thesis isolates that
 question. Starting from an exact reproduction of the S5-RVT baseline of Zubi\'c \emph{et al.}
 (Gen1 test AP $=47.7$), two original detectors were built as \emph{controlled} backbone swaps into
-the verified pipeline --- neck, detection head, loss, data pipeline and evaluator held fixed --- so
-that every measured difference is attributable to a single architectural change.
+the verified pipeline --- neck, detection head, loss, data pipeline and evaluator held fixed. The two
+differ from each other only in the spatial mixer, so their comparison isolates that one architectural
+change.
 
 \textbf{EventSSM} (ResNet-18 convolutional spatial mixer with a Mamba-2 temporal recurrence) reaches
 46.2 AP; \textbf{PureSSM} (bidirectional-Mamba spatial mixer, identical temporal path) reaches 46.4 AP
@@ -73,8 +74,9 @@ while being the smallest model (16.3\,M parameters), performing the least comput
 best accuracy-per-FLOP at 4.63), and closing roughly half of the large-object gap to the attention
 baseline ($\mathrm{AP}_L$ $+2.95$ over the convolutional hybrid). A gradient-based receptive-field
 probe attributes that gain to a learned spatial extent up to twice that of the convolutional stack.
-Under a true tenfold change in event rate PureSSM retains 69.7\% of its accuracy against
-17.7\% for a ConvLSTM baseline, making it the most rate-robust model tested. An attempted
+Under a true tenfold change in event rate PureSSM retains 69.7\% of its accuracy, the most of the
+models tested\needsgpu{decision D1: add the same-protocol retention of RVT's ConvLSTM, measured on the
+true-rate test set; the published 17.7\,\% used unreleased preprocessing}. An attempted
 reproduction of the inference-time $\Delta t$-rescaling compensation reported in the literature finds
 that, under the published checkpoint and code, it does not recover accuracy at any tested operating
 point and the published high-rate result is not reproducible, while the rate robustness itself is
@@ -137,17 +139,17 @@ UAV & Unmanned Aerial Vehicle \\
 
 % --- Chapter 1: Introduction ---
 \chapter{Introduction}
-Micro unmanned aerial vehicles (UAVs), broadly classified as platforms weighing less than 250 grams, have emerged as transformative tools for applications ranging from infrastructure inspection and search-and-rescue operations to indoor mapping and environmental monitoring \cite{floreano2015science}. Their small form factor enables navigation through confined spaces inaccessible to larger platforms; however, this advantage comes with severe constraints on payload capacity, onboard computational resources, and power budgets. These size, weight, and power (SWaP) limitations represent the central engineering challenge for autonomous micro-UAV systems: the perception and control pipeline must be both highly capable and extremely efficient.
+Micro unmanned aerial vehicles (UAVs) have emerged as transformative tools for applications ranging from infrastructure inspection and search-and-rescue operations to indoor mapping and environmental monitoring \cite{floreano2015science}; Australian regulation, for example, defines the micro class as remotely piloted aircraft of at most 250 grams \cite{casa2021part101}. Their small form factor enables navigation through confined spaces inaccessible to larger platforms; however, this advantage comes with severe constraints on payload capacity, onboard computational resources, and power budgets. These size, weight, and power (SWaP) limitations represent the central engineering challenge for autonomous micro-UAV systems: the perception and control pipeline must be both highly capable and extremely efficient.
 
 Conventional frame-based cameras, while mature and well-supported by deep learning frameworks, suffer from inherent limitations that are particularly problematic for agile UAV flight. They capture redundant information at fixed frame rates, exhibit motion blur during rapid maneuvers, and possess limited dynamic range. 
 
-Event-based cameras, also known as dynamic vision sensors (DVS), represent a paradigm shift in visual sensing. Unlike frame-based cameras, each pixel in an event camera independently and asynchronously responds to changes in log luminance, generating a stream of events with microsecond temporal resolution, a dynamic range exceeding 120 dB, and minimal motion blur \cite{gallego2020event}. These properties make event cameras inherently suited to the perception requirements of agile micro-UAVs, where rapid obstacle detection and avoidance are critical to safe operation. Several pioneering studies have demonstrated event-based obstacle avoidance on quadrotors \cite{falanga2019fast}, \cite{sanket2020evdodgenet} achieving reaction latencies as low as 3.5 milliseconds. 
+Event-based cameras, also known as dynamic vision sensors (DVS), represent a paradigm shift in visual sensing. Unlike frame-based cameras, each pixel in an event camera independently and asynchronously responds to changes in log luminance, generating a stream of events with microsecond temporal resolution, a dynamic range exceeding 120 dB, and minimal motion blur \cite{gallego2020event}. These properties make event cameras inherently suited to the perception requirements of agile micro-UAVs, where rapid obstacle detection and avoidance are critical to safe operation. Several pioneering studies have demonstrated event-based obstacle avoidance on quadrotors \cite{falanga2020dynamic, sanket2020evdodgenet}, with perception latencies as low as 3.5 milliseconds \cite{falanga2020dynamic}. 
 
-Despite these promising sensor characteristics, a significant gap remains in the algorithmic domain. Most existing approaches to processing event data for detection and avoidance rely on converting asynchronous event streams into frame-like representations for consumption by convolutional neural networks (CNNs) or recurrent neural networks (RNNs), thereby discarding much of the temporal richness that distinguishes event cameras from their frame-based counterparts. Transformer-based architectures, while capable of modelling long-range dependencies, impose quadratic computational complexity that renders them impractical for deployment on the severely resource-constrained processors typical of micro-UAVs \cite{vaswani2017attention}. 
+Despite these promising sensor characteristics, a significant gap remains in the algorithmic domain. Most existing approaches to processing event data for detection and avoidance rely on converting asynchronous event streams into frame-like representations for consumption by convolutional neural networks (CNNs) or recurrent neural networks (RNNs), thereby discarding much of the temporal richness that distinguishes event cameras from their frame-based counterparts. Transformer-based architectures, while capable of modelling long-range dependencies, have a computational cost quadratic in the number of tokens \cite{vaswani2017attention}, which weighs heavily on the severely resource-constrained processors typical of micro-UAVs. 
 
-State Space Models (SSMs), and in particular the recently developed Mamba architecture and its variants, offer a compelling alternative. SSMs model input sequences through continuous-time linear dynamical systems that can be discretised at arbitrary time steps, achieving linear computational complexity while maintaining strong temporal reasoning capabilities \cite{gu2022efficiently}. Critically, Zubic et al. \cite{zubic2024state} have recently demonstrated that SSMs naturally accommodate the variable temporal resolution inherent to event camera data, enabling deployment at inference frequencies different from training frequencies with significantly less performance degradation than RNN or transformer-based approaches. 
+State Space Models (SSMs), and in particular the recently developed Mamba architecture and its variants, offer a compelling alternative. SSMs model input sequences through continuous-time linear dynamical systems that can be discretised at arbitrary time steps, achieving linear computational complexity while maintaining strong temporal reasoning capabilities \cite{gu2022efficiently}. Zubic et al. \cite{zubic2024state} have recently reported that SSMs accommodate the variable temporal resolution inherent to event camera data, degrading far less than RNN- or transformer-based approaches when deployed at inference frequencies other than the training frequency; Section~\ref{sec:robustness} re-examines that claim. 
 
-This thesis investigates the integration of state space models with event-based camera data for real-time object detection and autonomous obstacle avoidance on micro-UAVs. The central hypothesis is that SSM-based architectures can more effectively exploit the temporal structure of event streams than existing CNN, RNN, or transformer-based approaches, achieving competitive detection accuracy with reduced computational cost suitable for onboard deployment. The following literature review establishes the relevant foundations and identifies the specific research gaps this work addresses. 
+This thesis investigates state space models for event-based object detection, motivated by the perception needs of micro-UAVs; obstacle avoidance is the motivating application rather than an evaluated system (Section~\ref{sec:scope}). The working hypothesis is that SSM-based backbones can exploit the temporal structure of event streams at least as well as convolutional, recurrent or transformer-based ones, with competitive accuracy and favourable efficiency. The research question below narrows this hypothesis to a form that can be tested. 
 
 % --- Chapter 2: Literature Review ---
 
@@ -175,8 +177,10 @@ in return?}
   \item An exact reproduction of the S5-RVT baseline (Gen1 test AP $47.7$), establishing a verified
         pipeline and evaluator against which all subsequent models are measured.
   \item \textbf{Two original detectors}, EventSSM and PureSSM, built as drop-in backbone swaps into
-        that pipeline, giving a four-model ablation in which each measured difference is attributable
-        to one isolated architectural change.
+        that pipeline, giving a four-model ablation in which the own models differ from one another in
+        one component each (the spatial mixer between EventSSM and PureSSM, the temporal readout between
+        PureSSM and its spiking variant); against the published baseline, the whole backbone and two
+        training settings differ.
   \item \textbf{A causal mechanism for the large-object result:} a gradient-based effective-receptive-field
         probe showing that the state-space spatial mixer sees up to twice as far as the convolutional
         stack, and --- unlike the convolutional stack --- \emph{widens its field through training}.
@@ -218,7 +222,7 @@ Event-based cameras, or neuromorphic vision sensors, operate on a fundamentally 
 
 Gallego et al. \cite{gallego2020event} provided a comprehensive survey of event-based vision, cataloguing the evolution of neuromorphic sensors from the original silicon retina proposed by Mahowald and Mead in 1992 through to modern commercially available sensors. The Dynamic Vision Sensor (DVS), developed at ETH Zurich, was among the first widely adopted event cameras and demonstrated the feasibility of asynchronous vision for robotics applications \cite{lichtsteiner2008128x128}. A significant advancement came with the Dynamic and Active-pixel Vision Sensor (DAVIS), which combines a DVS with a conventional active pixel sensor on the same die, enabling simultaneous capture of events and intensity frames at the same pixel locations \cite{brandli2014240x180}. The original DAVIS sensor, offering 240×180 pixel resolution, has become a widely used research platform, with later commercial variants such as the DAVIS346 extending this to higher resolutions. 
 
-More recently, Prophesee (formerly Chronocam) has developed a series of commercial event cameras with increasing resolution and performance. The Gen3.1 sensors, used in the DSEC dataset \cite{gehrig2021dsec}, offer VGA-resolution event sensing, while the latest IMX636 sensor, developed in collaboration with Sony, provides 1280×720 HD resolution with ultra-high-speed operation \cite{prophesee2026metavision}. At the opposite end of the spectrum, the GenX320 sensor targets ultra-low-power applications with a 320×320 pixel array consuming as little as 2 mW, making it particularly relevant for resource-constrained micro UAV platforms \cite{prophesee2026metavision}. The continued improvement in sensor resolution, noise characteristics, and power efficiency has been a key enabler for the expanding application of event cameras in robotics and autonomous systems. 
+More recently, Prophesee (formerly Chronocam) has developed a series of commercial event cameras with increasing resolution and performance. The Gen3.1 sensors, used in the DSEC dataset \cite{gehrig2021dsec}, offer VGA-resolution event sensing, while the latest IMX636 sensor, developed in collaboration with Sony, provides 1280×720 HD resolution with ultra-high-speed operation \cite{prophesee2026metavision}. At the opposite end of the spectrum, the GenX320 sensor targets ultra-low-power applications with a 320×320 pixel array drawing about 3\,mW in typical operation and as little as 36\,$\mu$W in its lowest-power mode, making it particularly relevant for resource-constrained micro UAV platforms \cite{prophesee2025genx320}. The continued improvement in sensor resolution, noise characteristics, and power efficiency has been a key enabler for the expanding application of event cameras in robotics and autonomous systems. 
 
 A notable limitation of current event cameras, however, is their relatively low spatial resolution compared to frame-based cameras. While modern frame-based sensors routinely achieve multi-megapixel resolutions, event cameras remain in the VGA to HD range. Furthermore, event cameras produce no output in static scenes, which can be both an advantage (data efficiency) and a limitation (loss of static scene information). These characteristics necessitate careful algorithm design that leverages the temporal strengths of event cameras while mitigating their spatial limitations.
 
@@ -242,7 +246,7 @@ Voxel grids, proposed by Zhu et al. \cite{zhu2019unsupervised}, address this lim
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.75\textwidth]{images/fig_voxel_grid.png}
-    \caption{Voxel grid event representation. Events within a fixed time window are accumulated into $B$ temporal bins, producing a tensor of shape $B \times H \times W$ that preserves temporal ordering. Each bin is normalised independently. Adapted from \cite{zhu2019unsupervised}.}
+    \caption{Voxel grid event representation. Events within a fixed time window are accumulated into $B$ temporal bins, producing a tensor of shape $B \times H \times W$ that preserves temporal ordering. Adapted from \cite{zhu2019unsupervised}.}
     \label{fig:voxel_grid}
 \end{figure}
 
@@ -250,32 +254,32 @@ Time surfaces, introduced by Lagorce et al. \cite{lagorce2017hots}, offer an alt
 
 Event Spike Tensors (ESTs), proposed by Gehrig et al. \cite{gehrig2019end}, sample the event stream using learned kernel functions, preserving temporal localisation with minimal information loss. Comparative studies have consistently demonstrated that representations retaining temporal localisation, such as voxel grids and ESTs, outperform simpler aggregation methods like event frames on downstream tasks \cite{gehrig2019end}. This finding underscores the importance of preserving the fine-grained temporal information inherent to event camera outputs. 
 
-More recently, hybrid representations combining multiple channels of information have been explored. For instance, representations encoding polarity, timestamp, and event count in separate channels have shown improved performance on detection benchmarks \cite{innocenti2021temporal}. The choice of event representation remains an active area of research, with the optimal representation often being task-dependent. 
+More recently, hybrid representations combining multiple channels of information have been explored. For instance, the Temporal Binary Representation packs the presence of events in successive sub-intervals into the bits of a single frame and has improved event-based action recognition \cite{innocenti2021temporal}. The choice of event representation remains an active area of research, with the optimal representation often being task-dependent. 
 
 This work uses the stacked histogram of RVT \cite{gehrig2023recurrent}: per 50-ms window, event counts in ten temporal bins for each of the two polarities (Appendix~\ref{subsec:stacked_hist}). Like a voxel grid it preserves temporal ordering across bins, a property demonstrated to be critical for detection performance \cite{gehrig2019end}, and it is directly compatible with standard CNN and SSM-based backbones. It was not selected by a fresh comparison: it is part of the verified baseline's frozen pipeline (Section~\ref{sec:frozen_pipeline}), and changing it would confound the backbone comparison that is the subject of this thesis. The voxel grid proposed in the Thesis~A plan was therefore not adopted. Time surfaces, although compact, collapse temporal structure into a single 2D map and are less suited to multi-object detection tasks where simultaneous events at different locations must be disambiguated. ESTs offer higher temporal fidelity through learned kernels, but introduce additional parameters and training complexity that is difficult to justify given the computational constraints of onboard UAV deployment. 
 
-Hybrid multi-channel representations have shown promise on recent benchmarks \cite{innocenti2021temporal}, but require careful engineering of the channel structure and have not yet been validated on the Gen1 automotive dataset used in this work. A bin count of $B = 10$ is adopted throughout, consistent with prior work on the Gen1 dataset \cite{perot2020learning}, providing sufficient temporal resolution to capture object motion between detection frames without exceeding the memory budget of the target hardware platform. 
+Compact multi-channel encodings of this kind have shown promise for action recognition \cite{innocenti2021temporal}, but require careful engineering of the channel structure and have not been validated for detection on the Gen1 automotive dataset used in this work. The bin count $B = 10$ is that of the RVT preprocessing \cite{gehrig2023recurrent}, inherited with the rest of the frozen pipeline. 
 
 \section{Deep Learning for Event-Based Object Detection}
-Object detection from event camera data has attracted growing research attention, with approaches broadly categorizable into four paradigms: frame-conversion methods that adapt standard detectors, spiking neural network (SNN) approaches, graph neural network (GNN) methods, and recurrent architectures that process events sequentially \cite{zheng2023deep}. 
+Object detection from event camera data has attracted growing research attention \cite{zheng2023deep}. This review groups the approaches into four paradigms: frame-conversion methods that adapt standard detectors, spiking neural network (SNN) approaches, graph neural network (GNN) methods, and recurrent architectures that process events sequentially. 
 
 \subsection{Frame-Conversion Approaches}
-The most straightforward approach to event-based object detection converts event streams into frame-like representations and applies established detection architectures such as YOLO, SSD, or Faster R-CNN. Iacono et al. \cite{iacono2018towards} demonstrated that event histograms can be processed by standard object detectors with reasonable accuracy on automotive datasets. While this approach benefits from the maturity and optimisation of frame-based detection pipelines, it fundamentally fails to exploit the temporal continuity of the event stream, treating each accumulated frame independently. Furthermore, the frame accumulation step introduces latency that partially negates the low-latency advantage of event cameras. 
+The most straightforward approach to event-based object detection converts event streams into frame-like representations and applies established detection architectures such as YOLO, SSD, or Faster R-CNN. Iacono et al. \cite{iacono2018towards} demonstrated on the iCub humanoid robot that event histograms can be processed by standard object detectors with reasonable accuracy, bootstrapping the event-based annotations from mature frame-based detectors. While this approach benefits from the maturity and optimisation of frame-based detection pipelines, it fundamentally fails to exploit the temporal continuity of the event stream, treating each accumulated frame independently. Furthermore, the frame accumulation step introduces latency that partially negates the low-latency advantage of event cameras. 
 
-Perot et al. \cite{perot2020learning} introduced the Gen1 and 1Mpx automotive detection datasets and proposed a detection pipeline using learned event representations fed to an anchor-free detection head. Their work demonstrated that event cameras could achieve competitive detection performance in automotive scenarios, particularly under challenging lighting conditions where frame-based cameras struggle. However, the reliance on fixed-window accumulation remained a limiting factor.
+Large-scale automotive benchmarks followed: the Gen1 dataset of de Tournemire et al. \cite{detournemire2020large} and the 1Mpx dataset of Perot et al. \cite{perot2020learning}. Perot et al.'s detector, RED, already moves beyond per-window processing: ConvLSTM layers carry information across windows, and a temporal-consistency loss stabilises the predictions over time \cite{perot2020learning}. It belongs with the recurrent architectures discussed below.
 
 \subsection{Spiking Neural Networks}
 Spiking neural networks (SNNs) represent a bio-inspired approach that is architecturally well-matched to the asynchronous, binary nature of event camera outputs. In SNNs, information is encoded as discrete spikes rather than continuous activations, enabling highly energy-efficient computation on neuromorphic hardware \cite{roy2019towards}. The DT-LIF (Dual-Threshold Leaky Integrate-and-Fire) neuron model combined with the SSD detection framework, as proposed by Zhou et al. \cite{zhou2023dtlif}, demonstrated that SNNs can perform object detection from event data with significantly lower energy consumption than conventional neural networks. The dual-threshold mechanism improves the neuron's ability to encode temporal patterns by introducing separate thresholds for excitation and inhibition. 
 
-More recently, the Hybrid Spiking Vision Transformer (HsVT) \cite{xu2025hybrid} has integrated spatial feature extraction with temporal spike-based processing, achieving competitive performance with fewer parameters and lower energy consumption than equivalent artificial neural networks. The key advantage of SNN-based detection for micro UAV applications lies in the potential for deployment on neuromorphic processors such as Intel's Loihi or SynSense's Speck chip, which offer orders-of-magnitude improvements in power efficiency compared to conventional GPUs \cite{synsense2026speck}. However, SNN training remains challenging due to the non-differentiability of spike generation, and detection accuracy generally lags behind state-of-the-art conventional architectures. 
+More recently, the Hybrid Spiking Vision Transformer (HsVT) \cite{xu2025hybrid} has integrated spatial feature extraction with temporal spike-based processing, achieving competitive performance with fewer parameters and lower energy consumption than equivalent artificial neural networks. The key advantage of SNN-based detection for micro UAV applications lies in the potential for deployment on neuromorphic processors such as Intel's Loihi or SynSense's Speck chip, which offer orders-of-magnitude improvements in power efficiency compared to conventional GPUs \cite{synsense2026speck}. SNN training is complicated by the non-differentiability of spike generation, and for years spiking detectors lagged behind conventional architectures in accuracy; on Gen1 the most recent ones have closed that gap (Section~\ref{sec:snn_detection}). 
 
 \subsection{Graph Neural Networks}
 An alternative paradigm models the event stream as a spatio-temporal graph, where individual events serve as nodes connected to their spatial and temporal neighbours. Graph neural networks (GNNs) can then extract features from this naturally sparse representation without requiring conversion to dense tensors \cite{bi2019graph}. The Asynchronous Event-based GNN (AEGNN) framework \cite{schaefer2022aegnn} demonstrated that graph-based processing preserves the asynchronous nature of events while enabling efficient feature extraction through graph convolutions and pooling operations. The primary advantage of GNN approaches is their ability to process events at their native resolution without temporal binning, potentially preserving more information than frame-based methods. However, the irregular memory access patterns of graph operations can be challenging to optimise on conventional hardware, and scalability to high event rates remains an open problem. 
 
 \subsection{Recurrent Architectures}
-Recurrent neural networks (RNNs), particularly those employing convolutional gated recurrent units (ConvGRUs), have been widely applied to sequential event processing. Recurrent architectures naturally accumulate temporal context across event windows, making them well-suited for tasks requiring temporal reasoning \cite{rebecq2019e2vid}, \cite{cannici2019attention}. The E2VID framework \cite{rebecq2019e2vid}, while primarily targeting video reconstruction, demonstrated that recurrent encoder-decoder networks with ConvGRU layers can effectively process temporal sequences of event representations. Several detection frameworks have adopted similar recurrent feature extractors to build temporal context for detection \cite{messikommer2020event}. 
+Recurrent neural networks (RNNs), particularly convolutional LSTMs and GRUs, have been widely applied to sequential event processing. Recurrent architectures naturally accumulate temporal context across event windows, making them well-suited for tasks requiring temporal reasoning \cite{rebecq2019e2vid}, \cite{cannici2019attention}. The E2VID framework \cite{rebecq2019e2vid}, while primarily targeting video reconstruction, demonstrated that a recurrent UNet encoder-decoder can effectively process temporal sequences of event representations. Detection frameworks have adopted recurrent feature extractors to build temporal context, from the ConvLSTM-based RED \cite{perot2020learning} to RVT \cite{gehrig2023recurrent}. 
 
-The principal limitation of recurrent approaches for deployment on micro UAVs is their sequential processing requirement, which limits parallelisation and can create computational bottlenecks. Additionally, RNNs are known to struggle with very long temporal dependencies due to vanishing gradient problems, though gated variants partially mitigate this issue. Critically, Zubic et al. \cite{zubic2024state} demonstrated that RNN-based event processing models suffer significant performance degradation when deployed at inference frequencies different from their training frequency, a limitation that directly impacts the variable-rate nature of event camera data. 
+The principal limitation of recurrent approaches for deployment on micro UAVs is their sequential processing requirement, which limits parallelisation and can create computational bottlenecks. Additionally, RNNs are known to struggle with very long temporal dependencies due to vanishing gradient problems, though gated variants partially mitigate this issue. Zubic et al. \cite{zubic2024state} report that RNN-based event detectors degrade sharply when deployed at inference frequencies other than their training frequency, a limitation that matters for the variable-rate nature of event camera data. 
 
 \section{State Space Models: Architecture and Evolution}
 State Space Models (SSMs) have recently emerged as a powerful class of sequence models that address many of the computational limitations of transformers and recurrent networks \cite{gu2022efficiently}. Rooted in control theory, SSMs model the relationship between an input sequence $u(t)$ and an output sequence $y(t)$ through a latent state $h(t)$ governed by a continuous-time linear dynamical system:
@@ -293,7 +297,7 @@ The discretisation process transforms the continuous parameters $(A, B)$ into th
     \overline{A} = \exp(\Delta A), \quad \overline{B} = (\exp(\Delta A) - I)A^{-1}B
 \end{equation}
 
-This allows the model to be computed as a linear recurrence, which is significantly more efficient for long sequences than the quadratic complexity of self-attention \cite{gu2023mamba, patro2025from}.
+This allows the model to be computed as a linear recurrence, which is significantly more efficient for long sequences than the quadratic complexity of self-attention \cite{gu2023mamba, somvanshi2025from}.
 
 The Structured State Space Sequence Model (S4), proposed by Gu et al. \cite{gu2022efficiently}, represented a breakthrough by introducing a special parameterisation of the state matrix A based on the HiPPO (High-order Polynomial Projection Operator) framework. This parameterisation enables the efficient computation of very long-range dependencies while maintaining linear computational complexity in sequence length. S4 achieved state-of-the-art results on the Long Range Arena benchmark, including the challenging Path-X task with sequence lengths of 16,384, and attained 91\% accuracy on sequential CIFAR-10 \cite{gu2022efficiently}. The S5 variant \cite{smith2023simplified} further simplified the architecture by employing a diagonal state structure with parallel scan mechanisms, eliminating the need for computationally expensive FFT operations while maintaining comparable performance. 
 
@@ -308,7 +312,7 @@ The Mamba architecture, proposed by Gu and Dao \cite{gu2023mamba}, introduced a 
 
 This selectivity is analogous to the gating mechanisms in LSTMs and GRUs but operates within the SSM framework while maintaining linear computational complexity \cite{gu2023mamba}. Input-dependent $\Delta_t$ allows for selective retention: a large $\Delta_t$ causes the state to decay rapidly (resetting the memory for irrelevant content), while a small $\Delta_t$ preserves long-range memory \cite{gu2023mamba, zubic2024state}. 
 
-To overcome the challenges of computing such a non-linear recurrence, Mamba employs a hardware-aware algorithm. This approach combines a parallel scan, kernel fusion, and selective recomputation to achieve 2--8$\times$ faster inference than comparable transformer models while matching their performance on competitive benchmarks \cite{gu2023mamba}. These efficiencies are particularly advantageous for the size, weight, and power (SWaP) constraints of micro-UAV platforms \cite{gu2023mamba, patro2025from}.
+Because the parameters now vary with the input, the model can no longer be computed as a convolution. Mamba instead uses a hardware-aware algorithm that combines a parallel scan, kernel fusion and recomputation, giving about 5$\times$ higher inference throughput than Transformers of similar size while matching their quality in language modelling \cite{gu2023mamba}. Its successor, Mamba-2, recasts the selective scan through state-space duality and runs its core layer 2--8$\times$ faster than Mamba's \cite{dao2024transformers}. Such efficiencies are relevant to the size, weight, and power (SWaP) constraints of micro-UAV platforms.
 
 \begin{figure}[htbp]
     \centering
@@ -319,12 +323,12 @@ To overcome the challenges of computing such a non-linear recurrence, Mamba empl
 
 The extension of SSMs to vision tasks has proceeded rapidly. Vision Mamba (Vim) \cite{zhu2024vision} proposed a vision backbone employing bidirectional Mamba blocks with position embeddings, achieving 2.8× faster inference than the DeiT transformer on ImageNet while using 86.8\% less GPU memory for high-resolution image processing. VMamba \cite{liu2024vmamba} introduced Visual State-Space (VSS) blocks with a 2D Selective Scan (SS2D) module that traverses image patches along multiple scan paths to capture two-dimensional spatial relationships. PlainMamba \cite{yang2024plainmamba} further explored non-hierarchical Mamba structures for visual recognition. These vision SSMs consistently demonstrate that the linear complexity of state space models can be leveraged for visual tasks without sacrificing the representational capacity needed for accurate perception. 
 
-The computational advantages of SSMs are particularly relevant for micro UAV applications. The O(n) complexity of SSMs, compared to the O(n²) complexity of transformers, directly translates to reduced inference time and memory consumption. Furthermore, the continuous-time formulation of SSMs allows deployment at variable time scales without retraining, a property that Zubic et al. \cite{zubic2024state} have shown to be uniquely advantageous for event camera data where the effective data rate varies with scene dynamics. A comprehensive survey by Patro et al. \cite{patro2025from} has catalogued the rapid evolution from S4 to Mamba and its variants, documenting the expanding application of SSMs across vision, language, and multi-modal tasks. 
+The computational advantages of SSMs are particularly relevant for micro UAV applications. The O(n) complexity of SSMs, compared to the O(n²) complexity of transformers, directly translates to reduced inference time and memory consumption. Furthermore, the continuous-time formulation of SSMs allows deployment at variable time scales without retraining, a property that Zubic et al. \cite{zubic2024state} report to be advantageous for event camera data, where the effective data rate varies with scene dynamics. A comprehensive survey by Somvanshi et al. \cite{somvanshi2025from} has catalogued the rapid evolution from S4 to Mamba and its variants, documenting the expanding application of SSMs across vision, language, and multi-modal tasks. 
 
 \section{State Space Models for Event Camera Data}
-The intersection of SSMs and event-based vision is a nascent but rapidly developing area. Zubic et al. \cite{zubic2024state} presented the first systematic investigation of SSMs for event camera data, published as a CVPR 2024 Spotlight paper. Their work identified a fundamental limitation of existing deep learning approaches to event data: when trained at one temporal resolution (i.e., a specific ratio between the number of events and the number of forward passes of the network), models based on CNNs, RNNs, and transformers all exhibit significant performance degradation when deployed at different temporal resolutions. This is particularly problematic for event cameras, where the event rate naturally varies with scene dynamics. 
+The intersection of SSMs and event-based vision is a nascent but rapidly developing area. Zubic et al. \cite{zubic2024state} presented the first systematic investigation of SSMs for event camera data, published at CVPR 2024. Their work identified a fundamental limitation of existing deep learning approaches to event data: when trained at one temporal resolution (i.e., a specific ratio between the number of events and the number of forward passes of the network), models based on CNNs, RNNs, and transformers all exhibit significant performance degradation when deployed at different temporal resolutions. This is particularly problematic for event cameras, where the event rate naturally varies with scene dynamics. 
 
-Zubic et al. \cite{zubic2024state} demonstrated that SSMs, viewed as linear time-invariant (LTI) continuous-time systems, can be discretised at arbitrary step sizes without retraining. By introducing a learnable global timescale parameter that adjusts based on the ratio between training and inference frequencies, their SSM-based models maintained performance across a range of deployment frequencies with minimal degradation (3.76 mAP drop versus >20 mAP for RNNs and transformers at higher frequencies). Furthermore, the SSM approach achieved 33\% faster training compared to equivalent recurrent models. These results provide strong evidence that SSMs are architecturally well-suited to the temporal characteristics of event camera data. 
+Zubic et al. \cite{zubic2024state} argued that SSMs, viewed as linear time-invariant (LTI) continuous-time systems, can be discretised at arbitrary step sizes without retraining. By rescaling a learnable timescale parameter by the ratio between training and inference frequencies, they report that their SSM-based models maintained performance across a range of deployment frequencies with minimal degradation (3.76 mAP drop versus >20 mAP for RNNs and transformers at higher frequencies). Furthermore, the SSM approach achieved 33\% faster training compared to equivalent recurrent models. If these results hold, SSMs are architecturally well suited to the temporal characteristics of event camera data; Section~\ref{subsec:f2} tests the reported compensation under the released checkpoint and code. 
 
 The most influential baseline for event-based object detection is the Recurrent Vision Transformer (RVT) introduced by Gehrig and Scaramuzza \cite{gehrig2023recurrent}. RVT employs a four-stage hierarchical backbone combining convolutional priors with local and dilated global self-attention, using a ConvLSTM to carry hidden state across consecutive 50~ms windows \cite{gehrig2023recurrent}. A Feature Pyramid Network (FPN) and YOLOX detection head complete the pipeline \cite{gehrig2023recurrent}. 
 
@@ -332,22 +336,22 @@ RVT achieved $47.2$~mAP on the Gen1 automotive dataset with an inference latency
 
 Zubic et al. \cite{zubic2024state}, described above, apply SSMs directly within the RVT framework for event-based object detection, achieving 47.71 mAP on Gen1 with S5 layers replacing the ConvLSTM. Critically, the SSM is used purely for inter-frame temporal aggregation; spatial feature extraction remains handled by Transformer attention blocks. The SSM variant employed is S5, a fixed-parameter (non-selective) model whose transition matrices do not depend on the input. 
 
-Most recently, SMamba \cite{yang2025smamba} (AAAI 2025) advances the state of the art on Gen1 to 50.4 mAP by replacing the spatial Transformer stages of RVT with a Sparse Selective Mamba (S6) backbone. A Spatio-Temporal Continuity Assessment (STCA) module identifies informative tokens and discards noisy or inactive patches before the Mamba scan, reducing FLOPs by 23\% while improving accuracy. Inter-frame temporal context is still provided by a ConvLSTM, not Mamba. SMamba thus demonstrates that selective Mamba outperforms fixed-parameter SSMs for spatial feature extraction in event-based detection. 
+Most recently, SMamba \cite{yang2025smamba} (AAAI 2025) advances the state of the art on Gen1 to 50.4 mAP by replacing the spatial Transformer stages of RVT with a Sparse Selective Mamba (S6) backbone. A Spatio-Temporal Continuity Assessment (STCA) module identifies informative tokens and discards noisy or inactive patches before the Mamba scan, reducing FLOPs by 23\% while improving accuracy. Inter-frame temporal context is still provided by a ConvLSTM, not Mamba. SMamba thus shows that a selective Mamba can replace attention for spatial feature extraction in event-based detection while reducing computation. 
 
-Despite this progress, a consistent pattern emerges across all top-performing methods: every SOTA architecture maintains inter-frame recurrence (LSTM or SSM hidden state across consecutive windows) and uses multi-scale FPN detection. No prior work has evaluated a fully recurrence-free selective Mamba architecture for event-based detection, nor conducted a controlled ablation comparing a CNN-SSM hybrid against a pure SSM model under identical experimental conditions. These constitute the primary architectural contributions of this thesis. The application of SSM-based event detection to micro-UAV platforms with SWaP constraints additionally has no prior demonstration.
+Despite this progress, a consistent pattern emerges across the top-performing methods: each keeps inter-frame recurrence (an LSTM or SSM state carried across consecutive windows) and multi-scale FPN detection, and each changes several components of the RVT backbone at once. No prior work has compared a convolutional and a state-space spatial mixer under an otherwise identical backbone, temporal model and training pipeline. That controlled comparison, with a selective (Mamba) temporal recurrence in both models, is the primary architectural contribution of this thesis. The application of SSM-based event detection to micro-UAV platforms with SWaP constraints has no prior demonstration either, and remains outside the evaluation of this thesis (Section~\ref{sec:scope}).
 
 \section{Event-Based Vision for UAV Navigation and Obstacle Avoidance}
-The application of event cameras to UAV navigation has been an active area of research, driven by the sensor's inherent advantages for high-speed, low-latency perception. Pioneering work in event-based visual odometry (EVO) by Rebecq et al. \cite{rebecq2017real} demonstrated that event cameras could provide accurate ego-motion estimation, a fundamental capability for UAV localisation. Their approach tracked features generated by events to estimate the 6-DOF pose of the camera, achieving robust performance in scenarios with rapid motion and high dynamic range that caused frame-based visual odometry methods to fail. 
+The application of event cameras to UAV navigation has been an active area of research, driven by the sensor's inherent advantages for high-speed, low-latency perception. Pioneering work on event-based visual-inertial odometry by Rebecq et al. \cite{rebecq2017real} demonstrated that event cameras could provide accurate ego-motion estimation, a fundamental capability for UAV localisation. Their approach tracked features in motion-compensated event frames and fused them with inertial measurements in a keyframe-based nonlinear optimisation to estimate the 6-DOF pose, remaining robust under rapid motion and high dynamic range. 
 
-Vidal et al. \cite{vidal2018ultimate} extended this work by combining event-based visual odometry with depth estimation, demonstrating that event cameras could provide the 3D environmental understanding necessary for obstacle-aware navigation. Their monocular depth estimation approach used transfer learning from conventional vision datasets to event-based depth prediction, achieving high-quality depth maps suitable for navigation planning. 
+Vidal et al. \cite{vidal2018ultimate} extended this work by fusing events, standard frames and inertial measurements in a single state-estimation pipeline (Ultimate SLAM). The fusion improved accuracy by 130\,\% over an events-only and by 85\,\% over a frames-only visual-inertial pipeline, and remained reliable in high-speed and high-dynamic-range scenes, including on a flying quadrotor. 
 
-Falanga et al. \cite{falanga2019fast} presented a seminal contribution in event-based obstacle avoidance for quadrotors. Their approach performed motion segmentation on the event stream to identify independently moving objects, then computed time-to-contact estimates to trigger avoidance manoeuvres. The system achieved an overall processing latency of approximately 3.5 milliseconds, enabling the quadrotor to avoid obstacles at relative speeds up to 10 m/s. Critically, their work demonstrated that event cameras could enable reactive obstacle avoidance at speeds far beyond the capabilities of frame-based perception systems, where the minimum achievable latency is bounded by the frame rate (typically 30-60 ms per frame). 
+Falanga et al. \cite{falanga2020dynamic} presented a seminal contribution in event-based obstacle avoidance for quadrotors, building on their analysis of how perception latency limits the safe speed of a sense-and-avoid system \cite{falanga2019fast}. Their approach performed motion segmentation on the event stream to identify independently moving objects, then computed time-to-contact estimates to trigger avoidance manoeuvres. The system achieved an overall processing latency of approximately 3.5 milliseconds, enabling the quadrotor to avoid obstacles at relative speeds up to 10 m/s. Critically, their work demonstrated that event cameras could enable reactive obstacle avoidance at speeds far beyond the capabilities of frame-based perception systems, where the minimum achievable latency is bounded by the frame period (about 17--33~ms at 30--60 frames per second). 
 
 Sanket et al. \cite{sanket2020evdodgenet} proposed EVDodge, an event-based dodging system tested on UAV platforms. Their approach demonstrated real-time obstacle avoidance using purely event-based perception, showing that the high temporal resolution of event cameras could be directly translated into improved avoidance performance. The system was validated both in simulation and on physical quadrotor platforms, confirming the practical feasibility of event-based avoidance systems. 
 
 More recent work has explored bio-inspired processing pipelines for event-based UAV obstacle avoidance. Xu et al. \cite{li2024taming} proposed BioDrone, which processes stereo event cameras with a chiasm-inspired pipeline for fast event filtering and obstacle detection and a lateral-geniculate-nucleus-inspired matching algorithm for obstacle localisation, deployed on an FPGA through software--hardware co-design, and reported an obstacle detection rate of 96.1\%. Such co-designed pipelines are particularly relevant for micro UAVs, where the power budget is a primary constraint. 
 
-Despite these advances, each of the surveyed approaches has notable limitations. The visual odometry and motion segmentation methods of Rebecq et al.\ \cite{rebecq2017real} and Falanga et al.\ \cite{falanga2019fast} use handcrafted features and geometric rules rather than learned representations, which limits how well they generalise to new environments. EVDodge \cite{sanket2020evdodgenet}, while shown to work on real hardware, uses a relatively shallow network that has not been tested under challenging conditions such as cluttered scenes or rapidly changing lighting. The neuromorphic approach of Li et al.\ \cite{li2024taming} is attractive for its low power consumption, but depends on specialised hardware that is not yet available at the micro-UAV scale and cannot easily support the kind of spatial feature extraction required for general object detection. Most importantly, none of these methods combine learned deep spatial features with a temporal model that can handle variable event rates, the core gap that this thesis addresses through its SSM-based detection architecture. 
+Despite these advances, each of the surveyed approaches has notable limitations. The visual odometry and motion segmentation methods of Rebecq et al.\ \cite{rebecq2017real} and Falanga et al.\ \cite{falanga2020dynamic} use handcrafted features and geometric rules rather than learned representations, which limits how well they generalise to new environments. EVDodge \cite{sanket2020evdodgenet}, while shown to work on real hardware, uses a relatively shallow network that has not been tested under challenging conditions such as cluttered scenes or rapidly changing lighting. The bio-inspired pipeline of Xu et al.\ \cite{li2024taming} is attractive for its low latency, but relies on a co-designed FPGA implementation and hand-designed filtering and matching stages rather than the learned spatial features required for general object detection. Most importantly, none of these methods combine learned deep spatial features with a temporal model that can handle variable event rates, the core gap that this thesis addresses through its SSM-based detection architecture. 
 
 \section{Contrast Maximisation and Motion Estimation from Events}
 Gallego et al. \cite{gallego2018unifying} proposed a unifying contrast maximisation framework for event-based vision that provides a principled approach to estimating motion, depth, and optical flow from events. The core idea is to warp events according to a candidate motion model and measure the contrast (sharpness) of the resulting warped event image; the motion parameters that maximise contrast correspond to the true motion. This framework elegantly handles the data association problem inherent in event-based motion estimation without requiring explicit feature matching or appearance information. 
@@ -361,18 +365,18 @@ The DSEC dataset \cite{gehrig2021dsec}, developed at the University of Zurich, p
 
 The MVSEC (Multi Vehicle Stereo Event Camera) dataset \cite{zhu2018multivehicle} uses DAVIS346B stereo pairs with a 10 cm baseline, providing synchronised event, frame, IMU, and LiDAR data. MVSEC includes sequences from indoor flying, outdoor driving, and motorcycle scenarios, offering diverse conditions for evaluating perception algorithms. 
 
-For object detection specifically, the Gen1 and 1Mpx datasets \cite{perot2020learning} provide large-scale event camera recordings with bounding box annotations for cars and pedestrians, captured using Prophesee event cameras in automotive settings. The N-Caltech101 dataset \cite{orchard2015converting} provides an event camera version of the Caltech101 classification benchmark, created by displaying images on a monitor in front of a DVS camera executing saccadic movements. While primarily a classification benchmark, N-Caltech101 has been widely used for evaluating event representation and feature extraction methods. 
+For object detection specifically, the Gen1 \cite{detournemire2020large} and 1Mpx \cite{perot2020learning} datasets provide large-scale automotive event recordings from Prophesee cameras with bounding-box annotations: cars and pedestrians in Gen1, and pedestrians, two-wheelers and cars in 1Mpx. The N-Caltech101 dataset \cite{orchard2015converting} provides an event camera version of the Caltech101 classification benchmark, created by displaying images on a monitor in front of a DVS camera executing saccadic movements. While primarily a classification benchmark, N-Caltech101 has been widely used for evaluating event representation and feature extraction methods. 
 
-A significant gap exists in available datasets for UAV-specific scenarios. Most event camera datasets target automotive applications, and there are limited publicly available datasets that capture the specific challenges of micro UAV navigation: rapid ego-motion, indoor environments, small obstacles, and the particular motion patterns characteristic of rotary-wing flight. Addressing this dataset gap remains an open challenge for UAV-specific event-based perception research. For the purposes of this thesis, the primary evaluation is conducted on the Gen1 automotive dataset, which provides a well-established benchmark for detection performance. Obstacle avoidance is treated as a motivating application rather than a directly evaluated system the trained detection model represents the core perceptual component that such a system would require. Extension to UAV-specific scenarios, potentially through synthetic data generation in open-source simulators such as Gazebo with event camera emulation, is identified as a direction for future work subject to hardware and time constraints. 
+A significant gap exists in available datasets for UAV-specific scenarios. Most event camera datasets target automotive applications, and there are limited publicly available datasets that capture the specific challenges of micro UAV navigation: rapid ego-motion, indoor environments, small obstacles, and the particular motion patterns characteristic of rotary-wing flight. Addressing this dataset gap remains an open challenge for UAV-specific event-based perception research. For the purposes of this thesis, the primary evaluation is conducted on the Gen1 automotive dataset, which provides a well-established benchmark for detection performance. Obstacle avoidance is treated as a motivating application rather than a directly evaluated system; the trained detection model represents the core perceptual component that such a system would require. Extension to UAV-specific scenarios, potentially through synthetic data generation in open-source simulators such as Gazebo with event camera emulation, is identified as a direction for future work subject to hardware and time constraints. 
 
 \section{Computational Constraints and Obstacle Avoidance for Micro UAVs}
-Micro UAVs in the sub-250 gram class face severe SWaP constraints that fundamentally shape the design of onboard perception systems. Typical computational platforms for micro UAVs include ARM Cortex-M class microcontrollers with as little as 192 kB of memory \cite{niculescu2022improving}, which are orders of magnitude less capable than the GPU-equipped systems used to train and evaluate most deep learning models. This disparity between training and deployment hardware necessitates either highly efficient model architectures, hardware acceleration, or offloading computation to a ground station at the cost of communication latency. 
+Micro UAVs in the sub-250 gram class face severe SWaP constraints that fundamentally shape the design of onboard perception systems. Typical computational platforms for nano- and micro-UAVs are milliwatt-class microcontrollers and parallel ultra-low-power processors, on which even a compact navigation network runs at only about 9--13 frames per second \cite{niculescu2021improving}; they are orders of magnitude less capable than the GPU-equipped systems used to train and evaluate most deep learning models. This disparity between training and deployment hardware necessitates either highly efficient model architectures, hardware acceleration, or offloading computation to a ground station at the cost of communication latency. 
 
-Several approaches to obstacle avoidance on resource-constrained platforms have been explored. Traditional methods based on optical flow divergence or time-to-contact estimation provide computationally lightweight avoidance capabilities but lack the ability to classify or localise specific obstacles \cite{falanga2019fast}, \cite{decroon2016monocular}. Model predictive control (MPC) approaches can generate optimal avoidance trajectories but require real-time environmental perception as input. Cooperative approaches, where a less-equipped micro UAV receives guidance from a sensor-rich companion \cite{petracek2024drones}, offer a pragmatic solution but introduce communication dependencies. 
+Several approaches to obstacle avoidance on resource-constrained platforms have been explored. Traditional methods based on optical flow divergence, time-to-contact estimation or event-based motion segmentation provide computationally lightweight avoidance capabilities but lack the ability to classify specific obstacles \cite{decroon2016monocular, falanga2020dynamic}. Model predictive control (MPC) approaches can generate optimal avoidance trajectories but require real-time environmental perception as input. Cooperative approaches, where a less-equipped micro UAV receives guidance from a sensor-rich companion \cite{pritzl2024drones}, offer a pragmatic solution but introduce communication dependencies. 
 
-The emergence of neuromorphic processing hardware offers a potential path to efficient onboard perception. The SynSense Speck chip \cite{synsense2026speck} integrates a dynamic vision sensor with a fully asynchronous spiking neural network processor, achieving real-time event processing with idle power consumption below 1 mW. Similarly, Intel's Loihi 2 neuromorphic processor supports on-chip learning and efficient SNN inference \cite{davies2021advancing}. These platforms are particularly well-suited to processing event camera data, as they natively handle the sparse, asynchronous data format. However, the software ecosystem for neuromorphic processors remains immature compared to conventional deep learning frameworks, and mapping complex detection architectures onto neuromorphic hardware remains an active research challenge. 
+The emergence of neuromorphic processing hardware offers a potential path to efficient onboard perception. The SynSense Speck chip \cite{synsense2026speck} integrates a dynamic vision sensor with a fully asynchronous spiking neural network processor, achieving real-time event processing with idle power consumption below 1 mW. Similarly, Intel's Loihi processors support on-chip learning and efficient SNN inference \cite{davies2021advancing}, and Loihi~2 adds programmable neuron models and graded spikes \cite{orchard2021efficient}. These platforms are particularly well-suited to processing event camera data, as they natively handle the sparse, asynchronous data format. However, the software ecosystem for neuromorphic processors remains immature compared to conventional deep learning frameworks, and mapping complex detection architectures onto neuromorphic hardware remains an active research challenge. 
 
-The linear complexity and inherent efficiency of SSM-based architectures position them as strong candidates for deployment on the limited computational resources available on micro UAVs. Unlike transformer-based models that require quadratic memory and computation, SSMs can process long event sequences with predictable and modest resource requirements. Combined with model compression techniques such as quantisation and pruning, SSM architectures may enable real-time object detection on platforms that cannot support transformer or large CNN inference. 
+The linear complexity and inherent efficiency of SSM-based architectures position them as strong candidates for deployment on the limited computational resources available on micro UAVs. Unlike transformer-based models, whose memory and computation grow quadratically with sequence length, SSMs process long event sequences with a fixed-size recurrent state, although that state can be large (Section~\ref{sec:efficiency}). Combined with model compression techniques such as quantisation and pruning, SSM architectures may enable real-time object detection on platforms that cannot support transformer or large CNN inference. 
 
 \section{Identification of Research Gaps}
 \label{sec:gaps_thesisA}
@@ -380,13 +384,13 @@ The preceding review reveals several interconnected research gaps that this thes
 
 Gap 1: Pure selective Mamba for event-based object detection. Existing SSM-based detection methods integrate SSM layers into Transformer backbones \cite{zubic2024state} or employ selective Mamba within sparse-attention hybrid frameworks \cite{yang2025smamba}. In both cases, inter-frame recurrence is maintained via ConvLSTM or SSM hidden state passed across consecutive windows. No prior work has evaluated a fully recurrence-free, convolutional-free selective Mamba architecture for event-based detection, nor conducted a controlled ablation comparing a CNN-SSM hybrid against a pure SSM model under identical loss functions, detection heads, and training protocols. Such a comparison is required to isolate the contribution of the spatial feature extractor from all other architectural variables. 
 
-Gap 2: Integrated detection and avoidance for micro UAVs. Existing event-based UAV obstacle avoidance systems \cite{falanga2019fast, sanket2020evdodgenet} predominantly employ reactive strategies based on optical flow or motion segmentation, without explicit object detection. Conversely, event-based detection methods \cite{perot2020learning,gehrig2023recurrent} have been evaluated primarily on automotive benchmarks. An integrated system that combines SSM-based object detection with obstacle avoidance control, specifically designed for micro UAV deployment, has not been demonstrated. 
+Gap 2: Integrated detection and avoidance for micro UAVs. Existing event-based UAV obstacle avoidance systems \cite{falanga2020dynamic, sanket2020evdodgenet} predominantly employ reactive strategies based on optical flow or motion segmentation, without explicit object detection. Conversely, event-based detection methods \cite{perot2020learning,gehrig2023recurrent} have been evaluated primarily on automotive benchmarks. An integrated system that combines SSM-based object detection with obstacle avoidance control, specifically designed for micro UAV deployment, has not been demonstrated. 
 
 Gap 3: Computational efficiency benchmarking for onboard deployment. While the theoretical computational advantages of SSMs over transformers and RNNs are well-established, systematic benchmarking of SSM inference latency, memory consumption, and energy usage on the constrained hardware platforms typical of micro UAVs has not been conducted. Understanding the practical deployment characteristics of SSM-based detection models is essential for validating their suitability for this application domain. 
 
 Gap 4: Variable-rate event processing for obstacle avoidance. The unique ability of SSMs to generalise across temporal resolutions \cite{zubic2024state} has not been exploited in the context of obstacle avoidance, where the event rate varies dramatically with UAV speed and scene complexity. An adaptive processing framework that adjusts its temporal resolution based on event rate while maintaining detection performance could significantly improve both efficiency and robustness. 
 
-These gaps collectively define the research space for this thesis: developing and evaluating SSM-based architectures for event-based object detection and obstacle avoidance on micro UAVs, with a focus on computational efficiency, temporal adaptability, and practical deployability. 
+As registered in Thesis~A, these gaps defined the research space as developing and evaluating SSM-based architectures for event-based object detection and obstacle avoidance on micro UAVs, with a focus on computational efficiency, temporal adaptability and practical deployability. Section~\ref{sec:gaps_revisited} revises them after the scope change. 
 
 
 % --- Chapter 3: Methodology ---
@@ -440,7 +444,7 @@ Second, the mechanisms behind that progress are identifiable, and both are nativ
 training and, at inference, expands each integer into $D$ binary spikes over virtual timesteps, so that
 inference remains spike-driven (binary, accumulate-only) while training sees a multi-bit
 signal~\cite{luo2024integer}. SpikeDet uses the same integer-valued scheme, and for both detectors the
-$4\times2$ configuration outperforms $5\times1$ despite the same total of 8--10 steps. \emph{Temporal state:}
+$4\times2$ configuration, with fewer timesteps each carrying a two-level value, outperforms $5\times1$. \emph{Temporal state:}
 EAS-SNN uses recurrent convolutional SNNs with temporal memory as an adaptive event sampler~\cite{wang2024eas},
 and HsVT combines LSTM blocks with a spiking temporal feature-extraction block on a MaxViT spatial
 backbone~\cite{xu2025hybrid}. HsVT is the closest design point to the spiking model of this thesis: it keeps
@@ -481,7 +485,7 @@ summarised in Table~\ref{tab:spiking_ssm}.
 \midrule
 SpikingSSMs \cite{shen2025spikingssms} & spiking neurons with learnable thresholds driven by an S4D-type SSM &
   a small network predicts the after-reset membrane & LRA, WikiText-103 \\
-SPikE-SSM \cite{zhong2026spike} & reset-refractory neuron, trainable thresholds & boundary compression of
+SPikE-SSM \cite{zhong2024spike} & reset-refractory neuron, trainable thresholds & boundary compression of
   the membrane & LRA, WikiText-103 \\
 P-SpikeSSM \cite{bal2025p} & spikes sampled stochastically from an SSM-based neuron & sampling replaces
   sequential spike generation & long-range tasks \\
@@ -500,7 +504,7 @@ This thesis & LIF readout on the output of a selective (Mamba-2) temporal block 
 SpikingSSMs~\cite{shen2025spikingssms} train a lightweight surrogate dynamic network to predict the
 after-reset membrane potential, which restores parallel training with orders-of-magnitude speed-ups over
 iterative unrolling, and report performance competitive with non-spiking SSMs at about 90\,\% network
-sparsity. SPikE-SSM~\cite{zhong2026spike} accelerates the same computation by compressing the membrane
+sparsity. SPikE-SSM~\cite{zhong2024spike} accelerates the same computation by compressing the membrane
 dynamics between spike boundaries and adds a reset-refractory neuron with trainable thresholds.
 P-SpikeSSM~\cite{bal2025p} avoids sequential spike generation altogether by sampling spikes stochastically
 from an SSM-based neuronal model. SiLIF~\cite{fabre2025silif} takes the correspondence of
@@ -558,8 +562,12 @@ and is used in this thesis as the export boundary for that reason.
 The gap list of Section~\ref{sec:gaps_thesisA}, carried over from Thesis~A, assumed an integrated
 detection-and-avoidance system. After the scope change (Section~\ref{sec:scope_change}) its second gap,
 integrated detection and avoidance, is retired; its fourth, variable-rate processing for avoidance,
-survives as the rate robustness of the detector alone; and its first and third are addressed by Gap~A
-below and by the efficiency study of Section~\ref{sec:efficiency}. The gaps this thesis addresses are narrower
+survives as the rate robustness of the detector alone. Its first gap asked for a recurrence-free,
+convolution-free selective Mamba detector. The models built here keep a selective temporal recurrence ---
+an asset, as the rate-robustness results show --- and a strided convolutional stem, so that gap is
+restated as Gap~A below. Its third gap, benchmarking on constrained hardware, is addressed only in part:
+latency, energy and memory are measured for every model, but on a desktop GPU rather than embedded
+hardware (Section~\ref{sec:efficiency}). The gaps this thesis addresses are narrower
 and better defended than those originally proposed.
 
 \textbf{Gap~A: the isolated effect of the spatial mixer.} Published SSM detectors change several things at
@@ -588,7 +596,7 @@ designed to measure exactly that decomposition (Section~\ref{sec:spiking_results
 
 \section{The Frozen Pipeline}
 \label{sec:frozen_pipeline}
-The methodological core of this thesis is that only one component is ever allowed to change. Every
+The methodological core of this thesis is that the pipeline around the backbone never changes. Every
 model reuses the verified S5-RVT/RVT infrastructure \emph{unmodified} and Hydra-selectable:
 
 \begin{itemize}
@@ -602,8 +610,11 @@ model reuses the verified S5-RVT/RVT infrastructure \emph{unmodified} and Hydra-
   \item \textbf{Training:} PyTorch Lightning, 400k-step OneCycle schedule, bf16 mixed precision.
 \end{itemize}
 
-Because only the backbone changes --- and between EventSSM and PureSSM only the \emph{spatial mixer}
-changes --- every reported delta is causally attributable to that single swap. Figure~\ref{fig:spiking_arch}(a)
+Because only the backbone changes, and between EventSSM and PureSSM only the \emph{spatial mixer}
+changes (with its initialisation: ImageNet weights for the convolutional mixer, none for the state-space
+one), the difference between those two models is attributable to that swap. Against the published S5-RVT
+baseline the comparison is looser: both mixers of the backbone differ, and the own models were trained
+with batch size 4 and bf16 mixed precision rather than 8 and 32-bit (Section~\ref{sec:training}). Figure~\ref{fig:spiking_arch}(a)
 shows the shared pipeline and the two mixing axes within a backbone stage.
 
 \begin{figure}[htbp]
@@ -643,7 +654,8 @@ baselines it is one of the architectural differences of the backbone.
 
 \begin{table}[htbp]
 \centering
-\caption{The four models. The component in bold is what changes relative to the row above it.}
+\caption{The four models. For the own models, the component in bold is what changes relative to the row
+above; S5-RVT and EventSSM differ in both mixers.}
 \label{tab:four_models}
 \begin{tabularx}{\textwidth}{@{}lXXX@{}}
 \toprule
@@ -744,13 +756,15 @@ causality constraint within it: a token may depend on tokens on either side. The
 from a zero state for every frame and carries nothing forward, so the module is stateless by construction
 and its bidirectionality cannot leak information across time. Time is handled exclusively by the causal
 temporal blocks, which are identical in EventSSM and PureSSM; the comparison of Section~\ref{sec:acc_results}
-therefore isolates the spatial mixer. PureSSM has 16.33\,M parameters, 8.38\,M of them in the spatial
+therefore isolates the spatial mixer as instantiated, including its initialisation (a pretrained
+convolutional stack against a state-space mixer trained from scratch; Section~\ref{sec:limitations}). PureSSM has 16.33\,M parameters, 8.38\,M of them in the spatial
 pyramid, the fewest of the compared models (Table~\ref{tab:efficiency}).
 
 \subsection{Spiking-SSM --- a spiking temporal readout}
 \label{subsec:spiking_method}
 The spiking model keeps the Mamba-2 recurrence numerically exact and passes only its \emph{output}
-through a leaky integrate-and-fire layer, so that signals leaving the block are sparse binary events.
+through a leaky integrate-and-fire layer, so that, with the spike readout
+(Section~\ref{subsec:readout_modes}), signals leaving the block are sparse binary events.
 For each timestep $t$, at every spatial location and channel:
 \begin{align}
   m_t &= \beta\, m_{t-1} + y_t \label{eq:lif_integrate}\\
@@ -853,9 +867,9 @@ are also visibly under-annotated: on one busy urban test chunk
 (\texttt{17-10-12\_16-51-41\_1647500000\_1707500000}) the labels contain 128 boxes at 53 timestamps,
 117 cars and only 11 pedestrians, while the event stream shows considerably more pedestrians
 (Section~\ref{sec:qualitative}). Because every model, the published baseline included, is trained and
-scored against the same labels, this noise lowers the attainable AP for all models rather than biasing
-the comparison between them. It does, however, make absolute pedestrian AP an underestimate: a correct
-detection of an unlabelled pedestrian is counted as a false positive (Section~\ref{sec:limitations}).
+scored against the same labels, this noise lowers the attainable AP for all models. It can still shift
+the comparison slightly, since a model that finds more of the unlabelled pedestrians is charged more false
+positives, and it makes absolute pedestrian AP an underestimate (Section~\ref{sec:limitations}).
 
 \section{Metrics}
 \label{sec:metrics}
@@ -900,7 +914,8 @@ on the V100 (which has no bf16 support), porting the launch scripts to the clust
 splitting every $\approx$30-hour run into resumable jobs under the 12-hour general walltime limit. The
 development process, short test-driven iterations against the real kernels, also needed interactive
 GPU access that a batch queue does not offer. The AMD RX~7700~XT (12~GB, ROCm) on which the Thesis~A
-reproduction ran was replaced by the RTX~5070~Ti before Thesis~B; all own-model work was developed on
+reproduction first ran was replaced by the RTX~5070~Ti before Thesis~B, and the reproduction was repeated on
+it (Section~\ref{sec:baseline_repro}); all own-model work was developed on
 CUDA, the primary platform of the selective-scan kernels.
 \end{quote}
 
@@ -984,8 +999,8 @@ hook of Section~\ref{sec:robustness}, is stored as a patch in \texttt{docs/patch
 any re-clone. The frozen pipeline itself is not edited: new backbones enter through a registration hook
 (Section~\ref{sec:frozen_pipeline}).
 
-The code is gated by an automated test suite (\texttt{code/event\_ssm/tests/}; 249 CPU and 28 GPU tests
-at the time of writing). It checks, among other things, the recurrent-state contract across clips, the
+The code is gated by an automated test suite (\texttt{code/event\_ssm/tests/}; 394 CPU and 29 GPU tests
+on 7 October 2026). It checks, among other things, the recurrent-state contract across clips, the
 agreement of the training and streaming-evaluation paths, recipe identity of the spiking
 configuration with PureSSM's, and the null test that the spiking backbone with no spiking stage reduces numerically to
 PureSSM. Each experimental stage also has a decision record in \texttt{docs/notes/} that gives the
@@ -996,8 +1011,10 @@ measured evidence for every change. All results are single runs without a fixed 
 \chapter{Results}
 \label{ch:results}
 All numbers are Gen1 \textbf{test} split under the COCO protocol (mAP @[0.50:0.95]), produced by the
-same evaluator for every model. Single seed; no error bars. Only effects well outside run-to-run
-variation (empirically $\pm0.2$--$0.7$ mAP between own-models) are reported as findings.
+same evaluator for every model. Each model was trained once, without a fixed seed, so run-to-run
+variation is unmeasured and no error bars can be given. Overall-mAP differences below about 1~mAP are
+therefore treated as not distinguishable, and only larger effects, such as the $\mathrm{AP}_L$ gain and
+the robustness gaps, are reported as findings, with the caveat that these too rest on single runs.
 
 \section{Baseline Reproduction}
 \label{sec:baseline_repro}
@@ -1033,10 +1050,12 @@ $-5.96$ large-object gap, while $\mathrm{AP}_S$ and $\mathrm{AP}_M$ were near pa
 implicates ResNet-18's local, hierarchical receptive field, and motivated a globally-mixing spatial
 model. The controlled swap delivers on exactly that axis: $\mathrm{AP}_L$ rises
 $44.70 \rightarrow 47.65$ ($+2.95$), closing roughly half the gap to the baseline. The gain
-concentrates in cars ($+1.16$, the class containing large and close instances) and not pedestrians
-($-0.76$, almost never large) --- a class-level signature that corroborates the receptive-field
-mechanism rather than an aggregate coincidence. Overall mAP is essentially tied with EventSSM
-($+0.21$, within single-seed noise); $\mathrm{AP}_L$ is the reportable win.
+falls on cars ($+1.16$, the class with large and close instances) and not on pedestrians ($-0.76$,
+almost never large), a class-level pattern consistent with the receptive-field explanation, although
+both class differences are small enough that single runs cannot separate them from run-to-run variation.
+Overall mAP is not distinguishable from EventSSM's ($+0.21$). $\mathrm{AP}_L$, at $+2.95$, is the effect
+large enough to report, with the caveat that size-stratified AP rests on fewer instances than overall mAP
+and therefore varies more between runs.
 
 Put plainly: PureSSM's spatial backbone uses neither attention nor a convolutional feature hierarchy.
 Apart from the strided convolutions that downsample and a zero-initialised $3\times3$ depthwise term in
@@ -1046,7 +1065,8 @@ context matters ($+2.95$ on large objects), and achieves this with the fewest pa
 models (16.33\,M, Table~\ref{tab:efficiency}). It remains 1.3~mAP below the attention-based baseline
 overall and 3.0 below it on large objects, having trained, as noted in Section~\ref{sec:training}, with
 half the baseline's batch size: the large-object gap is narrowed, not closed. Because EventSSM and
-PureSSM differ only in the spatial mixer, the large-object gain is attributable to that swap;
+PureSSM differ only in the spatial mixer (as instantiated, Section~\ref{subsec:puressm}), the
+large-object gain is attributable to that swap;
 Section~\ref{sec:erf} examines why.
 
 \section{Mechanism: Effective Receptive Field}
@@ -1072,8 +1092,8 @@ BiMamba (PureSSM)    & \textbf{85.6\,px} & \textbf{105.5\,px} & $\mathbf{+34.4}$
 \end{table}
 
 Two findings follow, and together they convert the $\mathrm{AP}_L$ \emph{number} into an explained
-\emph{mechanism}: the state-space mixer sees wider at both measured stages, so a large object spanning the frame
-falls inside its field and outside the convolutional stack's; and the state-space receptive field is
+\emph{mechanism}: the state-space mixer sees wider at both measured stages, so more of a large object
+falls within its effective field than within the convolutional stack's; and the state-space receptive field is
 \emph{learned} --- training widens it by 30--34\,px --- whereas the convolutional field is
 architecturally fixed and barely moves.
 Figure~\ref{fig:erf} shows the measured fields.
@@ -1107,7 +1127,9 @@ fine-tuned, so its $\Delta$ spans both pre-training and Gen1 training.
 \subsection{Regime 1 --- fixed cadence, variable accumulation window}
 \begin{table}[htbp]
 \centering
-\caption{Accumulation-window sweep (COCO mAP $\times$ 100). Training operating point is $1\times$.}
+\caption{Accumulation-window sweep (COCO mAP $\times$ 100). Training operating point is $1\times$.
+PureSSM is given to two decimals; its $1\times$ value (46.45) is measured on the re-preprocessed test set
+used for the sweep and differs from the canonical 46.43 only through that preprocessing.}
 \label{tab:regime1}
 \begin{tabular}{llccc}
 \toprule
@@ -1117,26 +1139,28 @@ $0.25\times$ & 200\,ms & 41.0 & 40.9 & \textbf{41.65} \\
 $0.5\times$  & 100\,ms & 46.5 & 45.5 & 45.67 \\
 $1\times$    & 50\,ms  & 47.7 & 46.2 & 46.45 \\
 $2\times$    & 25\,ms  & 45.0 & 43.5 & 44.09 \\
-$4\times$    & 12\,ms  & 38.4 & 35.4 & 35.68 \\
+$4\times$    & 12.5\,ms & 38.4 & 35.4 & 35.68 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 PureSSM and EventSSM are tied across this sweep, both marginally below the baseline. One result at the
-dense end needs care. At the $0.25\times$ window PureSSM exceeds the baseline overall ($+0.71$), driven
+dense end needs care. At the $0.25\times$ window PureSSM exceeds the baseline overall ($+0.7$, 41.65 against 40.95), driven
 by large objects: on the smeared dense frames the attention baseline's $\mathrm{AP}_L$ falls by 14.3 and
-PureSSM's by 7.7, leaving PureSSM 3.58 ahead on $\mathrm{AP}_L$. The overall margin is within single-seed
-noise; the $\mathrm{AP}_L$ difference is the reliable part. PureSSM is therefore more robust at the dense,
+PureSSM's by 7.7, leaving PureSSM 3.58 ahead on $\mathrm{AP}_L$. The overall margin is too small to
+distinguish with single runs; the $\mathrm{AP}_L$ difference is the larger effect. PureSSM is therefore more robust at the dense,
 slow end of the sweep and the baseline at the sparse, fast end.
 
 \subsection{Regime 2 --- true rate change}
 \begin{table}[htbp]
 \centering
-\caption{True event-rate change. Retention $=\mathrm{mAP}@\text{rate} \div \mathrm{mAP}@1\times$.}
+\caption{True event-rate change. Retention $=\mathrm{mAP}@\text{rate} \div \mathrm{mAP}@1\times$.
+$^{\dagger}$Published by Zubic et al.~\cite{zubic2024state} for RVT at 200\,Hz, obtained with
+preprocessing that was not released; not measured on this test set (Section~\ref{subsec:f2}).}
 \label{tab:regime2}
 \begin{tabular}{lcccc}
 \toprule
- & \textbf{S5-RVT} & \textbf{EventSSM} & \textbf{ConvLSTM} & \textbf{PureSSM} \\
+ & \textbf{S5-RVT} & \textbf{EventSSM} & \textbf{ConvLSTM}$^{\dagger}$ & \textbf{PureSSM} \\
 \midrule
 true-$10\times$ mAP        & 29.67 & 29.09 & 8.35 & \textbf{32.38} \\
 true-$10\times$ retention  & 62.2\% & 63.0\% & 17.7\% & \textbf{69.7\%} \\
@@ -1146,9 +1170,10 @@ true-$2\times$ retention   & 95.1\% & 95.5\% & --- & \textbf{95.9\%} \\
 \end{table}
 
 PureSSM is the most rate-robust model tested. Because EventSSM and PureSSM share an \emph{identical}
-temporal path, the additional robustness must originate in the BiMamba spatial backbone --- the same
-global receptive field behind the $\mathrm{AP}_L$ result, now paying off when true-$10\times$ frames are
-event-sparse.
+temporal path, the additional robustness originates in the spatial backbone. The wider receptive field
+behind the $\mathrm{AP}_L$ result is a plausible explanation, since true-$10\times$ frames are event-sparse,
+but it has not been tested directly.\needsgpu{decision D1: add RVT's ConvLSTM measured on this true-rate
+test set, replacing the published column}
 
 \subsection{Reproducing inference-time \texorpdfstring{$\Delta t$}{Delta t}-rescaling}
 \label{subsec:f2}
@@ -1191,7 +1216,7 @@ true-rate test set, because the frame stride is fixed at 50~ms in the code; the 
 must therefore have used preprocessing that was not released, and that difference may account for the
 discrepancy. Third, the rate robustness itself is reproduced: without any compensation every state-space
 model retains 62--70\,\% of its accuracy at a true tenfold rate (Table~\ref{tab:regime2}), against the
-17.7\,\% reported for the ConvLSTM.
+17.7\,\% reported for the ConvLSTM under the authors' unreleased preprocessing.
 
 The conclusion drawn here is accordingly limited to what the published artefacts support. State-space
 detectors are substantially more rate-robust than the recurrent-convolutional baseline, and under the
@@ -1251,8 +1276,8 @@ reproducible from the repository (\path{code/event_ssm/scripts/stage16_render_gt
     (\texttt{18-03-29\_13-15-02\_500000\_60500000}), eight evenly spaced frames from its 60~s; top
     EventSSM, bottom PureSSM. Events of 33~ms are drawn by polarity (red/blue). Solid boxes are ground
     truth (car green, pedestrian orange), each held for up to 250~ms after its annotation; dashed boxes
-    are predictions with their confidence (car magenta, pedestrian yellow), shown down to the
-    evaluator's threshold of 0.1.}
+    are predictions with their confidence (car magenta, pedestrian yellow), shown down to RVT's
+    default inference threshold of 0.1 (the AP evaluation itself uses 0.001).}
     \label{fig:qualitative}
 \end{figure}
 
@@ -1266,7 +1291,7 @@ low-confidence car boxes (0.1--0.4) where there is no ground truth. Fourth, the 
 flickers: with annotations about once per second (Section~\ref{sec:dataset}), a box appears in a
 rendered frame only when an annotation falls within the 250~ms hold. Pedestrians and distant objects
 visible in the events are frequently unlabelled; a correct detection of one counts as a false positive
-and lowers the measured AP of every model alike. On these frames the two models behave very similarly,
+and lowers the measured AP of every model. On these frames the two models behave very similarly,
 as expected from their identical temporal path; the frames illustrate the behaviour, while the
 difference between the models rests on the quantitative $\mathrm{AP}_L$ result of
 Section~\ref{sec:acc_results}.
