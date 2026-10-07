@@ -113,6 +113,11 @@ retain accuracy), and take the **spike** and **analog** arms at 100k steps — t
 at equal budget, clearly labelled as *not* comparable to the 400k figures. Honest, standard, and ~$50
 cheaper.
 
+> ⚠️ **Corrected 2026-10-07:** the "graded@100k comes free from the 400k run" step is invalid. OneCycle stretches the
+> learning-rate schedule over the run's total length, so step 100k of a 400k run is not a 100k run. **Adopted plan
+> (user):** all three arms at 100k on one schedule, plus graded at 400k (≈ 98 h local). See
+> `docs/notes/Stage20_fullrun_notes.md` D1.
+
 ⚠️ **Host lesson from Stage 13:** one rented host advertised 2460 Mbps and delivered ~11 kB/s real CDN
 bandwidth. **curl-test bandwidth before bootstrapping**, every time.
 
@@ -182,3 +187,4 @@ Recording these so they stay decided and do not quietly return:
 |---|---|
 | 2026-09-08 | Timeline created. Stage 17 CPU-complete; thesis restructured (43 pp); proposal ready to send. |
 | 2026-10-06 | W4. Stage 18 integrated; Stage 19 smoke done (analog/graded PASS, spike FAIL at 150 steps = binarisation cost, PASS at 300); 25k spike+graded runs launched locally. Ch.4 Experimental Setup written (31 → 26 markers); per-class discrepancy resolved. Same evening: Ch.3 EventSSM/PureSSM (→ 24), Ch.5 §5.2–5.3 (→ 22), Δt framing decided (A, soft) + §5.4.3 written (→ 21), §5.6 qualitative (→ 20), §6.3 Aim-4 descope + aims table (→ 19), §6.1–6.2 (→ 17), Ch.7 summary + 4 future-work subsections (→ 11 real `\tbd` + 2 `\needsgpu`). Appendices: stacked-histogram formulation (cut-off 10 verified in data), reproducibility (versions + ckpt SHA-256), Thesis-C risk register (→ 8 real `\tbd`). Ch.2 ×4 written (SNN landscape re-verified: gap to ANNs has CLOSED — SpikeDet v5 47.6, HsVT 47.8) (→ 4 real `\tbd` + 2 `\needsgpu`, all spiking-dependent). ⚠️ INRC proposal numbers stale — fix before resend. |
+| 2026-10-07 | 🚦 **Kill-switch PASS** (25k rung [4]: spike 0.345, graded 0.343 vs PureSSM 0.351). 25k checks on [2,3,4] for all three arms running (done ≈ 22:00). Stage-20 plan fixed (100k ladder + 400k graded; the 'free 100k' plan was invalid) and launcher `stage20_full_local.sh` built and tested. |
