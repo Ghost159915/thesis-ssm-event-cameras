@@ -35,17 +35,19 @@ CKPTS = {
     "puressm": REPO / "results/stage14_cloud/ckpts/epoch=002-step=310000-val_AP=0.48.ckpt",
 }
 EXPERIMENT = {"eventssm": "+experiment/gen1=resnet_mamba", "baseline": "+experiment/gen1=base.yaml",
-              "puressm": "+experiment/gen1=puressm"}
+              "puressm": "+experiment/gen1=puressm", "spikingssm": "+experiment/gen1=spikingssm"}
+# SpikingSSM has no fixed checkpoint (one per ablation arm): build_model() takes ckpt_path and reads the arm
+# (output mode, spiking stages, residual, readout settings) FROM it -- event_ssm/integration/spiking_ckpt.py.
 # fixed 256x320 input, strides 4/8/16/32 -> per-stage token grids (asserted against the backbone)
 STAGE_TOKENS = [(64, 80), (32, 40), (16, 20), (8, 10)]
 
 
-def compose_cfg(kind: str):
+def compose_cfg(kind: str, extra_overrides=()):
     from hydra import compose, initialize_config_dir
     from config.modifier import dynamically_modify_train_config
     overrides = [
         "dataset=gen1", f"dataset.path={REPO / 'data/gen1_raw/gen1'}", "model=rnndet",
-        EXPERIMENT[kind], "checkpoint=''", "use_test_set=1",
+        EXPERIMENT[kind], "checkpoint=''", "use_test_set=1", *extra_overrides,
     ]
     with initialize_config_dir(config_dir=str(RVT / "config"), version_base=None):
         cfg = compose(config_name="val", overrides=overrides)
@@ -145,10 +147,13 @@ class BenchModel:
             for stage_str, block in bb.temporal.items():
                 s = int(stage_str)
                 h, w = STAGE_TOKENS[s - 1]
-                for layer in block.layers:
+                # a SpikingSSMBlock wraps the unmodified MambaTemporalBlock as `.ssm` and adds `.lif`; the Mamba
+                # layers are counted the same way, and `lif` marks the stage for SOP accounting (Stage 22)
+                spiking = hasattr(block, "lif")
+                for layer in getattr(block, "ssm", block).layers:
                     out.append({"kind": "mamba2", "tokens": h * w, "d_model": layer.d_model,
                                 "d_state": layer.d_state, "d_conv": layer.d_conv,
-                                "expand": layer.expand, "headdim": layer.headdim})
+                                "expand": layer.expand, "headdim": layer.headdim, "lif": spiking})
         else:                          # baseline: one S5Block per RNNDetectorStage
             from models.layers.s5.s5_model import S5Block
             stage_idx = 0
@@ -156,7 +161,7 @@ class BenchModel:
                 if isinstance(mod, S5Block):
                     h, w = STAGE_TOKENS[stage_idx]
                     dim = mod.attn_norm.normalized_shape[0]
-                    out.append({"kind": "s5", "tokens": h * w, "dim": dim, "state_dim": dim})
+                    out.append({"kind": "s5", "tokens": h * w, "dim": dim, "state_dim": dim, "lif": False})
                     stage_idx += 1
         return out
 
@@ -167,16 +172,24 @@ class BenchModel:
         return state_bytes(st)
 
 
-def build_model(kind: str, device: torch.device, load_ckpt: bool = True) -> BenchModel:
-    assert kind in CKPTS, kind
-    if kind in ("eventssm", "puressm"):
+def build_model(kind: str, device: torch.device, load_ckpt: bool = True, ckpt_path=None) -> BenchModel:
+    assert kind in EXPERIMENT, kind
+    ckpt = pathlib.Path(ckpt_path) if ckpt_path is not None else CKPTS.get(kind)
+    extra = []
+    if kind == "spikingssm":
+        if ckpt is not None:
+            from event_ssm.integration.spiking_ckpt import arm_from_checkpoint, hydra_overrides
+            extra = hydra_overrides(arm_from_checkpoint(str(ckpt)))
+        elif load_ckpt:
+            raise ValueError("spikingssm has no default checkpoint: pass ckpt_path (its arm is read from it)")
+    if kind in ("eventssm", "puressm", "spikingssm"):
         from event_ssm.integration.register import register_resnet_mamba
         register_resnet_mamba()
-    cfg = compose_cfg(kind)
+    cfg = compose_cfg(kind, extra)
     from models.detection.yolox_extension.models.detector import YoloXDetector
     detector = YoloXDetector(OmegaConf.create(cfg.model)) if not OmegaConf.is_config(cfg.model) \
         else YoloXDetector(cfg.model)
     if load_ckpt:
-        load_weights(detector, CKPTS[kind])
+        load_weights(detector, ckpt)
     detector = detector.to(device).eval()
     return BenchModel(kind, detector, cfg, device)

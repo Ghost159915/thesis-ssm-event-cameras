@@ -96,17 +96,21 @@ def gather_meta(clip_src: str) -> dict:
             # from an earlier shell shows up in the JSON instead of silently rescaling the model.
             "step_scale_env": {"MAMBA_STEP_SCALE": os.environ.get("MAMBA_STEP_SCALE"),
                                "S5_STEP_SCALE": os.environ.get("S5_STEP_SCALE")},
+            # Training monitors attach forward hooks that print and host-sync; inside a timed forward they
+            # would bias latency. stage10_run_local.sh unsets them; recorded so a leak is visible.
+            "monitor_env": {k: os.environ.get(k) for k in
+                            ("SPIKING_MONITOR", "PURESSM_MONITOR", "SPIKING_ALLOW_ARM_OVERRIDE")},
             "git_dirty": _git_dirty(),
             "weights": "plain mdl.* (non-EMA); compute metrics weight-independent"}
     meta.update(_clocks_temp())
     return meta
 
 
-def measure_model(kind: str, device, clip, smoke: bool, graph: bool = False) -> dict:
+def measure_model(kind: str, device, clip, smoke: bool, graph: bool = False, ckpt_path=None) -> dict:
     from event_ssm.benchmark.bench_models import build_model, CKPTS
     from event_ssm.benchmark import bench_metrics as bm
 
-    model = build_model(kind, device=device, load_ckpt=True)
+    model = build_model(kind, device=device, load_ckpt=True, ckpt_path=ckpt_path)
     n = clip.shape[0]
     warmup, iters = (3, 10) if smoke else (50, 300)
     frames = clip.to(device)
@@ -236,8 +240,10 @@ def measure_model(kind: str, device, clip, smoke: bool, graph: bool = False) -> 
             torch.cuda.empty_cache()
             torch.cuda.reset_peak_memory_stats(device)
         else:
-            out["latency"]["graph"] = {"captured": False,
-                "reason": "S5 baseline uses stock-RVT state machinery; not covered by the ours state-carry contract"}
+            reason = ("graph replay of the LIF time loop not validated (Stage-18 deferred item)"
+                      if kind == "spikingssm" else
+                      "S5 baseline uses stock-RVT state machinery; not covered by the ours state-carry contract")
+            out["latency"]["graph"] = {"captured": False, "reason": reason}
 
     # ---- VRAM ----
     model.autocast_bf16 = True
@@ -292,16 +298,38 @@ def measure_model(kind: str, device, clip, smoke: bool, graph: bool = False) -> 
     return out
 
 
-def main():
+def kinds_for(args) -> list:
+    if args.models == "both":
+        return ["eventssm", "baseline"]
+    if args.models == "all":                    # the three ANN models, as before
+        return ["eventssm", "baseline", "puressm"]
+    return [args.models]
+
+
+def parse_args(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--models", default="both",
-                    choices=["both", "all", "eventssm", "baseline", "puressm"])
+                    choices=["both", "all", "eventssm", "baseline", "puressm", "spikingssm"])
+    ap.add_argument("--spikingssm-ckpt", default=None,
+                    help="checkpoint for --models spikingssm (required; its ablation arm is read from it)")
+    ap.add_argument("--spikingssm-test-ap", type=float, default=None,
+                    help="its Gen1 test AP from the Stage-21 eval, for the mAP/GFLOP column (optional)")
     ap.add_argument("--smoke", action="store_true")
     ap.add_argument("--graph", action="store_true",
                     help="also measure the state-carrying cuda-graph-replay latency as a separate "
                          "labeled latency.graph column (ours backbones only; eager numbers untouched)")
     ap.add_argument("--out", default=str(REPO / "results/stage10"))
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
+    if "spikingssm" in kinds_for(args):
+        if not args.spikingssm_ckpt:
+            ap.error("--models spikingssm needs --spikingssm-ckpt (one checkpoint per ablation arm)")
+        if not pathlib.Path(args.spikingssm_ckpt).is_file():
+            ap.error(f"--spikingssm-ckpt not found: {args.spikingssm_ckpt}")
+    return args
+
+
+def main():
+    args = parse_args()
     assert torch.cuda.is_available(), "Stage-10 benchmark needs the CUDA GPU (run via stage10_run_local.sh)"
     device = torch.device("cuda")
 
@@ -315,15 +343,14 @@ def main():
 
     results = {"schema": 1, "meta": gather_meta(blob["src"]), "models": {}}
     results["meta"]["ckpts"] = {k: str(v) for k, v in CKPTS.items()}
-    if args.models == "both":
-        kinds = ["eventssm", "baseline"]
-    elif args.models == "all":
-        kinds = ["eventssm", "baseline", "puressm"]
-    else:
-        kinds = [args.models]
+    kinds = kinds_for(args)
+    if "spikingssm" in kinds:
+        results["meta"]["ckpts"]["spikingssm"] = str(args.spikingssm_ckpt)
+        results["meta"]["test_ap"] = {**TEST_AP, "spikingssm": args.spikingssm_test_ap}
     for kind in kinds:
         print(f"[stage10] measuring {kind} ({'smoke' if args.smoke else 'full'}) ...")
-        results["models"][kind] = measure_model(kind, device, clip, args.smoke, graph=args.graph)
+        results["models"][kind] = measure_model(kind, device, clip, args.smoke, graph=args.graph,
+                                                ckpt_path=args.spikingssm_ckpt if kind == "spikingssm" else None)
         # Run protection: dump after EVERY model so a crash on model 2 doesn't lose model 1's
         # ~15 min of measurement -- this JSON is overwritten again (complete) at the end.
         outfile.write_text(json.dumps(results, indent=2))

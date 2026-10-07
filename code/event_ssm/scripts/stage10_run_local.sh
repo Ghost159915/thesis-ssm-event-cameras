@@ -26,6 +26,9 @@ set +u; source /home/ghost/miniforge3/etc/profile.d/conda.sh && conda activate e
 # at model construction. A leftover export from a Stage-9 sweep shell sourced into this one would
 # silently construct a Delta_t-rescaled model here and Stage-10 would benchmark the wrong thing.
 unset MAMBA_STEP_SCALE S5_STEP_SCALE
+# Same for the training monitors (forward hooks that print and host-sync inside timed forwards) and the Stage-22
+# eval-only arm override: never wanted in a benchmark.
+unset SPIKING_MONITOR PURESSM_MONITOR SPIKING_ALLOW_ARM_OVERRIDE
 export TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD=1
 export PYTHONUNBUFFERED=1
 export PYTHONPATH="$REPO/code:$REPO/external/ssms_event_cameras/RVT:${PYTHONPATH:-}"

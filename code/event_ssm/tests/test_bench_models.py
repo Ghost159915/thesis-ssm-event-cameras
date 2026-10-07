@@ -53,3 +53,37 @@ def test_full_step_runs_on_gpu():
     dets, st = bm.full_step(frame, None)
     assert isinstance(dets, list) and len(dets) == 1
     assert bm.state_bytes_per_stream() > 0
+
+
+# ---- Stage 21/22: SpikingSSM entry (CPU construction; the arm comes from the checkpoint) ----------------------
+import pathlib
+from event_ssm.benchmark.bench_models import REPO
+SPK_CKPT = REPO / "external/ssms_event_cameras/RVT/RVT/js9sthxu/checkpoints/epoch=000-step=25000-val_AP=0.34.ckpt"
+
+
+@pytest.mark.skipif(not SPK_CKPT.exists(), reason="Stage-19 graded [4] checkpoint not present")
+def test_build_spikingssm_cpu_from_checkpoint_arm():
+    bm = build_model("spikingssm", device=torch.device("cpu"), load_ckpt=True, ckpt_path=SPK_CKPT)
+    spk = bm.cfg.model.backbone.spiking
+    assert spk.output_mode == "graded" and list(spk.spiking_stages) == [4]     # read from the checkpoint
+    pb = bm.param_breakdown()
+    assert {"backbone_spatial", "backbone_temporal", "neck", "head", "total"} <= set(pb)
+    th = bm.temporal_hparams()
+    assert [t["kind"] for t in th] == ["mamba2"] * 3                              # the SSM is still counted
+    assert [t["lif"] for t in th] == [False, False, True]                         # stages 2,3 plain; 4 spikes
+
+
+def test_build_spikingssm_default_arm_without_checkpoint():
+    bm = build_model("spikingssm", device=torch.device("cpu"), load_ckpt=False)
+    th = bm.temporal_hparams()
+    assert len(th) == 3 and all(t["lif"] for t in th)                            # config default: [2,3,4]
+
+
+def test_build_spikingssm_requires_a_checkpoint_to_load():
+    with pytest.raises(ValueError, match="checkpoint"):
+        build_model("spikingssm", device=torch.device("cpu"), load_ckpt=True)
+
+
+def test_ann_models_report_no_lif_stages():
+    th = build_model("puressm", device=torch.device("cpu"), load_ckpt=False).temporal_hparams()
+    assert [t["lif"] for t in th] == [False, False, False]

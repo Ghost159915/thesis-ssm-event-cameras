@@ -71,3 +71,13 @@ def test_report_ratio_column_absent_when_no_baseline(tmp_path):
     md = (tmp_path / "efficiency_table.md").read_text()
     assert "vs Baseline" in md                               # column header still rendered
     assert "×" not in md                                     # but no ratio was computable
+
+
+def test_report_labels_a_spikingssm_model(tmp_path):
+    d = json.loads(FIXTURE.read_text())
+    d["models"]["spikingssm"] = json.loads(json.dumps(d["models"]["puressm" if "puressm" in d["models"] else "eventssm"]))
+    j = tmp_path / "with_spiking.json"; j.write_text(json.dumps(d))
+    rep.generate(json_path=j, out_dir=tmp_path)
+    md = (tmp_path / "efficiency_table.md").read_text()
+    assert "spikingssm" in md
+    assert rep.LABEL["spikingssm"].startswith("SpikingSSM") and "spikingssm" in rep.HUE

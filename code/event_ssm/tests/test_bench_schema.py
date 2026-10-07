@@ -50,3 +50,32 @@ def test_test_ap_has_puressm():
     # module already loaded by file path at the top of this test file (s10) rather than a
     # `from event_ssm.scripts.stage10_benchmark import TEST_AP` package import.
     assert s10.TEST_AP.get("puressm") == 0.4643
+
+
+# ---- Stage 21/22: spikingssm in the benchmark CLI --------------------------------------------------------------
+import pytest
+
+
+def test_spikingssm_needs_a_checkpoint_argument():
+    with pytest.raises(SystemExit) as e:
+        s10.parse_args(["--models", "spikingssm"])
+    assert e.value.code == 2
+
+
+def test_spikingssm_checkpoint_must_exist(tmp_path):
+    with pytest.raises(SystemExit):
+        s10.parse_args(["--models", "spikingssm", "--spikingssm-ckpt", str(tmp_path / "nope.ckpt")])
+
+
+def test_spikingssm_kinds_and_checkpoint(tmp_path):
+    ck = tmp_path / "x.ckpt"; ck.write_bytes(b"")
+    a = s10.parse_args(["--models", "spikingssm", "--spikingssm-ckpt", str(ck), "--spikingssm-test-ap", "0.45"])
+    assert s10.kinds_for(a) == ["spikingssm"]
+    assert a.spikingssm_ckpt == str(ck) and a.spikingssm_test_ap == 0.45
+
+
+@pytest.mark.parametrize("models, kinds", [("both", ["eventssm", "baseline"]),
+                                           ("all", ["eventssm", "baseline", "puressm"]),
+                                           ("puressm", ["puressm"])])
+def test_existing_model_selections_are_unchanged(models, kinds):
+    assert s10.kinds_for(s10.parse_args(["--models", models])) == kinds
