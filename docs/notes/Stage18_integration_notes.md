@@ -44,6 +44,8 @@ evaluation and the Stage-10 benchmark all work unchanged. Only training does:
 | Test evaluation, `code/event_ssm/scripts/stage14_puressm_test_eval_local.sh` | **No** | Hardcodes `+experiment/gen1=puressm` (l.63). Stage-21 work. |
 | Stage-10 benchmark, `code/event_ssm/benchmark/bench_models.py` | **No** | No `spikingssm` entry. `temporal_hparams()` iterates `block.layers` (l.148), but `SpikingSSMBlock` keeps its Mamba layers at `.ssm.layers`, so it raises `AttributeError`. The torch.profiler FLOP count (`bench_metrics.profiler_network_flops`, `with_flops=True`) does not attribute FLOPs to the LIF's elementwise ops. Stage-22 work, where the spiking metric is SOPs rather than MACs anyway. |
 
+*[Update 2026-10-07: both gaps are closed by new sibling launchers — `stage21_spikingssm_test_eval_local.sh` (arm read from the checkpoint) and the `spikingssm` benchmark entry; see `docs/notes/Stage21_22_tooling_notes.md`.]*
+
 **Stage-17 corrections made inside this stage** (D6 and D7 in §4): the `LIFReadout` constructor now rejects `beta` at the
 epsilon boundary (it previously passed validation and then crashed with `math.log(0)`), and the per-forward host sync on the
 firing rate was removed. Both are in commit `32ccb7e`; all 31 Stage-17 CPU tests passed unmodified.
