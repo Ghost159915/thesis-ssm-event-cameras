@@ -134,6 +134,35 @@ Interpretation, with its limits:
 - Caveats: one seed per arm; compressed 25k OneCycle; rung `[4]` only; analog not run at 25k; data order differs
   from the anchor (2/1 vs 6/2 workers) and the anchor ran on a different GPU without block checkpointing.
 
+### 3.6 Rung [2,3,4] checks, all three arms (2026-10-07; 25k, same recipe as §3.4)
+
+| Step | 5k | 10k | 15k | 20k | 25k | Run |
+|---|---|---|---|---|---|---|
+| analog `[2,3,4]` | 0.151 | 0.250 | 0.293 | 0.330 | **0.351** | `t5ig6wzs` |
+| graded `[2,3,4]` | 0.134 | 0.238 | 0.283 | 0.311 | **0.340** | `r4mtxmic` |
+| spike `[2,3,4]` | 0.125 | 0.203 | 0.262 | 0.292 | **0.305** | `f97atje0` |
+| *spike `[4]` / graded `[4]` (§3.4)* | | | | | *0.345 / 0.343* | |
+| *PureSSM anchor (same 25k schedule)* | 0.155 | — | 0.286 | — | *0.351* | |
+
+- **Health:** zero SILENT, SATURATED or non-finite events in all three runs. β stays ≈ 0.900 at every stage (D6).
+- **Final training-monitor firing rates (s2 / s3):** spike 0.39 / 0.19 (s4 0.25); graded 0.20 / 0.10 (s4 ≈ 0.10);
+  analog's internal spikes, which drive only its reset, 0.16 / 0.35.
+  - On all three stages, binary spikes fire about twice as often as graded ones.
+  - The analog arm emits the dense membrane, so it has no operation saving.
+- **The pre-registered ordering analog ≥ graded > spike holds at every evaluation from 5k onwards.** At 25k the ladder
+  reads:
+  - PureSSM → analog: **0.0** (LIF dynamics cost nothing measurable);
+  - analog → graded: **−1.1** (sparsity);
+  - graded → spike: **−3.5** (binarisation).
+
+  These are single short runs, so the 1.1 sits at the "not distinguishable" level of the thesis's noise assumption;
+  the 3.5 binarisation cost is the clear effect.
+- **On rung `[4]` the arms are indistinguishable** (spike 0.345, graded 0.343). The decomposition only appears when the
+  high-resolution stages spike.
+- **Implication for Stage 20 (rung choice, user decision pending):** `[2,3,4]` is where the three-way decomposition,
+  the thesis's stated contribution, is visible. It also carries the larger spike-fed operation share (SOP ceiling
+  1.04 % vs 0.21 %).
+
 ## 4. Decision record
 
 ### D1. Smoke design: clone, do not edit
