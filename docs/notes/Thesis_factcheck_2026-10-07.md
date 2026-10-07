@@ -118,7 +118,22 @@ Line numbers are those of `main.tex` at commit `d58e439` (before the fixes).
 - **D2** → restate the noise band as an assumption; < 1 mAP overall = not distinguishable.
 - **D3** → state the ImageNet-vs-scratch initialisation as a limitation (no extra run).
 - **D4** → both: the Thesis-A reproduction ran on the AMD card and was repeated on the RTX 5070 Ti.
-- **D5** → acknowledgments wording: pending.
+- **D5** → made accurate (thanks to the supervisor and the School "for their support"; the
+  "computational resources" claim was dropped). Fixed in `77258df`.
+
+**D1 implementation (`77258df`).**
+- **Code:** `code/event_ssm/baselines/` holds RVT's original MaxViT + ConvLSTM backbone, vendored verbatim and
+  AST-tested against github.com/uzh-rpg/RVT `b80f568`. `RVTLSTMBackbone` runs it per frame inside the fork's clip
+  interface, tested equal to the per-frame loop with state carried across clips. The shared ConvLSTM, MaxViT, PAFPN
+  and YOLOX modules of the original and the fork are AST-identical.
+- **Launcher:** `scripts/stage9_rvt_lstm_eval_local.sh`, same recipe as the S5 baseline evaluation.
+- **Plan for the night of 2026-10-07 (user decision: before Stage 20; all steps run by the user):**
+  1. Download `checkpoints/rvt-b-gen1.ckpt`; the strict key test then runs on the CPU.
+  2. Evaluate at 1×. This **validates the port**: it should reproduce ≈ 47.2 (RVT paper).
+  3. Rebuild the true-rate set, CPU only, after training stops (RAM): `stage9_prep_test.sh`, then
+     `stage9_render_truerate.sh 10x`. The July renders were deleted.
+  4. Evaluate at 10× (≈ 2 h GPU).
+  5. Replace the published column, the abstract sentence and the `\needsgpu` markers.
 
 **Extra findings in the fixing pass (fixed):** four corrupted bib entries (Niculescu: wrong authors/volume/year;
 Orchard 2015: "Tishby" for Thakor; S4→Mamba survey: authors were Patro et al., really Somvanshi et al.;
