@@ -97,3 +97,54 @@ def test_profiler_flops_carry_a_per_op_breakdown():
     r = bm.profiler_network_flops(lambda: conv(x), device=None)
     assert r["by_op"]["aten::conv2d"] == 2 * 6 * 6 * 4 * 3 * 3 * 3
     assert sum(r["by_op"].values()) / 1e9 == pytest.approx(r["counted_gflops"])
+
+
+# ---- FLOP add-on v2 (Stage-22 finding D6): count only the work the profiler cannot see -----------------------
+def test_mamba2_kernel_macs_exclude_the_profiled_projections():
+    from event_ssm.benchmark.bench_metrics import mamba2_kernel_macs_per_token
+    # the full-layer hand case above minus in_proj (82432) and out_proj (32768), which are nn.Linear layers the
+    # profiler already counts as aten::mm: conv 1536 + scan 49152 + gated norm 512
+    assert mamba2_kernel_macs_per_token(128, d_state=64, d_conv=4, expand=2) == 51200
+    assert mamba2_kernel_macs_per_token(128, d_state=64) == mamba2_layer_macs_per_token(128, d_state=64) - 82432 - 32768
+
+
+def test_bimamba_kernel_macs_two_directions_one_norm():
+    from event_ssm.benchmark.bench_metrics import bimamba_kernel_macs_per_token
+    # d_model 64, d_state 16: d_inner 128, conv_dim 160; per direction conv 640 + scan 6144; one shared norm 256
+    assert bimamba_kernel_macs_per_token(64, d_state=16, d_conv=4, expand=2) == 2 * (640 + 6144) + 256
+
+
+def test_s5_unprofiled_macs_top_up_the_profiled_complex_products():
+    from event_ssm.benchmark.bench_metrics import s5_unprofiled_macs_per_token
+    # the full hand case minus the FF layers (32768 + 16384, profiled as aten::mm) minus 1 real MAC per complex MAC
+    # of B~u and C~x (128*128 each), which the profiler counts as aten::bmm at 2 FLOPs per complex MAC
+    assert s5_unprofiled_macs_per_token(128, 128) == 182656 - 32768 - 16384 - 2 * 128 * 128
+
+
+def test_analytic_unprofiled_gflops_sums_temporal_and_spatial():
+    from event_ssm.benchmark.bench_metrics import analytic_unprofiled_gflops
+    temporal = [{"kind": "mamba2", "tokens": 10, "d_model": 128, "d_state": 64, "d_conv": 4, "expand": 2,
+                 "headdim": 64},
+                {"kind": "s5", "tokens": 3, "dim": 128, "state_dim": 128}]
+    spatial = [{"kind": "bimamba", "tokens": 5, "d_model": 64, "d_state": 16, "d_conv": 4, "expand": 2}]
+    macs = 10 * 51200 + 3 * 100736 + 5 * (2 * 6784 + 256)
+    assert analytic_unprofiled_gflops(temporal, spatial) == pytest.approx(2 * macs / 1e9)
+
+
+def test_s5_complex_products_are_profiled_at_one_real_mac_each():
+    # the premise of s5_unprofiled_macs_per_token, checked on the benchmark's own streaming path (CPU): every S5
+    # stage profiles B~u and C~x as two aten::bmm of shape [N,P,P]@[N,P,1] at 2*N*P*P FLOPs each
+    import collections
+    from torch.profiler import ProfilerActivity, profile
+    from event_ssm.benchmark.bench_models import build_model
+    m = build_model("baseline", device=torch.device("cpu"), load_ckpt=False)
+    m.autocast_bf16 = False
+    x = torch.zeros(1, 20, 256, 320)
+    m.network_step(x, None)
+    with profile(activities=[ProfilerActivity.CPU], with_flops=True, record_shapes=True) as prof:
+        m.network_step(x, None)
+    matvec = collections.Counter()
+    for e in prof.events():
+        if e.name == "aten::bmm" and getattr(e, "flops", None) and e.input_shapes[1][-1] == 1:
+            matvec[tuple(e.input_shapes[0])] += e.flops
+    assert dict(matvec) == {(n, p, p): 2 * (2 * n * p * p) for n, p in ((5120, 64), (1280, 128), (320, 256), (80, 512))}

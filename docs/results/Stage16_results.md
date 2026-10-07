@@ -41,12 +41,14 @@ the 3-way comparison here is internally consistent, which is what matters.*
 | Latency p50 eager (ms) | 17.14 | 12.60 | **26.86** | slowest (launch-bound) |
 | Throughput eager (Hz) | 58 | 79 | **37** | slowest eager |
 | Energy (J/frame, eager) | 0.723 | 0.438 | **0.652** | mid |
-| **FLOPs (G)** | 11.89 | 13.55 | **10.12** | ✅ **fewest** |
-| **mAP / GFLOP** | 4.01 | 3.41 | **4.59** | ✅ **best (most compute-efficient)** |
+| **FLOPs (G)** | 11.06 | 12.71 | **10.03** | ✅ **fewest** |
+| **mAP / GFLOP** | 4.32 | 3.64 | **4.63** | ✅ **best (most compute-efficient)** |
 | Streaming state / stream | 4.7 MB | 144 MB | **144 MB** | = EventSSM (shared Mamba temporal) |
 
+*(FLOPs corrected 2026-10-07 — the v1 add-on double-counted projections/S5 products and missed the PureSSM spatial scans; v1 values 11.89 / 13.55 / 10.12 and 4.01 / 3.41 / 4.59. See `docs/notes/Stage21_22_tooling_notes.md` D6.)*
+
 **Honest read:** PureSSM does the **least compute** (fewest FLOPs *and* params) and has the **best accuracy-per-FLOP
-(4.59, beating both)** — but it's the **slowest in wall-clock eager (37 Hz)**. Not a contradiction: its BiMamba
+(4.63, beating both)** — but it's the **slowest in wall-clock eager (37 Hz)**. Not a contradiction: its BiMamba
 backbone is *many small SSM-scan ops* → **launch-overhead-bound**, and SSM-scan GPU utilisation is lower than
 cuDNN convolutions (EventSSM does *more* FLOPs *faster*). So PureSSM is *algorithmically* leanest but *hardware*
 launch-bound — which is exactly what the CUDA-graph column (below) addresses.

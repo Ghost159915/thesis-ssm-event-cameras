@@ -70,8 +70,8 @@ bash code/event_ssm/scripts/stage10_run_local.sh --models all+spikingssm --spiki
   - **Rulings during implementation:** the tracer test kept tainted tensors alive (an `id()`-reuse false positive); the
     SOP step sits before `del model`; the train-mode VRAM forward cannot alter spike outputs (no BatchNorm in the
     SpikingSSM backbone).
-- **D6. Finding: the stored Stage-10/16 FLOP totals are slightly wrong (user decision pending; Ch. 5 numbers
-  unchanged until then).** `flops.total_gflops` = torch.profiler + an analytic add-on.
+- **D6. Finding: the stored Stage-10/16 FLOP totals were slightly wrong — FIXED 2026-10-07 (user: "fix the FLOP
+  numbers and update chapter 5"; resolution at the end of this item).** `flops.total_gflops` = torch.profiler + an analytic add-on.
   - The analytic Mamba-2 formula (`bench_metrics.mamba2_layer_macs_per_token`) **includes the in/out projections**,
     which are `nn.Linear` layers the profiler already counts. That is 0.832 of the 1.061 analytic GFLOPs for EventSSM
     and PureSSM.
@@ -93,6 +93,20 @@ bash code/event_ssm/scripts/stage10_run_local.sh --models all+spikingssm --spiki
     - make the S5 add-on exclude what the profiler already counts: drop the feed-forward term, and either drop the
       profiled complex `bmm` or count B̄u / C̃x only once, at 4 real MACs.
     The latency/energy JSON values are unaffected.
+  - **Resolution (2026-10-07).**
+    - **Code:** the add-on is now `bench_metrics.analytic_unprofiled_gflops`: Mamba-2 and BiMamba kernel work only
+      (conv + scan + gated norm), and S5 with the feed-forward excluded and the complex products topped up from 1 to 4
+      real MACs. `BenchModel.spatial_hparams()` lists the BiMamba blocks. The JSON records `analytic_convention`.
+    - **Tests:** the premise "S5 complex products are profiled at one real MAC" is checked on the real baseline. The
+      FLOP add-on is checked to equal the SOP kernel count plus the norm terms.
+    - **Recount:** `scripts/stage10_flops_recount.py` recounted the citable `results/stage10/bench_results.json` on the
+      CPU. Only `flops` changed (verified: every other field is identical, `counted_gflops` untouched). The original is
+      at `bench_results.v1.json`, and each model keeps `flops.v1`.
+    - **Final values:** EventSSM 12.714, S5-RVT 11.056, PureSSM 10.026 GFLOPs. PureSSM is 0.014 above the ≈ 10.01
+      estimated above because its spatial blocks now also get the gated-norm term the temporal blocks always had.
+      mAP/GFLOP with the Table-accuracy APs: 3.64 / 4.32 / 4.63.
+    - **Thesis:** abstract, the §4 FLOP definition, `tab:efficiency`, §5 prose and the Ch. 7 summary are updated.
+      `docs/results/Stage16_results.md` and `Thesis_Progress_Writeup.md` carry the corrected values with a note.
 
 ## 3. Tests
 

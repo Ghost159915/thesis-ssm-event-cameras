@@ -177,19 +177,12 @@ def measure_model(kind: str, device, clip, smoke: bool, graph: bool = False, ckp
         for p in model.detector.parameters():
             p.requires_grad_(True)
     incomplete = counted["counted_gflops"] == 0.0
-    analytic_macs = 0
-    for t in model.temporal_hparams():
-        if t["kind"] == "mamba2":
-            analytic_macs += t["tokens"] * bm.mamba2_layer_macs_per_token(
-                t["d_model"], d_state=t["d_state"], d_conv=t["d_conv"],
-                expand=t["expand"], headdim=t["headdim"])
-        else:
-            analytic_macs += t["tokens"] * bm.s5_block_macs_per_token(t["dim"], t["state_dim"])
-    analytic_gflops = analytic_macs * 2 / 1e9
+    # analytic add-on = only the work the profiler cannot see (custom SSM kernels); v2 convention, finding D6
+    analytic_gflops = bm.analytic_unprofiled_gflops(model.temporal_hparams(), model.spatial_hparams())
     out["flops"] = {"counted_gflops": counted["counted_gflops"], "analytic_gflops": analytic_gflops,
                     "total_gflops": counted["counted_gflops"] + analytic_gflops,
                     "unsupported_ops": counted["unsupported_ops"], "counted_incomplete": incomplete,
-                    "source": source}
+                    "source": source, "analytic_convention": bm.ANALYTIC_CONVENTION}
     if kind == "spikingssm":
         out["flops"]["notes"] = ("LIF readout: elementwise ops only partly counted by the profiler (negligible); "
                                  "synaptic operations (SOPs) are not accounted here (Stage-22 accounting)")

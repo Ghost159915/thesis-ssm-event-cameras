@@ -160,6 +160,61 @@ def s5_block_macs_per_token(dim: int, state_dim: int, ff_mult: float = 1.0,
     return macs
 
 
+# ---- analytic add-on, v2 (2026-10-07, Stage-22 finding D6) ---------------------------------------------------
+# total FLOPs = torch.profiler count + this add-on. The add-on must hold ONLY the work the profiler cannot see:
+# custom Triton/CUDA kernels. v1 used the full-layer formulas above, which re-added the nn.Linear projections (Mamba
+# in/out_proj, S5 feed-forward: the profiler counts them as aten::mm) and the S5 complex products (profiled as
+# aten::bmm), and had no term for the spatial BiMamba scans of PureSSM/SpikingSSM.
+ANALYTIC_CONVENTION = ("v2-unprofiled-only: SSM work inside custom kernels (causal conv, chunk scan, gated norm); "
+                       "projections/FF profiled; S5 complex products topped up from 1 to 4 real MACs")
+
+
+def mamba2_kernel_macs_per_token(d_model: int, d_state: int = 64, d_conv: int = 4, expand: int = 2) -> int:
+    """Per-token MACs of one Mamba-2 layer that run in custom kernels (temporal/_scan.py): depthwise causal conv
+    (causal_conv1d_fn), chunk scan (Triton) and gated RMSNorm (Triton). The in/out projections are excluded."""
+    d_inner = expand * d_model
+    return (d_inner + 2 * d_state) * d_conv + 3 * d_inner * d_state + 2 * d_inner
+
+
+def bimamba_kernel_macs_per_token(d_model: int, d_state: int = 16, d_conv: int = 4, expand: int = 2) -> int:
+    """Per-token MACs of one spatial BiMamba block (models/puressm/_scan2d.py BiMamba1DScan) in custom kernels:
+    the two directions' causal conv + chunk scan (direction-stacked into one call each), and ONE gated RMSNorm
+    over the summed directions. The shared in/out projections are excluded."""
+    d_inner = expand * d_model
+    return 2 * ((d_inner + 2 * d_state) * d_conv + 3 * d_inner * d_state) + 2 * d_inner
+
+
+def s5_unprofiled_macs_per_token(dim: int, state_dim: int, include_discretize: bool = True) -> int:
+    """Per-token MACs of one RVT S5Block that the profiler does not count, on the benchmark's streaming path. The
+    FF layers are profiled (aten::mm). B~u and C~x are profiled as aten::bmm at 2 FLOPs per complex MAC, i.e. one
+    real MAC, so only the remaining 3 of the 4 real MACs of a complex MAC are added (premise tested in
+    test_bench_metrics.py on the real model). Lambda x, the D skip, discretisation and the norms are unprofiled."""
+    P, c = state_dim, dim
+    macs = 3 * P * c                                      # B~u top-up
+    macs += 4 * P                                         # Lambda_bar * x (diagonal complex)
+    macs += 3 * P * c                                     # C~x top-up
+    macs += c                                             # D skip
+    if include_discretize:
+        macs += 10 * P                                    # per-step bilinear discretisation (approx)
+    macs += 4 * c                                         # 2 LayerNorms (approx)
+    return macs
+
+
+def analytic_unprofiled_gflops(temporal_hparams, spatial_hparams) -> float:
+    """The v2 add-on in GFLOPs (2 FLOPs per MAC) from BenchModel.temporal_hparams() / spatial_hparams()."""
+    macs = 0
+    for t in temporal_hparams:
+        if t["kind"] == "mamba2":
+            macs += t["tokens"] * mamba2_kernel_macs_per_token(t["d_model"], d_state=t["d_state"],
+                                                               d_conv=t["d_conv"], expand=t["expand"])
+        else:
+            macs += t["tokens"] * s5_unprofiled_macs_per_token(t["dim"], t["state_dim"])
+    for t in spatial_hparams:
+        macs += t["tokens"] * bimamba_kernel_macs_per_token(t["d_model"], d_state=t["d_state"],
+                                                            d_conv=t["d_conv"], expand=t["expand"])
+    return macs * 2 / 1e9
+
+
 def fvcore_network_flops(module, inputs) -> dict:
     """Traced FLOPs via fvcore; never raises on unsupported ops — they are returned for the JSON."""
     from fvcore.nn import FlopCountAnalysis

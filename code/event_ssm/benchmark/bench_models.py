@@ -165,6 +165,20 @@ class BenchModel:
                     stage_idx += 1
         return out
 
+    def spatial_hparams(self) -> list:
+        """Spatial BiMamba blocks (PureSSM, SpikingSSM) for the analytic FLOP add-on; [] for a ResNet (EventSSM)
+        or MaxViT (baseline) spatial path, whose operators the profiler counts in full."""
+        from event_ssm.models.puressm._scan2d import BiMamba1DScan
+        sp = getattr(self.detector.backbone, "spatial", None)
+        out = []
+        for i, stage in enumerate(getattr(sp, "stages", ())):
+            h, w = STAGE_TOKENS[i]
+            for m in stage.modules():
+                if isinstance(m, BiMamba1DScan):
+                    out.append({"kind": "bimamba", "tokens": h * w, "d_model": m.d_model, "d_state": m.d_state,
+                                "d_conv": m.d_conv, "expand": m.d_inner // m.d_model})
+        return out
+
     def state_bytes_per_stream(self) -> int:
         from event_ssm.benchmark.bench_metrics import state_bytes
         frame = torch.zeros(1, 20, 256, 320, device=self.device)

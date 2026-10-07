@@ -120,8 +120,8 @@ def _table_md(rows: list) -> str:
     lines.append("*Latency = bf16 streaming (B=1, L=1, state carried), full pipeline incl. postprocess/NMS "
                  "(headline) and network-only. fps@B4/B8 are network-only throughput (postprocess "
                  "excluded); headline Hz is full-pipeline. Energy = differential J/frame vs idle, "
-                 f"desktop-GPU proxy. FLOPs = counted ({src_str}) + analytic SSM-kernel add-on "
-                 "(split shown).*")
+                 f"desktop-GPU proxy. FLOPs = counted ({src_str}) + an analytic add-on for the work inside custom SSM "
+                 "kernels that the profiler cannot see (projections are profiled, not re-added; split shown).*")
     if any(r.get("flops_incomplete") for r in rows):
         lines.append("")
         lines.append("† FLOP counting incomplete — value reflects the analytic SSM-kernel component "

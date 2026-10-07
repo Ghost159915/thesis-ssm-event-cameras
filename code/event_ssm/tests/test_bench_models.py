@@ -87,3 +87,22 @@ def test_build_spikingssm_requires_a_checkpoint_to_load():
 def test_ann_models_report_no_lif_stages():
     th = build_model("puressm", device=torch.device("cpu"), load_ckpt=False).temporal_hparams()
     assert [t["lif"] for t in th] == [False, False, False]
+
+
+def test_spatial_hparams_list_the_bimamba_blocks():
+    sp = build_model("puressm", device=torch.device("cpu"), load_ckpt=False).spatial_hparams()
+    assert [t["tokens"] for t in sp] == [5120] * 2 + [1280] * 2 + [320] * 8 + [80] * 2       # depths 2/2/8/2
+    assert {(t["d_model"], t["d_state"], t["d_conv"], t["expand"]) for t in sp} == {
+        (64, 16, 4, 2), (128, 16, 4, 2), (256, 16, 4, 2), (512, 16, 4, 2)}
+    assert build_model("eventssm", device=torch.device("cpu"), load_ckpt=False).spatial_hparams() == []
+    assert build_model("baseline", device=torch.device("cpu"), load_ckpt=False).spatial_hparams() == []
+
+
+def test_flop_addon_agrees_with_the_sop_kernel_count():
+    # one convention, two consumers: the FLOP add-on = sop.ssm_kernel_macs + the gated-norm approximation
+    from event_ssm.benchmark import bench_metrics as bm, sop
+    m = build_model("spikingssm", device=torch.device("cpu"), load_ckpt=False)
+    k = sop.ssm_kernel_macs(m.detector)
+    norms = sum(t["tokens"] * 2 * t["expand"] * t["d_model"] for t in m.temporal_hparams() + m.spatial_hparams())
+    assert bm.analytic_unprofiled_gflops(m.temporal_hparams(), m.spatial_hparams()) == pytest.approx(
+        2 * (k["temporal"] + k["spatial"] + norms) / 1e9)

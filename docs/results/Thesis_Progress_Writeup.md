@@ -181,16 +181,18 @@ Full-pipeline streaming inference, RTX 5070 Ti, idle-GPU-guarded harness:
 | Metric | S5-RVT | EventSSM | **PureSSM** |
 |---|---|---|---|
 | Total params | 18.19 M | 19.18 M | **16.33 M** (smallest) |
-| FLOPs (G) | 11.89 | 13.55 | **10.12** (fewest) |
-| **mAP / GFLOP** | 4.01 | 3.41 | **4.59** (best) |
+| FLOPs (G) | 11.06 | 12.71 | **10.03** (fewest) |
+| **mAP / GFLOP** | 4.32 | 3.64 | **4.63** (best) |
 | Latency p50 eager (ms) | 17.14 | **12.60** | 26.86 |
 | Throughput eager (Hz) | 58 | **79** | 37 |
 | **CUDA-graph deploy (Hz)** | — | **210** | 181 |
 | Energy (J/frame, eager) | 0.723 | **0.438** | 0.652 |
 | Streaming state / stream | 4.7 MB | 144 MB | 144 MB |
 
+*(FLOPs corrected 2026-10-07 — the v1 add-on double-counted projections/S5 products and missed the PureSSM spatial scans; v1 values 11.89 / 13.55 / 10.12 and 4.01 / 3.41 / 4.59. See `docs/notes/Stage21_22_tooling_notes.md` D6.)*
+
 **The honest efficiency story (and it is nuanced):**
-- PureSSM does the **least compute** (fewest FLOPs *and* params) with the **best accuracy-per-FLOP** (4.59) —
+- PureSSM does the **least compute** (fewest FLOPs *and* params) with the **best accuracy-per-FLOP** (4.63) —
   *algorithmically* the leanest model.
 - But it is the **slowest in wall-clock eager (37 Hz)**: its BiMamba backbone is *many small SSM-scan ops* →
   **launch-overhead-bound**, and SSM-scan GPU utilisation is lower than cuDNN convolutions. EventSSM does

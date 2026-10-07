@@ -69,8 +69,8 @@ that every measured difference is attributable to a single architectural change.
 
 \textbf{EventSSM} (ResNet-18 convolutional spatial mixer with a Mamba-2 temporal recurrence) reaches
 46.2 AP; \textbf{PureSSM} (bidirectional-Mamba spatial mixer, identical temporal path) reaches 46.4 AP
-while being the smallest model (16.3\,M parameters), performing the least computation (10.1\,GFLOP,
-best accuracy-per-FLOP at 4.59), and closing roughly half of the large-object gap to the attention
+while being the smallest model (16.3\,M parameters), performing the least computation (10.0\,GFLOP,
+best accuracy-per-FLOP at 4.63), and closing roughly half of the large-object gap to the attention
 baseline ($\mathrm{AP}_L$ $+2.95$ over the convolutional hybrid). A gradient-based receptive-field
 probe attributes that gain to a learned spatial extent up to twice that of the convolutional stack.
 Under a true tenfold change in event rate PureSSM retains 69.7\% of its accuracy against
@@ -794,8 +794,14 @@ Three evidence pillars are applied identically to every model.
   \item \textbf{Temporal robustness} --- two regimes: a fixed-cadence accumulation-window sweep, and a
         \emph{true} change of event rate. Retention is reported as $\mathrm{mAP}@\text{rate} \div \mathrm{mAP}@1\times$.
   \item \textbf{Efficiency} --- parameters, FLOPs, mAP per GFLOP, streaming latency (eager and
-        CUDA-graph), energy per frame, and streaming state size. For the spiking model, synaptic
-        operations (SOPs) and spike sparsity replace the MAC-based count.
+        CUDA-graph), energy per frame, and streaming state size. FLOPs are counted per frame at batch
+        size one, as the \texttt{torch.profiler} count of the dense operators (convolutions and matrix
+        products, two FLOPs per multiply--accumulate) plus an analytic count of the work inside the
+        custom state-space kernels, which the profiler cannot see: the causal convolution, the chunked
+        scan and the gated normalisation, and for S5 the completion of each complex product to four real
+        multiply--accumulates. Projections and feed-forward layers are counted once, by the profiler.
+        For the spiking model, the synaptic operations (SOPs) of the spike-driven layers, the measured
+        spike rates and an operation-count energy estimate are reported in addition.
 \end{enumerate}
 Mechanism evidence is provided by a gradient-based effective-receptive-field probe, and qualitative
 evidence by ground-truth-versus-prediction overlay videos.
@@ -1198,15 +1204,17 @@ project repository (\path{docs/notes/Stage9_Zubic_methodology_verdict.md}).
 \label{sec:efficiency}
 \begin{table}[htbp]
 \centering
-\caption{Full-pipeline streaming inference, RTX 5070 Ti, idle-GPU-guarded harness.}
+\caption{Full-pipeline streaming inference, RTX 5070 Ti, idle-GPU-guarded harness. FLOPs per frame
+are counted as defined in Section~\ref{sec:eval_protocol}; mAP per GFLOP uses the test AP of
+Table~\ref{tab:accuracy}.}
 \label{tab:efficiency}
 \begin{tabular}{lccc}
 \toprule
 \textbf{Metric} & \textbf{S5-RVT} & \textbf{EventSSM} & \textbf{PureSSM} \\
 \midrule
 Total parameters       & 18.19\,M & 19.18\,M & \textbf{16.33\,M} \\
-FLOPs                  & 11.89\,G & 13.55\,G & \textbf{10.12\,G} \\
-mAP per GFLOP          & 4.01 & 3.41 & \textbf{4.59} \\
+FLOPs                  & 11.06\,G & 12.71\,G & \textbf{10.03\,G} \\
+mAP per GFLOP          & 4.32 & 3.64 & \textbf{4.63} \\
 Latency p50, eager     & 17.14\,ms & \textbf{12.60\,ms} & 26.86\,ms \\
 Throughput, eager      & 58\,Hz & \textbf{79\,Hz} & 37\,Hz \\
 Throughput, CUDA-graph & --- & \textbf{210\,Hz} & 181\,Hz \\
@@ -1304,7 +1312,7 @@ spike (binary)   & --- & --- & --- & --- \\
 \textbf{A pure state-space spatial backbone is a viable detection backbone.} PureSSM uses no attention,
 and its only local spatial mixing is a zero-initialised depthwise term in each block. It nonetheless
 matches the convolutional hybrid on overall accuracy (46.43 against 46.22, Table~\ref{tab:accuracy})
-with the fewest parameters (16.33\,M) and the fewest FLOPs (10.12\,G) of the three models, and it is the
+with the fewest parameters (16.33\,M) and the fewest FLOPs (10.03\,G) of the three models, and it is the
 most robust of them to a true change in event rate (69.7\,\% retention at a tenfold rate,
 Table~\ref{tab:regime2}). Two qualifications keep this in proportion. It remains 1.3~mAP below the
 attention-based baseline, and its rate advantage holds for a true rate change: under a fixed cadence
@@ -1491,7 +1499,7 @@ as follows.
         tenfold rate, and the published 200\,Hz result (39.84) could not be reproduced; the best
         reproduction was 29.67 (Section~\ref{sec:robustness}).
   \item \textbf{An efficiency frontier.} PureSSM is the smallest model (16.33\,M parameters) with the
-        fewest FLOPs (10.12\,G) and the best accuracy per GFLOP (4.59), but the slowest in eager execution
+        fewest FLOPs (10.03\,G) and the best accuracy per GFLOP (4.63), but the slowest in eager execution
         (37\,Hz, 181\,Hz with CUDA-graph replay); EventSSM is the fastest (79 and 210\,Hz) and uses the least
         energy per frame (0.438\,J); both Mamba models carry a 144\,MB streaming state against the
         baseline's 4.7\,MB (Section~\ref{sec:efficiency}).
