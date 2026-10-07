@@ -128,3 +128,85 @@ def op_energy(total_macs, fed_macs: dict, rates: dict, op: str, neurons: int) ->
             "macs": macs, "acs": acs, "energy_j": e, "energy_dense_j": e_dense,
             "saving": 1.0 - e / e_dense, "ceiling": (fed - neurons) / total_macs,
             "spike_fed_share": fed / total_macs}
+
+
+def measure_nonzero_rates(model, clips, warmup: int) -> dict:
+    """Nonzero rate of each spiking stage's readout output (exactly the tensor the neck reads), streaming each
+    clip from a zero state with the state carried frame to frame. The first `warmup` frames of a clip settle the
+    recurrent state and are not counted. Per stage: the rate over all counted frames, the per-clip min/max, the
+    drift (second half minus first half of the counted frames; a check that the warm-up was long enough) and
+    whether every output value was exactly 0 or 1. Hooks are removed in `finally`, so they can never leak into a
+    later timed section. Needs the CUDA kernels for a real model."""
+    if model.detector.training:
+        raise ValueError("measure rates in eval mode")
+    bb = model.detector.backbone
+    stages = list(bb.spiking_stages)
+    rec = {"on": False, "half": 0}
+    cur = {s: [[0, 0], [0, 0]] for s in stages}                 # per clip: [half][nonzero, total]
+    tot = {s: [[0, 0], [0, 0]] for s in stages}
+    per_clip = {s: [] for s in stages}
+    binary = {s: True for s in stages}
+
+    def make_hook(s):
+        def hook(_mod, _inp, out):
+            if not rec["on"]:
+                return
+            y = out[0]
+            c = cur[s][rec["half"]]
+            c[0] += int((y != 0).sum())
+            c[1] += y.numel()
+            if binary[s] and not bool(((y == 0) | (y == 1)).all()):
+                binary[s] = False
+        return hook
+
+    handles = [bb.temporal[str(s)].register_forward_hook(make_hook(s)) for s in stages]
+    names = []
+    try:
+        for name, clip in clips:
+            n = clip.shape[0] - warmup
+            if n < 2:
+                raise ValueError(f"clip {name}: {clip.shape[0]} frames leave fewer than 2 after a {warmup}-frame "
+                                 f"warm-up")
+            for s in stages:
+                cur[s] = [[0, 0], [0, 0]]
+            state = None
+            for t in range(clip.shape[0]):
+                rec["on"] = t >= warmup
+                rec["half"] = 0 if t - warmup < n // 2 else 1
+                _, state = model.network_step(clip[t:t + 1].to(model.device), state)
+            for s in stages:
+                (a0, n0), (a1, n1) = cur[s]
+                per_clip[s].append((a0 + a1) / (n0 + n1))
+                for h in (0, 1):
+                    tot[s][h][0] += cur[s][h][0]
+                    tot[s][h][1] += cur[s][h][1]
+            names.append(name)
+    finally:
+        for h in handles:
+            h.remove()
+    if not names:
+        raise ValueError("no clips to measure")
+    stats = {}
+    for s in stages:
+        (a0, n0), (a1, n1) = tot[s]
+        stats[s] = {"rate": (a0 + a1) / (n0 + n1), "rate_min_clip": min(per_clip[s]),
+                    "rate_max_clip": max(per_clip[s]), "drift": a1 / n1 - a0 / n0, "binary": binary[s]}
+    return {"stages": stats, "clips": names, "warmup": warmup}
+
+
+def sop_block(detector, arm: dict, by_op_flops: dict, rates: dict, in_hw=(256, 320)) -> dict:
+    """The benchmark JSON's `sop` block for one SpikingSSM arm (string stage keys, JSON-safe)."""
+    stages = list(arm["spiking_stages"])
+    op = op_class(arm)
+    if op == "AC":
+        bad = [s for s in stages if not rates["stages"][s]["binary"]]
+        if bad:
+            raise ValueError(f"spike readout but non-binary output measured at stages {bad}: refusing to price "
+                             f"the neck's inputs as accumulates")
+    fed = spike_fed_macs(detector, stages, in_hw)
+    dense = dense_macs(by_op_flops, ssm_kernel_macs(detector, in_hw))
+    energy = op_energy(dense["total_macs"], fed, {s: rates["stages"][s]["rate"] for s in stages}, op,
+                       lif_neurons(detector, stages, in_hw))
+    return {"constants": {"e_mac_j": E_MAC_J, "e_ac_j": E_AC_J, "source": ENERGY_SOURCE},
+            "dense": dense, "spike_fed_macs": {str(s): m for s, m in fed.items()},
+            "rates": {**rates, "stages": {str(s): v for s, v in rates["stages"].items()}}, **energy}
