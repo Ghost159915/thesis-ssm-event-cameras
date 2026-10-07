@@ -33,9 +33,9 @@ run. The rung is set after the three Stage-19 `[2,3,4]` checks finish (2026-10-0
 `ARM`, `STAGES` and `BUDGET ∈ {100k, 400k}` are required. The recipe is pinned (validation every 10k as in the PureSSM
 400k run, batch 4, bf16, full Gen1, `spikingssm`), and labels are derived (`stage20_<arm>_s<stages>_<budget>`).
 Arguments are allow-listed. Compute-only knobs pass through for a possible rented-GPU run (workers,
-`CHECKPOINT_BLOCKS`, `REPO`, `CONDA_SH`, `WANDB_MODE`), and `STAGE7_RESUME` passes through for multi-day runs.
-Tested by 20 subprocess tests (`tests/models/spikingssm/test_stage20_launcher.py`). A `--cfg job` dry run composed
-max_steps 400000, val 10000, batch 4, graded, `[2,3,4]`, checkpoint_blocks true.
+`CHECKPOINT_BLOCKS`, `REPO`, `CONDA_SH`, `WANDB_MODE`), and `STAGE7_RESUME` passes through for multi-day runs
+(guarded, D4). A `--cfg job` dry run composed max_steps 400000, val 10000, batch 4, graded, `[2,3,4]`,
+checkpoint_blocks true.
 
 ### D3. Do not run the full test suite while a GPU training run is active
 - **Problem.** Running `pytest code/event_ssm/tests/` during the Stage-19 `[2,3,4]` spike run gave 7 CUDA
@@ -45,6 +45,24 @@ max_steps 400000, val 10000, batch 4, graded, `[2,3,4]`, checkpoint_blocks true.
   the run. Not caused by the Stage-20 change: the same tests pass on an idle GPU.
 - **Decision.** During GPU runs, run only the relevant CPU tests. Follow-up (deferred, a test-hygiene edit to an
   existing file): mark the CUDA tests in `test_resnet_mamba.py` as `gpu`.
+
+### D4. Code review ("merge after one fix") and the resume guard
+- **Important finding.** `STAGE7_RESUME` was not checked against the budget. Lightning restores the scheduler with
+  `load_state_dict`, which for OneCycleLR replaces `total_steps` and the schedule phases, while `Trainer.max_steps`
+  comes from the config. A 400k checkpoint resumed under `BUDGET=100k` would train at ≈ 0.75× peak LR and stop cleanly
+  at 100k under a "100k" label, which is the D1 confound itself, and silent. The reverse direction crashes only once
+  the scheduler runs past its end (up to ≈ 14 h wasted, with mislabelled checkpoints). Arm and rung were already
+  guarded (Stage-18 D14 arm contract; strict state-dict load).
+- **Fix.** `event_ssm/integration/resume_guard.py` (`check_resume_schedule`). The wrapper exports
+  `RESUME_EXPECT_TOTAL_STEPS=$MAX_STEPS`; `scripts/stage6_train.py`'s local-file resume path loads the checkpoint on CPU
+  and refuses a mismatched `total_steps`, or a checkpoint already at the end of its schedule, before training starts.
+  When the variable is unset (Stage 7/13/14/19 launchers), behaviour is unchanged.
+- **Minor fixes taken.** `SPIKING_ALLOW_ARM_OVERRIDE` unset in the wrapper; tests for empty `STAGES`, rungs `1` and
+  `[2,3,4]`, the allow-list's positive cases, the OneCycle-follows-max_steps premise (pure config compose), and
+  return-code assertions; the comment on workers corrected (they change data order). Not applied to the Stage-19
+  wrapper, which was mid-use by the running checks.
+- **Tests.** 8 guard tests (incl. three through the real patched resume path) + 28 launcher tests; with Stage 19's 22,
+  58 pass. The full suite waits for an idle GPU (D3).
 
 ## 3. Results
 

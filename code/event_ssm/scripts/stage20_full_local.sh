@@ -14,8 +14,10 @@
 # Compute-only knobs MAY come from the environment, so the same script runs on a rented GPU: NUM_WORKERS_TRAIN/
 # NUM_WORKERS_EVAL (host RAM; note they change the stream partition, hence the data order), CHECKPOINT_BLOCKS
 # (True|False; activation recomputation, same maths, default True for the local 16 GB card), REPO, CONDA_SH,
-# WANDB_MODE. Resume a crashed run with STAGE7_RESUME=/abs/last...ckpt (same arm/rung/budget; the checkpoint
-# carries its arm and refuses another, Stage-18 D14).
+# WANDB_MODE. Resume a crashed run with STAGE7_RESUME=/abs/last...ckpt, same ARM/STAGES/BUDGET. Guards: another
+# arm is refused by the checkpoint's arm contract (Stage-18 D14); another rung fails the strict state-dict load;
+# another BUDGET is refused by the resume guard (event_ssm/integration/resume_guard.py, via the exported
+# RESUME_EXPECT_TOTAL_STEPS), because a full-state resume would otherwise restore the other run's OneCycle schedule.
 #
 # Labelling: the W&B group and run dir are DERIVED, stage20_<arm>_s<stages>_<budget>; extra arguments are
 # allow-listed (`--cfg job`, `hydra.verbose=...`) because Hydra lets the LAST value of a key win.
@@ -64,7 +66,9 @@ export PRECISION=bf16-mixed VAL_FRAC=1.0 MAX_EPOCHS=10000 DATASET="$REPO/data/ge
 export GROUP_NAME="stage20_${TAG}"
 export RUNDIR="$REPO/results/stage20/${TAG}"
 export SPIKING_MONITOR=1 PURESSM_MONITOR=1      # every 200 backbone forwards (validation included)
+export RESUME_EXPECT_TOTAL_STEPS="$MAX_STEPS"   # read by the resume guard in stage6_train.py (only on resume)
 unset MAMBA_STEP_SCALE S5_STEP_SCALE            # contamination guard: Stage-9 inference-time dt hooks
+unset SPIKING_ALLOW_ARM_OVERRIDE                # Stage-22 eval-only override; never wanted in a training launch
 
 echo "[stage20] arm=${TAG} group=${GROUP_NAME} steps=${MAX_STEPS} val_every=${VAL_EVERY} batch=${BATCH}" \
      "checkpoint_blocks=${CHECKPOINT_BLOCKS}"

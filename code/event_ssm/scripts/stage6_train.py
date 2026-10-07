@@ -67,6 +67,16 @@ if not getattr(_lu.get_ckpt_path, "_offline_patched", False):
             assert p.suffix == ".ckpt", p.suffix
             print(f"[stage6_train] local-file resume: loading checkpoint directly from {p} "
                   f"(bypasses wandb use_artifact -- works under WANDB_MODE=online or offline/disabled)")
+            # Stage 20: a launcher that pins a budget exports RESUME_EXPECT_TOTAL_STEPS. Refuse a checkpoint whose
+            # OneCycle schedule has another length (a full-state resume would silently train under it) before
+            # any training starts. Unset -> previous behaviour exactly (Stage 7/13/14/19 launchers).
+            expected = os.environ.get("RESUME_EXPECT_TOTAL_STEPS")
+            if expected:
+                import torch
+                from event_ssm.integration.resume_guard import check_resume_schedule
+                check_resume_schedule(torch.load(p, map_location="cpu", mmap=True, weights_only=False),
+                                      int(expected))
+                print(f"[stage6_train] resume guard: checkpoint schedule matches {expected} steps")
             return p
         # No local file supplied: preserve RVT's stock behavior exactly, per WANDB_MODE.
         if os.environ.get("WANDB_MODE", "").lower() in ("offline", "disabled"):

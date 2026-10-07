@@ -15,7 +15,8 @@ WRAPPER = pathlib.Path(__file__).resolve().parents[3] / "scripts" / "stage20_ful
 
 ENV_SHOWN = ("EXPERIMENT MAX_STEPS VAL_EVERY BATCH GROUP_NAME RUNDIR SPIKING_MONITOR PURESSM_MONITOR "
              "MAMBA_STEP_SCALE S5_STEP_SCALE STAGE7_RESUME PRECISION VAL_FRAC MAX_EPOCHS DATASET "
-             "NUM_WORKERS_TRAIN NUM_WORKERS_EVAL WANDB_MODE CONDA_SH")
+             "NUM_WORKERS_TRAIN NUM_WORKERS_EVAL WANDB_MODE CONDA_SH RESUME_EXPECT_TOTAL_STEPS "
+             "SPIKING_ALLOW_ARM_OVERRIDE")
 SCRUB = set(ENV_SHOWN.split()) | {"ARM", "STAGES", "BUDGET", "CHECKPOINT_BLOCKS"}
 
 
@@ -48,7 +49,10 @@ GOOD = {"ARM": "spike", "STAGES": "2,3,4", "BUDGET": "100k"}
 @pytest.mark.parametrize("override, needle", [
     ({"ARM": ""}, "ARM"),                                    # no silent default arm
     ({"ARM": "binary"}, "ARM"),
+    ({"STAGES": ""}, "STAGES"),                              # no silent default rung (Stage 19 defaults to 4)
     ({"STAGES": "2,4"}, "STAGES"),                           # not a ladder rung
+    ({"STAGES": "1"}, "STAGES"),                             # stage 1 has no temporal block
+    ({"STAGES": "[2,3,4]"}, "STAGES"),                       # brackets are added by the wrapper
     ({"BUDGET": ""}, "BUDGET"),                              # no silent default budget
     ({"BUDGET": "200k"}, "BUDGET"),
     ({"BUDGET": "400000"}, "BUDGET"),                        # the label form only, not raw steps
@@ -74,6 +78,7 @@ def test_labels_and_steps_derive_from_arm_rung_and_budget(recorder_repo, budget,
     assert (env["PRECISION"], env["VAL_FRAC"], env["MAX_EPOCHS"]) == ("bf16-mixed", "1.0", "10000")
     assert env["DATASET"] == f"{recorder_repo}/data/gen1_raw/gen1"
     assert env["SPIKING_MONITOR"] == "1" and env["PURESSM_MONITOR"] == "1"
+    assert env["RESUME_EXPECT_TOTAL_STEPS"] == steps          # the resume guard checks against this
     assert args[:3] == ["model.backbone.spiking.output_mode=graded",
                         "model.backbone.spiking.spiking_stages=[2,3,4]",
                         "model.backbone.checkpoint_blocks=True"]   # default: the local 16 GB card
@@ -84,7 +89,9 @@ def test_recipe_and_labels_cannot_be_overridden_from_the_environment(recorder_re
     stale = {"MAX_STEPS": "25000", "VAL_EVERY": "5000", "BATCH": "8", "GROUP_NAME": "oops",
              "RUNDIR": "/tmp/oops", "PRECISION": "32", "VAL_FRAC": "0.25", "MAX_EPOCHS": "1",
              "DATASET": "/tmp/other", "EXPERIMENT": "puressm"}
-    env, _ = _parse(_run(recorder_repo, {**GOOD, **stale}).stdout)
+    r = _run(recorder_repo, {**GOOD, **stale})
+    assert r.returncode == 0, r.stderr
+    env, _ = _parse(r.stdout)
     assert (env["MAX_STEPS"], env["VAL_EVERY"], env["BATCH"]) == ("100000", "10000", "4")
     assert env["GROUP_NAME"] == "stage20_spike_s234_100k"
     assert env["RUNDIR"].endswith("/results/stage20/spike_s234_100k")
@@ -93,10 +100,12 @@ def test_recipe_and_labels_cannot_be_overridden_from_the_environment(recorder_re
 
 
 def test_compute_only_knobs_pass_through(recorder_repo):
-    # result-neutral settings a rented GPU needs: workers, block checkpointing, paths, W&B mode
+    # compute-only settings a rented GPU needs: block checkpointing (same maths), paths, W&B mode, and workers
+    # (these change the data order under mixed sampling; recorded in .hydra, not result-neutral)
     r = _run(recorder_repo, {**GOOD, "CHECKPOINT_BLOCKS": "False", "NUM_WORKERS_TRAIN": "6",
                              "NUM_WORKERS_EVAL": "2", "WANDB_MODE": "online",
                              "CONDA_SH": "/root/miniforge3/etc/profile.d/conda.sh"})
+    assert r.returncode == 0, r.stderr
     env, args = _parse(r.stdout)
     assert "model.backbone.checkpoint_blocks=False" in args
     assert (env["NUM_WORKERS_TRAIN"], env["NUM_WORKERS_EVAL"]) == ("6", "2")
@@ -105,14 +114,21 @@ def test_compute_only_knobs_pass_through(recorder_repo):
 
 
 def test_resume_path_passes_through(recorder_repo):
-    env, _ = _parse(_run(recorder_repo, {**GOOD,
-                                         "STAGE7_RESUME": "/abs/last_epoch=000-step=50000.ckpt"}).stdout)
+    r = _run(recorder_repo, {**GOOD, "STAGE7_RESUME": "/abs/last_epoch=000-step=50000.ckpt"})
+    assert r.returncode == 0, r.stderr
+    env, _ = _parse(r.stdout)
     assert env["STAGE7_RESUME"] == "/abs/last_epoch=000-step=50000.ckpt"
+    assert env["RESUME_EXPECT_TOTAL_STEPS"] == "100000"
 
 
-def test_stage9_dt_hooks_are_unset(recorder_repo):
-    env, _ = _parse(_run(recorder_repo, {**GOOD, "MAMBA_STEP_SCALE": "10", "S5_STEP_SCALE": "10"}).stdout)
+def test_stage9_dt_hooks_and_arm_override_are_unset(recorder_repo):
+    # a training launch never needs the Stage-22 non-learned threshold/beta override (Stage-18 D14)
+    r = _run(recorder_repo, {**GOOD, "MAMBA_STEP_SCALE": "10", "S5_STEP_SCALE": "10",
+                             "SPIKING_ALLOW_ARM_OVERRIDE": "1"})
+    assert r.returncode == 0, r.stderr
+    env, _ = _parse(r.stdout)
     assert env["MAMBA_STEP_SCALE"] == "<unset>" and env["S5_STEP_SCALE"] == "<unset>"
+    assert env["SPIKING_ALLOW_ARM_OVERRIDE"] == "<unset>"
 
 
 @pytest.mark.parametrize("extra", [
@@ -129,3 +145,19 @@ def test_rejects_passthrough_args(recorder_repo, extra):
     assert r.returncode == 2
     assert "argument" in r.stderr
     assert "ENV " not in r.stdout
+
+
+@pytest.mark.parametrize("extra", [("--cfg", "job"), ("hydra.verbose=true",)])
+def test_allows_dry_run_and_verbosity_args(recorder_repo, extra):
+    r = _run(recorder_repo, GOOD, args=extra)
+    assert r.returncode == 0, r.stderr
+    _, args = _parse(r.stdout)
+    assert args[3:] == list(extra)
+
+
+@pytest.mark.parametrize("steps", [100000, 400000])
+def test_onecycle_length_follows_max_steps(steps):
+    # the premise of BUDGET -> MAX_STEPS: the schedule is stretched over exactly the run's length
+    from event_ssm.integration.smoke_harness import compose_smoke_config
+    cfg = compose_smoke_config(experiment="spikingssm", extra_overrides=[f"training.max_steps={steps}"])
+    assert cfg.training.lr_scheduler.total_steps == steps
