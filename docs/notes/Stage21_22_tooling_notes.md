@@ -75,20 +75,43 @@ bash code/event_ssm/scripts/stage10_run_local.sh --models all+spikingssm --spiki
   - The analytic Mamba-2 formula (`bench_metrics.mamba2_layer_macs_per_token`) **includes the in/out projections**,
     which are `nn.Linear` layers the profiler already counts. That is 0.832 of the 1.061 analytic GFLOPs for EventSSM
     and PureSSM.
-  - The S5 formula likewise includes the feed-forward layers: 0.503 GFLOPs, confirmed by a CPU profile. The CPU
-    profile reproduces the stored GPU `counted_gflops` exactly (10.0255), and `aten::mm` = 0.505 GFLOPs there.
+  - The S5 formula (`s5_block_macs_per_token`) double-counts two things, both confirmed by a CPU profile that
+    reproduces the stored GPU `counted_gflops` exactly (10.0255):
+    - the feed-forward layers: 0.503 GFLOPs (`aten::mm` = 0.505 GFLOPs);
+    - the complex B̄u / C̃x products of RVT's vmapped `apply_ssm`: 0.3355 GFLOPs. The profiler counts them as
+      `aten::bmm` of shape `[N,P,P]@[N,P,1]`, four stages × 0.0839 G, at real-equivalent FLOPs; the analytic formula
+      adds them again at 4 real MACs per complex MAC. MaxViT attention accounts for the other 0.393 G of `aten::bmm`.
+    (Corrected after the final code review of 2026-10-07: the first version of this note subtracted only the
+    feed-forward and gave 11.39.)
   - PureSSM's **spatial BiMamba conv + scan kernels are counted nowhere**: ≈ 0.724 GFLOPs.
-  - **Corrected totals:** EventSSM 13.55 → ≈ 12.71, S5-RVT 11.89 → ≈ 11.39, PureSSM 10.12 → ≈ 10.01 GFLOPs.
-    mAP/GFLOP becomes 3.64 / 4.19 / 4.64 (was 3.41 / 4.01 / 4.59).
+  - **Corrected totals:** EventSSM 13.546 − 0.832 = ≈ 12.71; S5-RVT 11.894 − 0.503 − 0.336 = ≈ 11.06; PureSSM
+    10.121 − 0.832 + 0.724 = ≈ 10.01 GFLOPs. mAP/GFLOP becomes 3.64 / 4.32 / 4.64 (was 3.41 / 4.01 / 4.59).
   - **The ranking and every qualitative claim are unchanged:** PureSSM is the lightest and has the best mAP/GFLOP;
     EventSSM does more arithmetic than the baseline yet runs faster.
-  - **Fix:** make the analytic add-on kernel-only and add the spatial term; `benchmark/sop.py` already computes both.
+  - **Fix:**
+    - make the Mamba analytic add-on kernel-only and add the spatial term (`benchmark/sop.py` already computes both);
+    - make the S5 add-on exclude what the profiler already counts: drop the feed-forward term, and either drop the
+      profiled complex `bmm` or count B̄u / C̃x only once, at 4 real MACs.
     The latency/energy JSON values are unaffected.
 
 ## 3. Tests
 
 Stage-22 SOP work (2026-10-07): 89 CPU tests pass across `test_bench_{sop,metrics,schema,report,models,clip}.py`;
 `test_bench_sop.py::test_sop_on_a_real_spike_checkpoint` is gpu-marked (idle GPU).
+
+**Final code review of the SOP work (2026-10-07, independent reviewer):** the reviewer re-derived every count from the
+code and confirmed it (spike-fed 52,428,800; kernels 113,254,400 + 361,799,680; dense total 5,001,574,400
+MACs/frame; ceiling 1.04 % for `[2,3,4]`, 0.209 % for `[4]`, and 1.16 % even with no kernel term). No critical
+findings. One important finding: the D6 S5-RVT total, fixed above. **Deferred minors (not fixed; user's call):**
+1. Rates are measured under bf16 autocast only implicitly (the VRAM section leaves it on). Set it explicitly and
+   record it.
+2. `by_op` is captured only on the profiler-fallback path. Profile unconditionally for spikingssm.
+3. Error text containing `|` or a newline breaks a `sop_table.md` row. With error rows only, the footer reads
+   "Constants: .".
+4. `{"error": str(e)}` drops the exception type.
+5. The profiler-convention test lacks the model's own shapes (a 3-D bias-free linear → `mm`, a depthwise conv).
+   The reviewer verified both by hand.
+6. The rate hook assumes a tuple output; assert it.
 
 
 187 CPU tests pass across the files touched on 2026-10-07: `test_spiking_ckpt.py`, `test_stage21_eval_script.py`,
