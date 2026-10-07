@@ -1,6 +1,6 @@
 # Stage 22 — Synaptic-Operation and Energy Accounting for SpikingSSM: Design
 
-**Thesis C · MMAN4953 · UNSW Sydney · Benas Vaiciulis** · 2026-10-07 · status: **draft for review**
+**Thesis C · MMAN4953 · UNSW Sydney · Benas Vaiciulis** · 2026-10-07 · status: **approved 2026-10-07; amended by Revision 2 (§8)**
 **Decision behind it:** option 1 of the 2026-10-07 discussion (exact bound + measured firing rates), chosen by the
 user over a hook-based nonzero counter (option 2) and prose only (option 3).
 **Context:** `docs/notes/Stage21_22_tooling_notes.md` D5; thesis §5.7 (the readout-ablation table: mAP, firing rate,
@@ -103,3 +103,21 @@ rate** of $y_s$: the fraction of its entries that are nonzero, averaged over fra
 §5.7 reports the ceiling first and then the per-arm estimates. §6.2 and the Limitations bullet state that, in this
 hybrid, the energy argument for spiking is not an operation-count saving: the readout is a step toward a neuromorphic
 temporal core and the instrument for measuring the cost of spiking, not a source of savings by itself.
+
+## 8. Revision 2 — logic check (2026-10-07)
+
+Every assumption above was checked on the real code and model before implementation; the evidence table and full text
+are in `docs/plans/2026-10-07-stage22-sop-energy-plan.md` ("Revision 2"). The §1 wiring and the 52,428,800 MACs are
+confirmed by tracing the real detector. Amendments:
+1. **Denominator:** dense MACs = profiler FLOPs of conv2d/mm/addmm/bmm/baddbmm ÷ 2 + the MACs of the custom SSM kernels
+   the profiler cannot see (temporal Mamba-2 and spatial BiMamba causal conv + scan), not ½·`total_gflops`, which
+   double-counts the Mamba projections and omits PureSSM's spatial scans (finding D6 of the Stage 21–22 notes).
+2. **Operation class:** AC only for a `spike` readout without `residual`; otherwise driven MACs = ρ·M (graded, analog,
+   residual alike; ρ ≈ 1 for the analog membrane, so this equals §2's dense M).
+3. **Binary check:** spike-readout outputs are measured to be exactly {0, 1}; otherwise the arm is refused.
+4. **Rates:** 16 test sequences evenly spaced over the sorted test set, 32 warm-up + 64 counted frames each, with
+   per-clip min/max and first/second-half drift — not the single benchmark clip.
+5. **Neuron updates:** one MAC per LIF neuron per frame, charged to the arm.
+6. **Reference:** the same network priced dense (PureSSM-equivalent arithmetic).
+7. **Reporting:** a separate `sop_table.md`; the training-monitor rate cross-check is done by hand in the notes.
+8. **Out of scope:** correcting the stored Stage-10/16 `total_gflops` (a user decision; D6).

@@ -50,12 +50,46 @@ bash code/event_ssm/scripts/stage10_run_local.sh --models all+spikingssm --spiki
     difference still surfaces as a missing key or an extra-state mismatch.
 - **D4. Graph replay is not measured for SpikingSSM.** Capturing the LIF time loop as a CUDA graph has not been
   validated (Stage-18 deferred item). The JSON records an honest skip with this reason.
-- **D5. SOP / energy accounting is separate (Stage 22, 2c).** A first-principles bound computed from the neck's
-  layer shapes: the spikes of stages 2–4 feed ≈ 52 M multiply–adds (≈ 0.10 GFLOPs) of PureSSM's 10.12 GFLOPs per
-  frame, so at most ≈ 1 % of the network's arithmetic can become spike-driven accumulates. The scope of the
-  accounting tool is a user decision (options in the chat of 2026-10-07; spec before code).
+- **D5. SOP / energy accounting (Stage 22, 2c; user chose option 1).** Spec
+  `docs/specs/2026-10-07-stage22-sop-energy-design.md` (+ Revision 2), plan `docs/plans/2026-10-07-stage22-sop-energy-plan.md`,
+  code `benchmark/sop.py`. The benchmark's `spikingssm` entry gains a `sop` block and the report a `sop_table.md`:
+  - **Spike-fed MACs** are derived from the neck's own modules: 10,485,760 (stage 4) + 20,971,520 (stage 3) +
+    20,971,520 (stage 2) = 52,428,800 per frame. A test traces the real detector and confirms that these five 1×1
+    convolutions are the only arithmetic reading the stage outputs.
+  - **Dense MACs** = profiler MAC ops ÷ 2 + the unprofiled SSM kernels (temporal 113,254,400 + spatial 361,799,680
+    MACs per frame).
+  - **Operation class:** a spike readout without residual is priced as accumulates; everything else as sparse MACs
+    (ρ·M). A non-binary "spike" output is refused.
+  - **Rates** come from 16 test sequences (32 warm-up + 64 counted frames each), with spread and drift. Each LIF neuron
+    costs one MAC per frame.
+  - **Ceiling** (the saving at zero activity) ≈ (52.4 M − neurons) / ≈ 5.0 G MACs ≈ 1 % for `[2,3,4]`, ≈ 0.2 % for
+    `[4]`.
+  - **Conclusion:** the energy case for choice C is not an operation-count saving.
+  - **Training-monitor cross-check:** done by hand. The last `[spk-monitor]` rates of the run's console log are quoted
+    next to the measured rates.
+  - **Rulings during implementation:** the tracer test kept tainted tensors alive (an `id()`-reuse false positive); the
+    SOP step sits before `del model`; the train-mode VRAM forward cannot alter spike outputs (no BatchNorm in the
+    SpikingSSM backbone).
+- **D6. Finding: the stored Stage-10/16 FLOP totals are slightly wrong (user decision pending; Ch. 5 numbers
+  unchanged until then).** `flops.total_gflops` = torch.profiler + an analytic add-on.
+  - The analytic Mamba-2 formula (`bench_metrics.mamba2_layer_macs_per_token`) **includes the in/out projections**,
+    which are `nn.Linear` layers the profiler already counts. That is 0.832 of the 1.061 analytic GFLOPs for EventSSM
+    and PureSSM.
+  - The S5 formula likewise includes the feed-forward layers: 0.503 GFLOPs, confirmed by a CPU profile. The CPU
+    profile reproduces the stored GPU `counted_gflops` exactly (10.0255), and `aten::mm` = 0.505 GFLOPs there.
+  - PureSSM's **spatial BiMamba conv + scan kernels are counted nowhere**: ≈ 0.724 GFLOPs.
+  - **Corrected totals:** EventSSM 13.55 → ≈ 12.71, S5-RVT 11.89 → ≈ 11.39, PureSSM 10.12 → ≈ 10.01 GFLOPs.
+    mAP/GFLOP becomes 3.64 / 4.19 / 4.64 (was 3.41 / 4.01 / 4.59).
+  - **The ranking and every qualitative claim are unchanged:** PureSSM is the lightest and has the best mAP/GFLOP;
+    EventSSM does more arithmetic than the baseline yet runs faster.
+  - **Fix:** make the analytic add-on kernel-only and add the spatial term; `benchmark/sop.py` already computes both.
+    The latency/energy JSON values are unaffected.
 
 ## 3. Tests
+
+Stage-22 SOP work (2026-10-07): 89 CPU tests pass across `test_bench_{sop,metrics,schema,report,models,clip}.py`;
+`test_bench_sop.py::test_sop_on_a_real_spike_checkpoint` is gpu-marked (idle GPU).
+
 
 187 CPU tests pass across the files touched on 2026-10-07: `test_spiking_ckpt.py`, `test_stage21_eval_script.py`,
 `test_bench_{models,schema,report,metrics,clip}.py`, `test_resume_guard.py`, and the Stage-19/20 launcher tests.
