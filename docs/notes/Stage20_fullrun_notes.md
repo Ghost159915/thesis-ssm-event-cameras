@@ -7,14 +7,14 @@
 
 | Order | Run | Rung | Budget | Purpose | Local time |
 |---|---|---|---|---|---|
-| 1 | spike | from the Stage-19 `[2,3,4]` checks | 100k | equal-budget ladder | ≈ 14 h |
+| 1 | spike | `[2,3,4]` (D5) | 100k | equal-budget ladder | ≈ 14 h |
 | 2 | graded | same | 100k | equal-budget ladder | ≈ 14 h |
 | 3 | analog | same | 100k | equal-budget ladder | ≈ 14 h |
 | 4 | graded | same | 400k | pre-registered headline (as long as PureSSM) | ≈ 56 h |
 
 Total ≈ 98 h sequential on the RTX 5070 Ti (2.3 it/s, ≈ 12 min per full validation). The ladder runs first: it gives
 the cost-of-spiking decomposition about two days earlier and exposes any longer-schedule instability before the 56-h
-run. The rung is set after the three Stage-19 `[2,3,4]` checks finish (2026-10-07 ≈ 22:00).
+run. The rung is `[2,3,4]` (D5, decided 2026-10-08 after the Stage-19 checks).
 
 ## 2. Decision record
 
@@ -63,6 +63,22 @@ checkpoint_blocks true.
   wrapper, which was mid-use by the running checks.
 - **Tests.** 8 guard tests (incl. three through the real patched resume path) + 28 launcher tests; with Stage 19's 22,
   58 pass. The full suite waits for an idle GPU (D3).
+
+### D5. Rung `[2,3,4]` for every Stage-20 run
+- **Evidence (Stage-19 notes §3.6, 25k).** On `[2,3,4]` the ladder separates: PureSSM 0.351 → analog 0.351 → graded
+  0.340 → spike 0.305, with the pre-registered ordering holding at every evaluation from 5k onwards. On `[4]` the arms
+  tie (spike 0.345, graded 0.343), so a `[4]` ladder would have no decomposition to report.
+- **Secondary reason.** `[2,3,4]` carries the larger spike-fed operation share (SOP ceiling ≈ 1.04 % vs 0.21 % on `[4]`),
+  which the Stage-22 energy accounting needs.
+- **Decision (user, 2026-10-08).** `[2,3,4]` for all three 100k arms and the 400k graded run. The `[4]` and `[3,4]` rungs
+  stay as 25k evidence only (de-risking ladder, Stage 19).
+- **Pre-launch state.** Machine rebooted 2026-10-08 into kernel `7.0.0-38` (matching prebuilt NVIDIA module; the
+  2026-10-08 GPU loss on `-34` is fixed). `nvidia-smi` and torch CUDA verified; the `--cfg job` dry run composed
+  spike, `[2,3,4]`, max_steps 100000, val 10000, batch 4, bf16-mixed, checkpoint_blocks true.
+- **Full test suite on the idle GPU (2026-10-08, closes the D3 wait).** Default run: 398 passed, 1 skipped, 29
+  deselected (97.9 s); the 7 unmarked CUDA tests in `test_resnet_mamba.py` pass on an idle GPU. `-m gpu`: 29 passed
+  (44.8 s). The one skip is `test_rvt_lstm.py::test_rvt_checkpoint_loads_strictly` (the RVT-B checkpoint
+  `checkpoints/rvt-b-gen1.ckpt` is not on this machine); it concerns the ConvLSTM baseline only.
 
 ## 3. Results
 
