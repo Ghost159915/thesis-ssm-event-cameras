@@ -141,4 +141,13 @@ checkpoint_blocks true.
   (Stage-19 notes D6).
 - Not comparable to the 400k runs (D1); it is compared only with the other 100k arms and the PureSSM 100k anchor (D6).
 
-*Graded, analog and PureSSM-anchor 100k arms: pending.*
+### 3.2 Graded arm, `[2,3,4]`, 100k (W&B offline `5d1y0skm`, started 2026-10-09 12:31) — interrupted, to resume
+- val/AP 0.192 / 0.278 / 0.309 / 0.352 at 10k / 20k / 30k / 40k; zero SILENT / SATURATED / NON-FINITE lines.
+- **Interrupted 2026-10-09 19:02:55 (Ctrl-C, user needed the GPU)** at step ≈ 48.1k (epoch 0 = 47,364 steps + 715).
+  Exit code 1, so the `&&` chain did not start analog (as designed). Last checkpoint: `last_epoch=000-step=40000.ckpt`
+  (18:04) in `external/ssms_event_cameras/RVT/RVT/5d1y0skm/checkpoints/` ⇒ ≈ 8.1k steps are redone.
+- **Resume deviation (to report):** `STAGE7_RESUME` restores weights, optimizer, OneCycle state and global step (the
+  resume guard checks the 100k schedule), but not the data loaders' stream positions, so from 40k on the graded arm
+  sees a different data order than an uninterrupted run would. Affects the graded 100k arm only; resume time: *TBD*.
+
+*Analog and PureSSM-anchor 100k arms: pending.*
