@@ -124,4 +124,21 @@ checkpoint_blocks true.
 
 ## 3. Results
 
-*Pending.*
+### 3.1 Spike arm, `[2,3,4]`, 100k (W&B offline `5ykgl80y`, finished 2026-10-09 12:31, exit 0)
+| step | 10k | 20k | 30k | 40k | 50k | 60k | 70k | 80k | 90k | 100k |
+|---|---|---|---|---|---|---|---|---|---|---|
+| val/AP | 0.205 | 0.303 | 0.318 | 0.351 | 0.370 | 0.379 | 0.393 | 0.404 | 0.408 | **0.418** |
+
+- Every validation was a new best; best = last = step 100k. Checkpoint:
+  `external/ssms_event_cameras/RVT/RVT/5ykgl80y/checkpoints/epoch=002-step=100000-val_AP=0.42.ckpt` (test eval:
+  Stage 21, after the GPU frees up).
+- 2.3 it/s, ≈ 13.8 h wall-clock including ten full validations. Zero SILENT / SATURATED / NON-FINITE lines.
+- **Firing rates roughly doubled over training** (training-time monitor, first → last): s2 0.25 → 0.48, s3 0.19 →
+  0.36, s4 0.22 → ≈ 0.39. The 25k pilot's ≈ 0.22 is therefore not the trained rate; Stage-22 SOP accounting
+  measures rates on the final checkpoint and must be the number quoted.
+- **β moved at stage 3** (0.900 → 0.919 channel mean; s2 0.898, s4 ≈ 0.905). Small, but outside the 25k range
+  (0.897–0.906): recheck per channel on the final checkpoints before writing "β effectively fixed at its init"
+  (Stage-19 notes D6).
+- Not comparable to the 400k runs (D1); it is compared only with the other 100k arms and the PureSSM 100k anchor (D6).
+
+*Graded, analog and PureSSM-anchor 100k arms: pending.*
