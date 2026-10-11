@@ -2,7 +2,8 @@
 **Thesis B | MMAN4952 | UNSW Sydney | Benas Vaiciulis**
 
 The stage-by-stage narrative of the whole investigation: **EventSSMDetector = Stages 0–10**, **PureSSMDetector =
-Stages 11–16**. Both investigations are **complete**. Each file is a self-contained record of one stage (Stages
+Stages 11–16**, **SpikingSSM = Stages 17–23** (Thesis C, recorded in `docs/notes/`). EventSSM and PureSSM are
+**complete**; the spiking model is in training. Each file is a self-contained record of one stage (Stages
 0–10 were written as forward plans; Stages 11–16 are written as completed-stage records with the real results and
 pointers to the authoritative plan/spec/results/notes docs).
 
@@ -45,6 +46,13 @@ see `docs/results/Thesis_Progress_Writeup.md`.
 | `Stage_14_PureSSM_Full_Training.md` | 400k full run (best val/AP 0.48 @ 310k, ~27 h) | ☁️ | — | ✅ |
 | `Stage_15_PureSSM_Evaluation.md` | Gen1 test eval (test/AP 46.43, **AP_L +2.95**) | 🐧 | — | ✅ |
 | `Stage_16_PureSSM_Pillars_and_Visuals.md` | Efficiency + robustness + CUDA-graph + videos | 🐧 | — | ✅ |
+| — *PureSSM complete (test/AP 46.4) · Thesis C: spiking model, recorded in `docs/notes/`* — | — | — | — | — |
+| `notes/Stage17_build_notes.md` | 17 · Spiking cell: LIF readout + surrogate gradient | 🍎🐧 | — | ✅ |
+| `notes/Stage18_integration_notes.md` | 18 · SpikingSSM backbone, Hydra-selectable | 🐧 | — | ✅ |
+| `notes/Stage19_smoke_notes.md` | 19 · Smoke + 25k runs, kill-switch PASS | 🐧 | — | ✅ |
+| `notes/Stage20_fullrun_notes.md` | 20 · 100k ladder (spike/graded/analog) + PureSSM anchor, graded 400k | 🐧 | — | 🔄 |
+| `notes/Stage21_22_tooling_notes.md` | 21 · Test eval + bootstrap CIs · 22 · SOP / energy | 🐧 | — | 🔄 tooling built |
+| — | 23 · NIR export / Loihi 2 proof of concept (stretch; Future Work) | — | — | ⏸ |
 
 **Total estimated time:** 6–8 weeks (both models now complete)
 
@@ -86,6 +94,9 @@ see `docs/results/Thesis_Progress_Writeup.md`.
 ---
 
 ## After EventSSMDetector Is Complete
+
+> **Historical (written before Stage 11).** PureSSM was built differently from this sketch: BiMamba *stages*
+> with a conv stem, not 16×16 patch tokens. See `Stage_11_PureSSM_Backbone.md`.
 
 Build **PureSSMDetector** — the pure SSM spatial model.
 
