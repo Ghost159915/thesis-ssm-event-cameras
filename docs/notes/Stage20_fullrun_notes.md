@@ -184,7 +184,14 @@ History of the run:
   steps`). Third W&B offline id **`rnak3sms`**, checkpoints in `RVT/RVT/rnak3sms/checkpoints/`. Finished at 14:01:37
   (`max_steps=100000` reached, exit 0, 2 h 47 min for the last 20k steps), and the `&&` chain started analog.
 
-### 3.3 Analog arm, `[2,3,4]`, 100k (W&B offline `yeddueoq`, started 2026-10-11 14:01:38) — running
-- val/AP 0.229 / 0.294 / 0.326 / 0.370 at 10k / 20k / 30k / 40k (spike 0.351, graded 0.352 at 40k).
+### 3.3 Analog arm, `[2,3,4]`, 100k (W&B offline `yeddueoq`, started 2026-10-11 14:01:38) — running, one interruption, resumed
+- val/AP 0.229 / 0.294 / 0.326 / 0.370 / 0.383 at 10k / 20k / 30k / 40k / 50k (spike 0.351, graded 0.352 at 40k).
+- **Interrupted 2026-10-11 22:06:14 (+11:00)** by the user (Ctrl-C, log `console_20261011_140138.log`, exit 1), ≈ 1 h
+  10 min after the 50k checkpoint (20:56) ⇒ ≈ 8k steps are redone. Last checkpoint:
+  `yeddueoq/checkpoints/last_epoch=001-step=50000.ckpt`.
+- **Resumed 2026-10-12 00:15:36 (+11:00)** in a new tmux `stage20` session, chain analog resume → PureSSM 100k
+  anchor → graded 400k. Log `console_20261012_001536.log`: local-file resume loaded the 50k checkpoint, `resume guard:
+  checkpoint schedule matches 100000 steps`. Same deviation as the graded arm (§3.2): data-loader stream positions
+  are not restored, so from 50k on the analog arm sees a different data order. W&B offline continues under a new id.
 
 *PureSSM-anchor 100k arm: pending (next in the chain).*
