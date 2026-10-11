@@ -1,0 +1,26 @@
+<section id="tradeoffs" data-transition="fade" style="background:#EDEBE4;color:#14213D;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:48px">
+<div style="display:flex;flex-direction:column;gap:20px">
+<p style="font-size:26px;color:#B8661E;letter-spacing:3px;text-transform:uppercase;font-weight:600">Discussion</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif;font-size:60px;font-weight:600;line-height:1.12">PureSSM does the least work, but the gains come with real costs</h2>
+</div>
+<div style="display:flex;flex-direction:row;gap:32px">
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:#F7F6F2;border-radius:16px;padding:36px">
+<h3 style="font-size:34px;font-weight:600">Compute</h3>
+<p style="font-size:26px;color:#3E4A5C;line-height:1.45">Fewest operations (10.0 GFLOP) and the best accuracy per GFLOP (4.63).</p>
+<p style="font-size:26px;color:#3E4A5C;line-height:1.45">But slowest in plain PyTorch (26.9 ms): many small operations. With CUDA graphs it runs at 181 Hz.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:#F7F6F2;border-radius:16px;padding:36px">
+<h3 style="font-size:34px;font-weight:600">Memory</h3>
+<p style="font-size:26px;color:#3E4A5C;line-height:1.45">The Mamba models carry 144 MB of state per stream, 31× the baseline's 4.7 MB.</p>
+<p style="font-size:26px;color:#3E4A5C;line-height:1.45">EventSSM is the fastest (12.6 ms, 0.44 J per frame) partly because it holds so much state.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:#F7F6F2;border-radius:16px;padding:36px">
+<h3 style="font-size:34px;font-weight:600">Limits</h3>
+<p style="font-size:26px;color:#3E4A5C;line-height:1.45">One training run per model, so small differences are reported as ties.</p>
+<p style="font-size:26px;color:#3E4A5C;line-height:1.45">50-ms windows set the latency (≈25 ms wait + compute), not the sensor. SSMs keep 62–70 % at 5 ms.</p>
+<p style="font-size:26px;color:#3E4A5C;line-height:1.45">Batch 4 vs 8; drone integration descoped.</p>
+</div>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:400px;font-size:24px;color:#6B7585">9 / 10</p>
+<aside>About 50 seconds. PureSSM does the least computation and has the best accuracy per GFLOP, but in plain PyTorch it is the slowest because it launches many small GPU operations; captured as a CUDA graph it reaches 181 Hz. The Mamba models keep 144 MB of streaming state per stream, 31 times the baseline: fast because fat. Limits: each model was trained once, so I treat small differences as ties; my models used batch 4 rather than 8; and the original micro-drone obstacle-avoidance aim was descoped so this could be a clean, controlled comparison. Latency: every model bins events into 50-ms windows, so detection waits about 25 ms on average for the window plus the compute time; the sensor's microsecond latency is not used at this setting. The window is a trade-off: with 5-ms windows and no retraining the SSMs keep 62 to 70 percent of their accuracy, PureSSM the most.</aside>
+</section>

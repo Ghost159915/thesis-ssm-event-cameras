@@ -1,0 +1,29 @@
+<section id="method" data-transition="fade" style="background:#F7F6F2;color:#14213D;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:56px">
+<div style="display:flex;flex-direction:column;gap:20px">
+<p style="font-size:26px;color:#B8661E;letter-spacing:3px;text-transform:uppercase;font-weight:600">What I did</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif;font-size:64px;font-weight:600;line-height:1.12">Reproduce the baseline exactly, then change one part at a time</h2>
+</div>
+<div style="display:flex;flex-direction:row;align-items:center;gap:0px">
+<div style="flex:1;background:#FFFFFF;border:2px solid #C9CDD4;border-radius:14px;padding:28px 20px"><p style="font-size:28px;text-align:center;font-weight:600">Gen1 data</p><p style="font-size:24px;text-align:center;color:#6B7585">frozen</p></div>
+<x-connector style="width:48px;color:#8A93A3"></x-connector>
+<div style="flex:1.2;background:#FBEBDD;border:3px solid #D9822B;border-radius:14px;padding:28px 20px"><p style="font-size:28px;text-align:center;font-weight:600">Backbone</p><p style="font-size:24px;text-align:center;color:#8A4A12">the only part swapped</p></div>
+<x-connector style="width:48px;color:#8A93A3"></x-connector>
+<div style="flex:1;background:#FFFFFF;border:2px solid #C9CDD4;border-radius:14px;padding:28px 20px"><p style="font-size:28px;text-align:center;font-weight:600">FPN neck</p><p style="font-size:24px;text-align:center;color:#6B7585">frozen</p></div>
+<x-connector style="width:48px;color:#8A93A3"></x-connector>
+<div style="flex:1;background:#FFFFFF;border:2px solid #C9CDD4;border-radius:14px;padding:28px 20px"><p style="font-size:28px;text-align:center;font-weight:600">YOLOX head</p><p style="font-size:24px;text-align:center;color:#6B7585">frozen</p></div>
+<x-connector style="width:48px;color:#8A93A3"></x-connector>
+<div style="flex:1;background:#FFFFFF;border:2px solid #C9CDD4;border-radius:14px;padding:28px 20px"><p style="font-size:28px;text-align:center;font-weight:600">Evaluator</p><p style="font-size:24px;text-align:center;color:#6B7585">frozen</p></div>
+</div>
+<div style="display:flex;flex-direction:row;gap:48px">
+<div style="flex:1;display:flex;flex-direction:column;gap:8px;border-top:3px solid #14213D;padding:24px 0px 0px 0px">
+<p style="font-family:'Source Serif 4', Georgia, serif;font-size:72px;font-weight:700;color:#14213D">47.7</p>
+<p style="font-size:28px;color:#3E4A5C;line-height:1.4">Gen1 test mAP for my reproduction of S5-RVT: an exact match to the paper</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:8px;border-top:3px solid #14213D;padding:24px 0px 0px 0px">
+<p style="font-family:'Source Serif 4', Georgia, serif;font-size:72px;font-weight:700;color:#14213D">1</p>
+<p style="font-size:28px;color:#3E4A5C;line-height:1.4">part changes between neighbouring models, so any difference comes from that part alone</p>
+</div>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:400px;font-size:24px;color:#6B7585">3 / 10</p>
+<aside>About 60 seconds. First I reproduced S5-RVT exactly: 47.7 test mAP, matching the paper. Then I froze everything else, the data pipeline, the FPN neck, the YOLOX head, the loss and the evaluator, and swapped only the backbone. That makes it a controlled experiment: any change in accuracy comes from the swap and nothing else. One honest difference versus the baseline: my models trained at batch 4 instead of 8.</aside>
+</section>

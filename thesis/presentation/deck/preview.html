@@ -1,0 +1,259 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>SSMs for Event-Camera Detection (offline preview)</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;600;700&display=swap"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&display=swap">
+<style>
+body{margin:0;background:#d9d7d0;font-family:'IBM Plex Sans',Arial,sans-serif;color:#14213d}
+header{padding:16px 24px;font-size:15px}
+.frame{width:960px;height:540px;margin:24px auto 8px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.25)}
+.canvas{width:1920px;height:1080px;transform:scale(.5);transform-origin:0 0;position:relative}
+.canvas section{width:1920px;height:1080px;box-sizing:border-box;position:relative}
+.canvas *{margin:0;box-sizing:border-box}
+x-connector{display:block;height:2px;background:#8a93a3;align-self:center}
+.notes{width:960px;margin:0 auto 32px;font-size:13px;line-height:1.5;color:#3e4a5c}
+</style></head><body>
+<header><b>SSMs for Event-Camera Detection</b> — offline preview generated from <code>deck/slides/*.html</code>. The live, editable deck (with
+PowerPoint/PDF export) is at <a href="https://claude.ai/artifact/NYt2pws5yf3ydGDcFHSuxy">claude.ai/artifact/NYt2pws5yf3ydGDcFHSuxy</a>.
+Layout is approximate here (no slide runtime).</header>
+<div class="frame"><div class="canvas"><section id="cover" data-transition="fade" style="display:flex; flex-direction:column; justify-content:space-between; padding:128px; background:#14213d">
+  <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:28px; font-weight:600; letter-spacing:4px; text-transform:uppercase; color:#e8a25a">Thesis C · UNSW Sydney</p>
+  <div style="display:flex; flex-direction:column; gap:40px">
+    <h1 style="font-family:'Source Serif 4', Georgia, serif; font-size:104px; font-weight:600; line-height:1.08; color:#f7f6f2">What do state-space models actually contribute to event-camera object detection?</h1>
+    <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:36px; line-height:1.4; color:#c9d3e0">A controlled study of SSM backbones on Prophesee Gen1, with a spiking variant</p>
+  </div>
+  <div style="display:flex; flex-direction:row; gap:64px">
+    <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:30px; color:#f7f6f2"><b>Benas Vaiciulis</b></p>
+    <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:30px; color:#c9d3e0">Supervisor: Dr Will Midgley</p>
+  </div>
+  
+</section>
+</div></div><p class="notes"><b>Slide 1 notes.</b> One line to open: I studied what state-space models actually contribute to object detection with event cameras, by changing one part at a time inside a reproduced state-of-the-art pipeline.</p><div class="frame"><div class="canvas"><section id="problem" data-transition="fade" style="background:#F7F6F2;color:#14213D;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:row;gap:64px;align-items:center">
+<div style="flex:1;display:flex;flex-direction:column;gap:36px">
+<p style="font-size:26px;color:#B8661E;letter-spacing:3px;text-transform:uppercase;font-weight:600">The problem</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif;font-size:64px;font-weight:600;line-height:1.12">Event cameras suit small drones, but what SSMs add is unclear</h2>
+<ul style="font-size:30px;line-height:1.45;color:#3E4A5C;display:flex;flex-direction:column;gap:14px">
+<li><b>Event cameras:</b> each pixel reports brightness changes on its own, with microsecond latency and very high dynamic range.</li>
+<li><b>State-space models (SSMs)</b> were proposed as the natural model for event streams: S5-RVT reaches 47.7 mAP on Gen1.</li>
+<li><b>The gap:</b> published comparisons change several parts at once, and the accuracy cost of spiking has never been broken down.</li>
+</ul>
+</div>
+<img src="../../latex/images/fig_event_camera_principle.png" alt="How an event camera works: per-pixel brightness changes reported as asynchronous events" style="width:640px;height:648px;object-fit:contain;background:#FFFFFF;border-radius:16px;border:1px solid #E1DFD8">
+<p style="position:absolute;left:128px;bottom:64px;width:400px;font-size:24px;color:#6B7585">2 / 10</p>
+
+</section>
+</div></div><p class="notes"><b>Slide 2 notes.</b> About 60 seconds. Event cameras report per-pixel brightness changes asynchronously, with microsecond latency and very high dynamic range. That suits micro-UAVs where power and weight are tight. SSMs were recently proposed as the natural sequence model for this data: linear-time and they carry a state through time. S5-RVT reaches 47.7 mAP on Gen1. But published comparisons swap several things at once, so we do not know what the SSM itself contributes. Separately, spiking detectors have caught up on accuracy, but nobody has broken down where the cost of spiking comes from.</p><div class="frame"><div class="canvas"><section id="method" data-transition="fade" style="background:#F7F6F2;color:#14213D;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:56px">
+<div style="display:flex;flex-direction:column;gap:20px">
+<p style="font-size:26px;color:#B8661E;letter-spacing:3px;text-transform:uppercase;font-weight:600">What I did</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif;font-size:64px;font-weight:600;line-height:1.12">Reproduce the baseline exactly, then change one part at a time</h2>
+</div>
+<div style="display:flex;flex-direction:row;align-items:center;gap:0px">
+<div style="flex:1;background:#FFFFFF;border:2px solid #C9CDD4;border-radius:14px;padding:28px 20px"><p style="font-size:28px;text-align:center;font-weight:600">Gen1 data</p><p style="font-size:24px;text-align:center;color:#6B7585">frozen</p></div>
+<x-connector style="width:48px;color:#8A93A3"></x-connector>
+<div style="flex:1.2;background:#FBEBDD;border:3px solid #D9822B;border-radius:14px;padding:28px 20px"><p style="font-size:28px;text-align:center;font-weight:600">Backbone</p><p style="font-size:24px;text-align:center;color:#8A4A12">the only part swapped</p></div>
+<x-connector style="width:48px;color:#8A93A3"></x-connector>
+<div style="flex:1;background:#FFFFFF;border:2px solid #C9CDD4;border-radius:14px;padding:28px 20px"><p style="font-size:28px;text-align:center;font-weight:600">FPN neck</p><p style="font-size:24px;text-align:center;color:#6B7585">frozen</p></div>
+<x-connector style="width:48px;color:#8A93A3"></x-connector>
+<div style="flex:1;background:#FFFFFF;border:2px solid #C9CDD4;border-radius:14px;padding:28px 20px"><p style="font-size:28px;text-align:center;font-weight:600">YOLOX head</p><p style="font-size:24px;text-align:center;color:#6B7585">frozen</p></div>
+<x-connector style="width:48px;color:#8A93A3"></x-connector>
+<div style="flex:1;background:#FFFFFF;border:2px solid #C9CDD4;border-radius:14px;padding:28px 20px"><p style="font-size:28px;text-align:center;font-weight:600">Evaluator</p><p style="font-size:24px;text-align:center;color:#6B7585">frozen</p></div>
+</div>
+<div style="display:flex;flex-direction:row;gap:48px">
+<div style="flex:1;display:flex;flex-direction:column;gap:8px;border-top:3px solid #14213D;padding:24px 0px 0px 0px">
+<p style="font-family:'Source Serif 4', Georgia, serif;font-size:72px;font-weight:700;color:#14213D">47.7</p>
+<p style="font-size:28px;color:#3E4A5C;line-height:1.4">Gen1 test mAP for my reproduction of S5-RVT: an exact match to the paper</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:8px;border-top:3px solid #14213D;padding:24px 0px 0px 0px">
+<p style="font-family:'Source Serif 4', Georgia, serif;font-size:72px;font-weight:700;color:#14213D">1</p>
+<p style="font-size:28px;color:#3E4A5C;line-height:1.4">part changes between neighbouring models, so any difference comes from that part alone</p>
+</div>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:400px;font-size:24px;color:#6B7585">3 / 10</p>
+
+</section>
+</div></div><p class="notes"><b>Slide 3 notes.</b> About 60 seconds. First I reproduced S5-RVT exactly: 47.7 test mAP, matching the paper. Then I froze everything else, the data pipeline, the FPN neck, the YOLOX head, the loss and the evaluator, and swapped only the backbone. That makes it a controlled experiment: any change in accuracy comes from the swap and nothing else. One honest difference versus the baseline: my models trained at batch 4 instead of 8.</p><div class="frame"><div class="canvas"><section id="models" data-transition="fade" style="background:#F7F6F2;color:#14213D;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:48px">
+<div style="display:flex;flex-direction:column;gap:20px">
+<p style="font-size:26px;color:#B8661E;letter-spacing:3px;text-transform:uppercase;font-weight:600">What I did</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif;font-size:64px;font-weight:600;line-height:1.12">Four models, each one change away from the next</h2>
+</div>
+<div style="display:flex;flex-direction:row;gap:28px">
+<div style="flex:1;display:flex;flex-direction:column;gap:14px;background:#FFFFFF;border:2px solid #C9CDD4;border-radius:16px;padding:32px">
+<p style="font-size:24px;color:#6B7585;font-weight:600">BASELINE</p>
+<h3 style="font-size:38px;font-weight:600">S5-RVT</h3>
+<p style="font-size:26px;color:#3E4A5C;line-height:1.4">Attention for space, S5 SSM for time</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:14px;background:#FFFFFF;border:2px solid #C9CDD4;border-radius:16px;padding:32px">
+<p style="font-size:24px;color:#B8661E;font-weight:600">MINE · 1</p>
+<h3 style="font-size:38px;font-weight:600">EventSSM</h3>
+<p style="font-size:26px;color:#3E4A5C;line-height:1.4">ResNet-18 CNN for space, Mamba for time</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:14px;background:#FFFFFF;border:2px solid #C9CDD4;border-radius:16px;padding:32px">
+<p style="font-size:24px;color:#B8661E;font-weight:600">MINE · 2</p>
+<h3 style="font-size:38px;font-weight:600">PureSSM</h3>
+<p style="font-size:26px;color:#3E4A5C;line-height:1.4">Bidirectional Mamba for space, Mamba for time</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:14px;background:#FBEBDD;border:3px solid #D9822B;border-radius:16px;padding:32px">
+<p style="font-size:24px;color:#B8661E;font-weight:600">MINE · 3</p>
+<h3 style="font-size:38px;font-weight:600">SpikingSSM</h3>
+<p style="font-size:26px;color:#3E4A5C;line-height:1.4">PureSSM plus spiking neurons on the time path</p>
+</div>
+</div>
+<div style="display:flex;flex-direction:row;gap:28px">
+<p style="flex:1;font-size:24px;color:#6B7585;line-height:1.4">Reproduced from Zubić et al., CVPR 2024</p>
+<p style="flex:1;font-size:24px;color:#6B7585;line-height:1.4">vs baseline: whole backbone</p>
+<p style="flex:1;font-size:24px;color:#6B7585;line-height:1.4">vs EventSSM: only the spatial part</p>
+<p style="flex:1;font-size:24px;color:#6B7585;line-height:1.4">vs PureSSM: only the temporal readout</p>
+</div>
+<p style="font-size:28px;color:#3E4A5C;line-height:1.4"><b>Data:</b> Prophesee Gen1, driving scenes with cars and pedestrians · <b>Metric:</b> COCO mAP at IoU 0.50–0.95</p>
+<p style="position:absolute;left:128px;bottom:64px;width:400px;font-size:24px;color:#6B7585">4 / 10</p>
+
+</section>
+</div></div><p class="notes"><b>Slide 4 notes.</b> About 60 seconds. The baseline, S5-RVT, uses attention to look at space and an S5 state-space model for time. EventSSM, my first model, uses a ResNet-18 CNN for space and Mamba for time. PureSSM swaps the CNN for a bidirectional Mamba, so it is state-space all the way through; it differs from EventSSM in the spatial part only. SpikingSSM adds spiking neurons after PureSSM's temporal blocks; it differs from PureSSM in the temporal readout only. Everything is trained and tested on Prophesee Gen1, driving scenes with cars and pedestrians, scored with COCO mAP.</p><div class="frame"><div class="canvas"><section id="spiking" data-transition="fade" style="background:#F7F6F2;color:#14213D;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:row;gap:64px;align-items:center">
+<div style="flex:1;display:flex;flex-direction:column;gap:32px">
+<p style="font-size:26px;color:#B8661E;letter-spacing:3px;text-transform:uppercase;font-weight:600">What I did</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif;font-size:60px;font-weight:600;line-height:1.12">Three spiking readouts split the cost of spiking into parts</h2>
+<p style="font-size:28px;color:#3E4A5C;line-height:1.4">A leaky integrate-and-fire neuron reads out each Mamba temporal block. Three versions share the same neuron:</p>
+<div style="display:flex;flex-direction:column;gap:0px">
+<div style="display:flex;flex-direction:row;gap:24px;align-items:center;border-top:2px solid #C9CDD4;padding:16px 0px"><p style="width:300px;font-size:28px;font-weight:600">PureSSM → analog</p><p style="flex:1;font-size:28px;color:#3E4A5C">cost of the neuron dynamics</p></div>
+<div style="display:flex;flex-direction:row;gap:24px;align-items:center;border-top:2px solid #C9CDD4;padding:16px 0px"><p style="width:300px;font-size:28px;font-weight:600">analog → graded</p><p style="flex:1;font-size:28px;color:#3E4A5C">cost of sparsity</p></div>
+<div style="display:flex;flex-direction:row;gap:24px;align-items:center;border-top:2px solid #C9CDD4;border-bottom:2px solid #C9CDD4;padding:16px 0px"><p style="width:300px;font-size:28px;font-weight:600">graded → binary</p><p style="flex:1;font-size:28px;color:#3E4A5C">cost of binarisation</p></div>
+</div>
+<p style="font-size:26px;color:#8A4A12;background:#FBEBDD;padding:16px 24px;border-radius:10px">Predicted before training: analog ≥ graded &gt; binary</p>
+</div>
+<img src="../../latex/images/fig_spiking_architecture.png" alt="Spiking SSM architecture: a leaky integrate-and-fire readout after each Mamba temporal block, with a membrane trace" style="width:640px;height:640px;object-fit:contain;background:#FFFFFF;border-radius:16px;border:1px solid #E1DFD8">
+<p style="position:absolute;left:128px;bottom:64px;width:400px;font-size:24px;color:#6B7585">5 / 10</p>
+
+</section>
+</div></div><p class="notes"><b>Slide 5 notes.</b> About 60 seconds. The spiking model adds a leaky integrate-and-fire neuron after each Mamba temporal block; the spatial backbone stays non-spiking, a hybrid like HsVT. The key design choice: three readouts share the same neuron. Analog passes the membrane value through, graded only fires when over threshold but carries a value, binary fires plain spikes. Going PureSSM to analog to graded to binary separates three costs: the neuron dynamics, sparsity and binarisation. I committed to the predicted order, analog at least as good as graded, graded better than binary, before running anything. Published spiking detectors report at most one spiking-vs-non-spiking number; none breaks it down.</p><div class="frame"><div class="canvas"><section id="accuracy" data-transition="fade" style="background:#f7f6f2">
+  <p id="e1-v8rt0k" style="position:absolute; bottom:64px; left:128px; width:400px; font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; color:#6b7585">6 / 10</p>
+  <div id="p8f1047e3e9a1r0-11a2cafa" style="position:absolute; top:128px; left:128px; width:1664px; height:183px; display:flex; flex-direction:column; gap:20px">
+    <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:26px; font-weight:600; letter-spacing:3px; text-transform:uppercase; color:#b8661e">Result 1 · Accuracy</p>
+    <h2 style="font-family:'Source Serif 4', Georgia, serif; font-size:60px; font-weight:600; line-height:1.12; color:#14213d">Overall scores tie, but PureSSM sees further and wins on large objects</h2>
+  </div>
+  <div id="p8f1047e3e9a1r1-11a2cafa" style="position:absolute; top:350px; left:128px; width:1664px; display:flex; flex-direction:row; gap:56px; align-items:start">
+    <div style="display:flex; flex-direction:column; gap:28px; flex:1">
+      <table style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:28px; color:#14213d">
+        <tr><th style="width:34%">Gen1 test</th><th style="width:22%; text-align:right">mAP</th><th style="width:22%; text-align:right">AP large</th><th style="width:22%; text-align:right">Params</th></tr>
+        <tr><td>S5-RVT</td><td style="text-align:right">47.7</td><td style="text-align:right">50.7</td><td style="text-align:right">18.2 M</td></tr>
+        <tr><td>EventSSM</td><td style="text-align:right">46.2</td><td style="text-align:right">44.7</td><td style="text-align:right">19.2 M</td></tr>
+        <tr style="background:#fbebdd"><td>PureSSM</td><td style="text-align:right">46.4</td><td style="text-align:right">47.7</td><td style="text-align:right">16.3 M</td></tr>
+      </table>
+      <div style="display:flex; flex-direction:row; gap:32px; align-items:center">
+        <p style="font-family:'Source Serif 4', Georgia, serif; font-size:96px; font-weight:700; white-space:nowrap; color:#b8661e">+3.0</p>
+        <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:28px; line-height:1.4; color:#3e4a5c">AP on large objects over EventSSM: half the gap to the baseline closed, with the smallest model</p>
+      </div>
+    </div>
+    <div style="width:620px; display:flex; flex-direction:column; gap:16px">
+      <img src="../../latex/images/fig_erf_trained.png" alt="Trained effective receptive fields: the SSM backbone's field is wider than the CNN's at every stage" style="width:620px; height:479px; background:#ffffff; border:1px solid #e1dfd8; border-radius:16px; object-fit:contain">
+      <p style="font-family:'IBM Plex Sans', Arial, sans-serif; font-size:24px; line-height:1.4; color:#3e4a5c">Receptive field at stage 3: SSM 85.6 px vs CNN 41.8 px. Training widens the SSM's field by 30–34 px; the CNN's barely moves.</p>
+    </div>
+  </div>
+  
+</section>
+</div></div><p class="notes"><b>Slide 6 notes.</b> About 70 seconds. EventSSM 46.2, PureSSM 46.4, baseline 47.7. The 0.2 difference between my two models is within noise for a single training run, so I call it a tie. The real result is large objects: PureSSM gains 3 AP over EventSSM there, closing about half the gap to the attention baseline, and it is the smallest model at 16.3 million parameters. Why? A gradient-based receptive-field probe shows the SSM backbone sees up to twice as far as the CNN, and its field widens during training while the CNN's barely changes. That is the mechanism behind the large-object gain.</p><div class="frame"><div class="canvas"><section id="robustness" data-transition="fade" style="background:#F7F6F2;color:#14213D;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:48px">
+<div style="display:flex;flex-direction:column;gap:20px">
+<p style="font-size:26px;color:#B8661E;letter-spacing:3px;text-transform:uppercase;font-weight:600">Result 2 · Event-rate robustness</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif;font-size:60px;font-weight:600;line-height:1.12">SSMs stay robust to a 10× event-rate change, without the trick credited for it</h2>
+</div>
+<div style="display:flex;flex-direction:row;gap:64px;align-items:start">
+<div style="flex:1;display:flex;flex-direction:column;gap:24px">
+<p style="font-size:28px;color:#3E4A5C">Accuracy kept when the true event rate rises 10×</p>
+<div style="display:flex;flex-direction:row;gap:20px;align-items:center"><p style="width:200px;font-size:28px;font-weight:600">PureSSM</p><div style="width:488px;height:52px;background:#D9822B;border-radius:6px"></div><p style="font-size:28px;font-weight:600">69.7 %</p></div>
+<div style="display:flex;flex-direction:row;gap:20px;align-items:center"><p style="width:200px;font-size:28px">EventSSM</p><div style="width:441px;height:52px;background:#8A9BB3;border-radius:6px"></div><p style="font-size:28px">63.0 %</p></div>
+<div style="display:flex;flex-direction:row;gap:20px;align-items:center"><p style="width:200px;font-size:28px">S5-RVT</p><div style="width:435px;height:52px;background:#8A9BB3;border-radius:6px"></div><p style="font-size:28px">62.2 %</p></div>
+<p style="font-size:24px;color:#6B7585;line-height:1.4">At a true 2× rate all three keep about 95–96 %.</p>
+</div>
+<div style="width:700px;display:flex;flex-direction:column;gap:20px;background:#FFFFFF;border:2px solid #C9CDD4;border-radius:16px;padding:40px">
+<h3 style="font-size:34px;font-weight:600">A published claim that did not reproduce</h3>
+<p style="font-size:26px;color:#3E4A5C;line-height:1.45">The paper credits SSM robustness to rescaling the time step at inference. With its own checkpoint and code:</p>
+<ul style="font-size:26px;color:#3E4A5C;line-height:1.45;display:flex;flex-direction:column;gap:8px">
+<li>it recovered accuracy at no tested point</li>
+<li>at a true 10× rate it cost 9–13 mAP</li>
+<li>the 200 Hz headline (39.8) was not reproducible; best 29.7</li>
+</ul>
+</div>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:400px;font-size:24px;color:#6B7585">7 / 10</p>
+
+</section>
+</div></div><p class="notes"><b>Slide 7 notes.</b> About 60 seconds. Event cameras produce more events when things move faster, so a detector must cope with rate changes. At ten times the true event rate, PureSSM keeps 69.7 % of its accuracy, the most of any model; EventSSM 63 %, S5-RVT 62 %. The original paper credits this robustness to rescaling the time step at inference. I tested that with the authors' own checkpoint and code, under two protocols. It did not recover accuracy at any operating point, at a true tenfold rate it cost 9 to 13 mAP, and the headline 200 Hz result was not reproducible under the published artefacts. The robustness itself is real; it is just there without the trick. Keep the wording soft: not reproducible under the published checkpoint and code.</p><div class="frame"><div class="canvas"><section id="spikeresults" data-transition="fade" style="background:#F7F6F2;color:#14213D;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:40px">
+<div style="display:flex;flex-direction:column;gap:20px">
+<p style="font-size:26px;color:#B8661E;letter-spacing:3px;text-transform:uppercase;font-weight:600">Result 3 · The cost of spiking</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif;font-size:60px;font-weight:600;line-height:1.12">What each step of spiking costs in accuracy</h2>
+</div>
+<div style="display:flex;flex-direction:row;gap:56px;align-items:start">
+<div style="flex:1;display:flex;flex-direction:column;gap:20px">
+<table style="font-size:28px;color:#14213D">
+<tr><th style="width:30%;text-align:left">100k steps</th><th style="width:22%;text-align:right">Test AP</th><th style="width:26%;text-align:right">Step cost</th><th style="width:22%;text-align:right">Firing</th></tr>
+<tr><td style="text-align:left">PureSSM</td><td style="text-align:right;color:#B8661E">[__._]</td><td style="text-align:right">—</td><td style="text-align:right">—</td></tr>
+<tr><td style="text-align:left">analog</td><td style="text-align:right;color:#B8661E">[__._]</td><td style="text-align:right;color:#B8661E">[±_._]</td><td style="text-align:right;color:#B8661E">[_._]</td></tr>
+<tr><td style="text-align:left">graded</td><td style="text-align:right;color:#B8661E">[__._]</td><td style="text-align:right;color:#B8661E">[±_._]</td><td style="text-align:right;color:#B8661E">[_._]</td></tr>
+<tr><td style="text-align:left">binary</td><td style="text-align:right;color:#B8661E">[__._]</td><td style="text-align:right;color:#B8661E">[±_._]</td><td style="text-align:right;color:#B8661E">[_._]</td></tr>
+</table>
+<p style="font-size:26px;color:#3E4A5C;line-height:1.4">Predicted order analog ≥ graded &gt; binary: <span style="color:#B8661E">[held / did not hold]</span></p>
+</div>
+<div style="width:640px;display:flex;flex-direction:column;gap:18px;background:#FFFFFF;border:2px solid #C9CDD4;border-radius:16px;padding:40px">
+<h3 style="font-size:32px;font-weight:600">So far (validation AP)</h3>
+<ul style="font-size:26px;color:#3E4A5C;line-height:1.45;display:flex;flex-direction:column;gap:8px">
+<li>Binary, 100k steps: <b>41.8</b></li>
+<li>Graded ahead of binary at 80k: <b>41.6 vs 40.4</b></li>
+<li>25k pilot: PureSSM 35.1 → analog 35.1 → graded 34.0 → binary 30.5</li>
+<li>Every layer stayed active; no silent or saturated neurons</li>
+</ul>
+</div>
+</div>
+<p style="font-size:26px;color:#3E4A5C;line-height:1.4"><b>Energy, stated honestly:</b> only the time path spikes, and spikes feed about 1 % of the detector's operations. The saving needs the spatial backbone to spike too.</p>
+<p style="position:absolute;left:128px;bottom:64px;width:400px;font-size:24px;color:#6B7585">8 / 10</p>
+
+</section>
+</div></div><p class="notes"><b>Slide 8 notes.</b> About 60 seconds. FILL IN after the Stage 20-21 runs: test AP for the PureSSM 100k anchor and the three readouts, each step's cost with a bootstrap confidence interval, and the firing rate on the final checkpoints. Then say whether the predicted order held. If a step's interval includes zero, say the cost is too small to measure, which is still a result. Current numbers: the binary readout reached 41.8 validation AP at 100k steps; at matched steps the graded readout leads it, 41.6 versus 40.4 at 80k, and the binarisation gap narrowed from 3.5 at 25k to 1.2 at 80k. Be upfront about energy: in this hybrid only the temporal path spikes, about 1 % of the operations, so the contribution is measuring where the accuracy cost of spiking comes from, not an energy saving.</p><div class="frame"><div class="canvas"><section id="tradeoffs" data-transition="fade" style="background:#EDEBE4;color:#14213D;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:48px">
+<div style="display:flex;flex-direction:column;gap:20px">
+<p style="font-size:26px;color:#B8661E;letter-spacing:3px;text-transform:uppercase;font-weight:600">Discussion</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif;font-size:60px;font-weight:600;line-height:1.12">PureSSM does the least work, but the gains come with real costs</h2>
+</div>
+<div style="display:flex;flex-direction:row;gap:32px">
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:#F7F6F2;border-radius:16px;padding:36px">
+<h3 style="font-size:34px;font-weight:600">Compute</h3>
+<p style="font-size:26px;color:#3E4A5C;line-height:1.45">Fewest operations (10.0 GFLOP) and the best accuracy per GFLOP (4.63).</p>
+<p style="font-size:26px;color:#3E4A5C;line-height:1.45">But slowest in plain PyTorch (26.9 ms): many small operations. With CUDA graphs it runs at 181 Hz.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:#F7F6F2;border-radius:16px;padding:36px">
+<h3 style="font-size:34px;font-weight:600">Memory</h3>
+<p style="font-size:26px;color:#3E4A5C;line-height:1.45">The Mamba models carry 144 MB of state per stream, 31× the baseline's 4.7 MB.</p>
+<p style="font-size:26px;color:#3E4A5C;line-height:1.45">EventSSM is the fastest (12.6 ms, 0.44 J per frame) partly because it holds so much state.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:16px;background:#F7F6F2;border-radius:16px;padding:36px">
+<h3 style="font-size:34px;font-weight:600">Limits</h3>
+<p style="font-size:26px;color:#3E4A5C;line-height:1.45">One training run per model, so small differences are reported as ties.</p>
+<p style="font-size:26px;color:#3E4A5C;line-height:1.45">50-ms windows set the latency (≈25 ms wait + compute), not the sensor. SSMs keep 62–70 % at 5 ms.</p>
+<p style="font-size:26px;color:#3E4A5C;line-height:1.45">Batch 4 vs 8; drone integration descoped.</p>
+</div>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:400px;font-size:24px;color:#6B7585">9 / 10</p>
+
+</section>
+</div></div><p class="notes"><b>Slide 9 notes.</b> About 50 seconds. PureSSM does the least computation and has the best accuracy per GFLOP, but in plain PyTorch it is the slowest because it launches many small GPU operations; captured as a CUDA graph it reaches 181 Hz. The Mamba models keep 144 MB of streaming state per stream, 31 times the baseline: fast because fat. Limits: each model was trained once, so I treat small differences as ties; my models used batch 4 rather than 8; and the original micro-drone obstacle-avoidance aim was descoped so this could be a clean, controlled comparison. Latency: every model bins events into 50-ms windows, so detection waits about 25 ms on average for the window plus the compute time; the sensor's microsecond latency is not used at this setting. The window is a trade-off: with 5-ms windows and no retraining the SSMs keep 62 to 70 percent of their accuracy, PureSSM the most.</p><div class="frame"><div class="canvas"><section id="conclusion" data-transition="fade" style="background:#14213D;color:#F7F6F2;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:column;gap:48px">
+<div style="display:flex;flex-direction:column;gap:20px">
+<p style="font-size:26px;color:#E8A25A;letter-spacing:3px;text-transform:uppercase;font-weight:600">Conclusion</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif;font-size:60px;font-weight:600;line-height:1.12;color:#F7F6F2">What an SSM contributes to event-camera detection</h2>
+</div>
+<div style="display:flex;flex-direction:row;gap:40px">
+<div style="flex:1;display:flex;flex-direction:column;gap:14px;border-top:3px solid #E8A25A;padding:24px 0px 0px 0px">
+<p style="font-family:'Source Serif 4', Georgia, serif;font-size:56px;font-weight:700;color:#E8A25A">1</p>
+<p style="font-size:30px;line-height:1.4;color:#F7F6F2"><b>Reach.</b> SSM spatial mixing sees further, which is why large objects improve.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:14px;border-top:3px solid #E8A25A;padding:24px 0px 0px 0px">
+<p style="font-family:'Source Serif 4', Georgia, serif;font-size:56px;font-weight:700;color:#E8A25A">2</p>
+<p style="font-size:30px;line-height:1.4;color:#F7F6F2"><b>Robustness.</b> Rate robustness is built into the recurrence, not the rescaling trick.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:14px;border-top:3px solid #E8A25A;padding:24px 0px 0px 0px">
+<p style="font-family:'Source Serif 4', Georgia, serif;font-size:56px;font-weight:700;color:#E8A25A">3</p>
+<p style="font-size:30px;line-height:1.4;color:#F7F6F2"><b>Spiking.</b> Its cost splits into dynamics, sparsity and binarisation: <span style="color:#E8A25A">[one-line result]</span></p>
+</div>
+</div>
+<div style="display:flex;flex-direction:row;gap:32px;align-items:center;justify-content:space-between">
+<p style="font-size:28px;color:#C9D3E0;line-height:1.4">Next: run the spiking model on Intel Loihi 2 via NIR (proposal submitted), make the spatial backbone spike, scale to 1 Mpx data.</p>
+<p style="font-family:'Source Serif 4', Georgia, serif;font-size:56px;font-weight:600;color:#F7F6F2;white-space:nowrap">Questions?</p>
+</div>
+<p style="position:absolute;left:128px;bottom:64px;width:400px;font-size:24px;color:#8A9BB3">10 / 10</p>
+
+</section>
+</div></div><p class="notes"><b>Slide 10 notes.</b> About 40 seconds. Three takeaways. One: the SSM's spatial mixing sees further, and that is why PureSSM does better on large objects. Two: SSMs are robust to event-rate changes because of the recurrence itself, not the inference-time rescaling the literature credits. Three: the cost of spiking can be split into the neuron dynamics, sparsity and binarisation; FILL IN the one-line result. Next steps: deploying the spiking model on Intel's Loihi 2 through the NIR format, for which a proposal has gone to Intel's neuromorphic research community; making the spatial backbone spike so the whole detector can run on the chip; and testing at higher resolution on the 1 Mpx dataset. Close with the one-sentence story, then take questions.</p>
+</body></html>

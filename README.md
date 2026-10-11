@@ -69,8 +69,9 @@ code/event_ssm/                 the detectors (drop-in backbones for the vendore
 env/                            conda/pip lockfiles (Blackwell sm_120, cu128)
 docs/                           all prose — see docs/README.md
 thesis/
-  ├─ latex/                       main.tex (full dissertation), LitReview_ThesisA.tex (Thesis A), references.bib
+  ├─ latex/                       main.tex (full dissertation), conference.tex (paper skeleton), LitReview_ThesisA.tex, references.bib
   ├─ inrc_proposal/               2-page Intel INRC Loihi 2 proposal
+  ├─ presentation/                talk deck (source + offline preview), presentation guide, model explainer
   ├─ supervisor_report/           August progress report
   └─ diagrams/ · admin/
 external/                       vendored S5-RVT/RVT baseline (gitignored; rebuild with docs/patches/)

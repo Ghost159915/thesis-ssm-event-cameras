@@ -1,0 +1,14 @@
+<section id="problem" data-transition="fade" style="background:#F7F6F2;color:#14213D;font-family:'IBM Plex Sans', Arial, sans-serif;padding:128px 128px 160px;display:flex;flex-direction:row;gap:64px;align-items:center">
+<div style="flex:1;display:flex;flex-direction:column;gap:36px">
+<p style="font-size:26px;color:#B8661E;letter-spacing:3px;text-transform:uppercase;font-weight:600">The problem</p>
+<h2 style="font-family:'Source Serif 4', Georgia, serif;font-size:64px;font-weight:600;line-height:1.12">Event cameras suit small drones, but what SSMs add is unclear</h2>
+<ul style="font-size:30px;line-height:1.45;color:#3E4A5C;display:flex;flex-direction:column;gap:14px">
+<li><b>Event cameras:</b> each pixel reports brightness changes on its own, with microsecond latency and very high dynamic range.</li>
+<li><b>State-space models (SSMs)</b> were proposed as the natural model for event streams: S5-RVT reaches 47.7 mAP on Gen1.</li>
+<li><b>The gap:</b> published comparisons change several parts at once, and the accuracy cost of spiking has never been broken down.</li>
+</ul>
+</div>
+<img src="/_blob/b2ad54e8e1cef71b8f6b3e60b380f391" alt="How an event camera works: per-pixel brightness changes reported as asynchronous events" style="width:640px;height:648px;object-fit:contain;background:#FFFFFF;border-radius:16px;border:1px solid #E1DFD8">
+<p style="position:absolute;left:128px;bottom:64px;width:400px;font-size:24px;color:#6B7585">2 / 10</p>
+<aside>About 60 seconds. Event cameras report per-pixel brightness changes asynchronously, with microsecond latency and very high dynamic range. That suits micro-UAVs where power and weight are tight. SSMs were recently proposed as the natural sequence model for this data: linear-time and they carry a state through time. S5-RVT reaches 47.7 mAP on Gen1. But published comparisons swap several things at once, so we do not know what the SSM itself contributes. Separately, spiking detectors have caught up on accuracy, but nobody has broken down where the cost of spiking comes from.</aside>
+</section>
