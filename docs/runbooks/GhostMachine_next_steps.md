@@ -3,8 +3,8 @@
 **Written 2026-10-11.** One list of everything that has to happen on the workstation, in order. Details live in the
 linked runbooks; this page is the order of play. Tick items off as you go.
 
-Rule throughout: **while a training run is on the GPU, do only CPU work** (no test evals, no benchmark, no full
-`pytest` — 7 unmarked CUDA tests in `test_resnet_mamba.py` would compete for the GPU).
+Rule throughout: **while a training run is on the GPU, do only CPU work** (no test evals, no benchmark, no
+`pytest -m gpu`). A plain `pytest` is CPU-only and safe: since 2026-10-11 every CUDA test module carries the `gpu` mark.
 
 ---
 

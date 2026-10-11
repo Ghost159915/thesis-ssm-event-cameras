@@ -46,6 +46,9 @@ checkpoint_blocks true.
   the run. Not caused by the Stage-20 change: the same tests pass on an idle GPU.
 - **Decision.** During GPU runs, run only the relevant CPU tests. Follow-up (deferred, a test-hygiene edit to an
   existing file): mark the CUDA tests in `test_resnet_mamba.py` as `gpu`.
+- **Done 2026-10-11.** All five CUDA-requiring test modules now carry `pytest.mark.gpu` (`test_resnet_mamba`,
+  `test_mamba_temporal`, `test_scan_equivalence`, `test_step_scale_parity`, `puressm/test_spatial_scan2d`); the default
+  `-m "not gpu"` run is CPU-only and safe during training.
 
 ### D4. Code review ("merge after one fix") and the resume guard
 - **Important finding.** `STAGE7_RESUME` was not checked against the budget. Lightning restores the scheduler with

@@ -13,7 +13,8 @@ from event_ssm.temporal._scan import mamba2_scan_time
 from event_ssm.temporal.mamba_temporal import MambaTemporalBlock
 
 CUDA = torch.cuda.is_available()
-pytestmark = pytest.mark.skipif(not CUDA, reason="mamba-ssm kernels are CUDA-only")
+# `gpu`: excluded by pytest.ini's default `-m "not gpu"`, so a plain `pytest` never competes with a training run
+pytestmark = [pytest.mark.gpu, pytest.mark.skipif(not CUDA, reason="mamba-ssm kernels are CUDA-only")]
 
 
 def _layer(d_model=128):

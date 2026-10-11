@@ -3,6 +3,11 @@ import pytest
 import torch
 
 
+# Every test needs the CUDA `device` fixture (Mamba-2 kernels). `gpu`: excluded by pytest.ini's default
+# `-m "not gpu"`, so a plain `pytest` never competes with a training run.
+pytestmark = pytest.mark.gpu
+
+
 def _make(d_model=64, device="cuda", dtype=torch.float32):
     from event_ssm.models.puressm import BiMamba1DScan
     torch.manual_seed(0)

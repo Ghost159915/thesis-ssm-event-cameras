@@ -3,7 +3,8 @@ import pytest
 from event_ssm.backbone.resnet_mamba import ResNetMambaBackbone
 
 CUDA = torch.cuda.is_available()
-pytestmark = pytest.mark.skipif(not CUDA, reason="mamba-ssm kernels are CUDA-only")
+# `gpu`: excluded by pytest.ini's default `-m "not gpu"`, so a plain `pytest` never competes with a training run
+pytestmark = [pytest.mark.gpu, pytest.mark.skipif(not CUDA, reason="mamba-ssm kernels are CUDA-only")]
 
 
 # ---------------------------------------------------------------------------
