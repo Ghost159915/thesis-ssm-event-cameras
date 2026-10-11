@@ -14,7 +14,9 @@
 # post-hoc sweep of a NON-learned threshold/beta with SPIKING_ALLOW_ARM_OVERRIDE=1. A learned knob is refused (the
 # model would silently ignore the override), as is anything that changes the recipe. Post-hoc runs are filed under
 # <arm tag>_posthoc/, never as the arm's canonical test eval.
-# Log: results/stage21_test_eval/<arm tag>[_posthoc]/test_eval_<run id>_step<N>_<timestamp>.txt. Needs an idle GPU;
+# Another test-data window (rate study: dataset.ev_repr_name='stacked_histogram_dt=<N>_nbins=10', with DATASET
+# pointing at that rendering) is filed under <arm tag>_dt<N>/.
+# Log: results/stage21_test_eval/<arm tag>[_posthoc][_dt<N>]/test_eval_<run id>_step<N>_<timestamp>.txt. Needs an idle GPU;
 # the user runs it.
 set -euo pipefail
 
@@ -44,7 +46,7 @@ BATCH="${BATCH:-4}"
 # non-spiking or malformed checkpoint)
 TAG="$(python -m event_ssm.integration.spiking_ckpt tag "$CKPT")"
 VERDICT="$(python -m event_ssm.integration.spiking_ckpt check-extra "$CKPT" "$@")"   # exits 1 on a refused arg
-[[ "$VERDICT" == "posthoc" ]] && TAG="${TAG}_posthoc"
+[[ "$VERDICT" != "canonical" ]] && TAG="${TAG}_${VERDICT}"   # posthoc | dt<N> | posthoc_dt<N>: never the canonical folder
 EVAL_ARGV_TXT="$(python -m event_ssm.integration.spiking_ckpt argv "$CKPT" "$DATASET" "$BATCH")"
 mapfile -t EVAL_ARGV <<< "$EVAL_ARGV_TXT"
 

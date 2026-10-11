@@ -12,10 +12,12 @@ CLI (for the bash evaluation launcher):
     python -m event_ssm.integration.spiking_ckpt argv <ckpt> <dataset> <batch>
                                                                   -> the full stage7_eval.py argument list
     python -m event_ssm.integration.spiking_ckpt check-extra <ckpt> [args...]
-                                                                  -> canonical | posthoc, or exit 1
+                                                                  -> canonical | posthoc | dt<N> | posthoc_dt<N>,
+                                                                     or exit 1
 Errors print one line to stderr and exit 1 (no traceback).
 """
 import os
+import re
 import sys
 
 _PREFIX = "mdl.backbone.temporal."
@@ -88,17 +90,31 @@ def build_eval_argv(ckpt: str, dataset: str, batch: int, arm: dict) -> list:
 
 _SWEEPABLE = ("threshold", "beta")
 _ALWAYS_OK = ("--cfg", "job")
+# Evaluation on another rendering of the TEST data (the Stage-9/16 rate study, item 3): only the stacked histogram
+# at another window, 10 bins kept (the network takes exactly 20 channels). Data only: the arm and recipe are unchanged.
+_EV_REPR = re.compile(r"^dataset\.ev_repr_name='?stacked_histogram_dt=([0-9]+)_nbins=10'?$")
 
 
 def classify_extra_args(arm: dict, args, allow_override: bool) -> str:
     """Extra Hydra arguments for an evaluation of this arm. Allowed: `--cfg job`, `hydra.verbose=...`, and a
     post-hoc sweep of a NON-learned threshold/beta, the latter only with SPIKING_ALLOW_ARM_OVERRIDE=1 (the LIF
-    arm contract's own gate). Returns "posthoc" when such a sweep is present, else "canonical"; raises ValueError
-    for anything else, including an override of a LEARNED knob, which the model would silently ignore."""
-    posthoc = False
+    arm contract's own gate), and one `dataset.ev_repr_name=` naming a stacked histogram at another window (10 bins)
+    for the rate study. Returns "canonical", or the run's filing suffix: "posthoc" for a threshold/beta sweep,
+    "dt<N>" for another window, "posthoc_dt<N>" for both. Raises ValueError for anything else, including an override
+    of a LEARNED knob, which the model would silently ignore."""
+    posthoc, window = False, None
     for a in args:
         if a in _ALWAYS_OK or a.startswith("hydra.verbose="):
             continue
+        m = _EV_REPR.match(a)
+        if m:
+            if window is not None:
+                raise ValueError("more than one dataset.ev_repr_name override")
+            window = f"dt{int(m.group(1))}"
+            continue
+        if a.startswith("dataset."):
+            raise ValueError(f"argument {a!r} is not allowed: only dataset.ev_repr_name='stacked_histogram_dt=<N>_"
+                             f"nbins=10' may change the evaluation data")
         knob = next((k for k in _SWEEPABLE if a.startswith(f"model.backbone.spiking.{k}=")), None)
         if knob is None:
             raise ValueError(f"argument {a!r} is not allowed: it could change the evaluation recipe or the arm of a "
@@ -110,7 +126,8 @@ def classify_extra_args(arm: dict, args, allow_override: bool) -> str:
             raise ValueError(f"overriding the non-learned {knob} is a post-hoc sweep and requires "
                              f"SPIKING_ALLOW_ARM_OVERRIDE=1")
         posthoc = True
-    return "posthoc" if posthoc else "canonical"
+    suffix = "_".join(p for p in ("posthoc" if posthoc else "", window or "") if p)
+    return suffix or "canonical"
 
 
 def arm_from_checkpoint(path: str) -> dict:

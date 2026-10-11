@@ -15,8 +15,11 @@ Rule throughout: **while a training run is on the GPU, do only CPU work** (no te
       latest `val/AP` line. If it was stopped: resume from the newest checkpoint as in
       `docs/runbooks/Stage20_resume_after_interrupt.md` ("If you need the GPU again"), and record the restart time
       in `docs/notes/Stage20_fullrun_notes.md` §3.2.
-- [ ] Bootstrap Part B tests: `conda activate events_signals && cd code && pytest event_ssm/tests/eval -q`
-      → expect `16 passed`.
+- [ ] Analysis-tool tests (CPU): `conda activate events_signals && cd code && pytest event_ssm/tests/eval -q`
+      → expect `27 passed`.
+- [ ] Item-3 launcher tests (CPU; they need bash ≥ 4, so they cannot run on the Mac):
+      `pytest event_ssm/tests/models/spikingssm/test_spiking_ckpt.py event_ssm/tests/models/spikingssm/test_stage21_eval_script.py
+      event_ssm/tests/models/spikingssm/test_truerate_sweep_spiking.py -q` → all pass.
 
 ## B. Back up the results (CPU only)
 
@@ -64,8 +67,13 @@ Order (Stage-20 plan): graded 100k (resumed) → analog 100k → PureSSM 100k an
        idempotent, preflight-checked). θ = 1.0 must reproduce the canonical Stage-21 test AP. Then the figure:
        `cd code && python -m event_ssm.eval.threshold_sweep --sweep graded=../results/stage22/threshold_sweep/graded_s234
        --sweep binary=../results/stage22/threshold_sweep/spike_s234 --out ../results/stage22/threshold_sweep/threshold_pareto`.
-6. [ ] **Event-rate robustness of the spiking arms** (item 3): the Stage-9/16 true-rate protocol (2× and 10×) on
-       spike and graded; compare with PureSSM's 69.7 % retention.
+6. [ ] **Event-rate robustness of the spiking arms** (item 3, ≈ 3 h per checkpoint at 10×): the true-rate protocol,
+       uncompensated only, e.g. for graded:
+       `OURS_WRAP=$PWD/code/event_ssm/scripts/stage21_spikingssm_test_eval_local.sh OURS_CKPT=<graded 100k ckpt>
+       OURS_KEY=graded_s234 RUN_BASELINE=0 RUN_COMP=0 bash code/event_ssm/scripts/stage9_truerate_sweep.sh`
+       (same for spike). Logs land in `results/stage9/sweep_tr/<key>_dt{25,5}_nc.log` and the eval copies under
+       `results/stage21_test_eval/<tag>_dt{25,5}/`. Retention = AP at 10× ÷ the arm's canonical 1× test AP; compare
+       with PureSSM's 69.7 %. (The sweep refuses RUN_COMP=1 here: the spiking launcher unsets MAMBA_STEP_SCALE.)
 7. [ ] **Firing-pattern figure** (item 5) and **β per channel** (item 6) from the final checkpoints.
 8. [ ] Optional: capture EventSSM 400k for the paired EventSSM vs PureSSM interval (46.2 vs 46.4, AP_L +3.0).
 

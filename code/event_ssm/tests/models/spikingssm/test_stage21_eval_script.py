@@ -86,6 +86,21 @@ def test_posthoc_threshold_sweep_is_filed_separately(fake_repo, tmp_path):
     assert not (repo / "results" / "stage21_test_eval" / "spike_s4").exists()
 
 
+def test_other_window_is_filed_separately(fake_repo, tmp_path):
+    # Rate study (item 3): another rendering of the test data is evaluated with the checkpoint's own arm and filed
+    # under <tag>_dt<N>, never as the canonical test eval
+    p = _ckpt(tmp_path, (2, 3, 4), "graded")
+    evr = "dataset.ev_repr_name='stacked_histogram_dt=5_nbins=10'"
+    r = _run(fake_repo, [str(p), evr], {"DATASET": str(tmp_path / "preproc_tr")})
+    assert r.returncode == 0, r.stderr
+    args = [l[4:] for l in r.stdout.splitlines() if l.startswith("ARG ")]
+    assert args[-1] == evr and f"dataset.path={tmp_path / 'preproc_tr'}" in args
+    assert "model.backbone.spiking.output_mode=graded" in args
+    repo, _ = fake_repo
+    assert list((repo / "results" / "stage21_test_eval" / "graded_s234_dt5").glob("test_eval_*.txt"))
+    assert not (repo / "results" / "stage21_test_eval" / "graded_s234").exists()
+
+
 @pytest.mark.parametrize("extra, env", [
     (["model.backbone.spiking.threshold=0.8"], {}),                         # missing the explicit flag
     (["model.backbone.spiking.beta=0.5"], {"SPIKING_ALLOW_ARM_OVERRIDE": "1"}),   # learned: would be ignored

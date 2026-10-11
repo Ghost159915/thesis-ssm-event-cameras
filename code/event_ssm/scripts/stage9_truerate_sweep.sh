@@ -25,10 +25,21 @@ BASE_CKPT="$REPO/checkpoints/gen1_base.ckpt"
 # --- model selection (env-overridable; UNSET = the original EventSSM+baseline true-rate grid) ---
 # PureSSM (Stage 16): OURS_WRAP=.../stage14_puressm_test_eval_local.sh OURS_CKPT=.../stage14_cloud/... \
 #                     OURS_KEY=puressm RUN_BASELINE=0   (keep default OUT so plots find puressm_*)
+# SpikingSSM (Stage 21, item 3 — uncompensated only):
+#   OURS_WRAP=.../stage21_spikingssm_test_eval_local.sh OURS_CKPT=<100k ckpt> OURS_KEY=graded_s234 \
+#   RUN_BASELINE=0 RUN_COMP=0
 OURS_WRAP="${OURS_WRAP:-$SCRIPTS/stage7_test_eval_local.sh}"
 OURS_KEY="${OURS_KEY:-eventssm}"
 RUN_BASELINE="${RUN_BASELINE:-1}"                   # 0 skips the S5-RVT arm (already evaluated)
+RUN_COMP="${RUN_COMP:-1}"                           # 0 skips OUR Δt-compensated arm (no-comp only)
 OUT="${OUT:-$REPO/results/stage9/sweep_tr}"
+# The spiking eval launcher unsets MAMBA_STEP_SCALE (contamination guard), so a "compensated" run through it would
+# silently be uncompensated yet logged as ss<N>: refuse that combination outright.
+if [[ "$(basename "$OURS_WRAP")" == stage21_* && "$RUN_COMP" != "0" ]]; then
+  echo "[stage9-tr] ERROR: $(basename "$OURS_WRAP") unsets MAMBA_STEP_SCALE, so compensated runs would be mislabelled." >&2
+  echo "[stage9-tr]        Set RUN_COMP=0 for SpikingSSM checkpoints." >&2
+  exit 2
+fi
 mkdir -p "$OUT"
 
 RATES=("$@"); [[ ${#RATES[@]} -eq 0 ]] && RATES=(25 5)
@@ -84,7 +95,7 @@ for V in "${RATES[@]}"; do
     run_eval baseline "$V" "$SS"  # S5-RVT + step_scale      (paper mechanism; 10x target ≈ 39.8)
   fi
   run_eval "$OURS_KEY" "$V" ""    # ours, no compensation (does Mamba's input-dependent Δt self-adapt?)
-  run_eval "$OURS_KEY" "$V" "$SS" # ours + delta-scaling  (the Mamba analog)
+  [[ "$RUN_COMP" == "1" ]] && run_eval "$OURS_KEY" "$V" "$SS"   # ours + delta-scaling (the Mamba analog)
 done
 
 echo

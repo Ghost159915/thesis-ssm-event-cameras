@@ -192,6 +192,10 @@ def test_non_default_arm_round_trips_through_the_config_into_the_lif():
     ({}, ["--cfg", "job"], False, "canonical"),
     ({}, ["hydra.verbose=true"], False, "canonical"),
     ({}, ["model.backbone.spiking.threshold=0.8"], True, "posthoc"),     # threshold not learned (default)
+    ({}, ["dataset.ev_repr_name='stacked_histogram_dt=5_nbins=10'"], False, "dt5"),     # rate study, data only
+    ({}, ["dataset.ev_repr_name=stacked_histogram_dt=25_nbins=10"], False, "dt25"),     # unquoted form
+    ({}, ["model.backbone.spiking.threshold=0.8", "dataset.ev_repr_name='stacked_histogram_dt=5_nbins=10'"],
+     True, "posthoc_dt5"),
 ])
 def test_extra_args_allowed(arm_extra, args, allow, verdict):
     arm = arm_from_state_dict(_sd((4,), lif_extra=arm_extra))
@@ -205,6 +209,11 @@ def test_extra_args_allowed(arm_extra, args, allow, verdict):
     ({}, ["model.postprocess.confidence_threshold=0.1"], True, "not allowed"),
     ({}, ["use_test_set=0"], True, "not allowed"),
     ({}, ["batch_size.eval=8"], True, "not allowed"),
+    ({}, ["dataset.ev_repr_name='stacked_histogram_dt=5_nbins=20'"], True, "not allowed"),   # 40 channels
+    ({}, ["dataset.ev_repr_name='voxel_grid_dt=5'"], True, "not allowed"),
+    ({}, ["dataset.path=/elsewhere"], True, "not allowed"),               # DATASET env, not an argument
+    ({}, ["dataset.ev_repr_name='stacked_histogram_dt=5_nbins=10'",
+          "dataset.ev_repr_name='stacked_histogram_dt=25_nbins=10'"], True, "more than one"),
 ])
 def test_extra_args_refused(arm_extra, args, allow, needle):
     arm = arm_from_state_dict(_sd((4,), lif_extra=arm_extra))
