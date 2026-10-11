@@ -184,7 +184,7 @@ History of the run:
   steps`). Third W&B offline id **`rnak3sms`**, checkpoints in `RVT/RVT/rnak3sms/checkpoints/`. Finished at 14:01:37
   (`max_steps=100000` reached, exit 0, 2 h 47 min for the last 20k steps), and the `&&` chain started analog.
 
-### 3.3 Analog arm, `[2,3,4]`, 100k (W&B offline `yeddueoq`, started 2026-10-11 14:01:38) — running, one interruption, resumed
+### 3.3 Analog arm, `[2,3,4]`, 100k (W&B offline `yeddueoq` → `sx14rpo8`, started 2026-10-11 14:01:38, finished 2026-10-12 07:05:43, exit 0; one interruption, resumed)
 - val/AP 0.229 / 0.294 / 0.326 / 0.370 / 0.383 at 10k / 20k / 30k / 40k / 50k (spike 0.351, graded 0.352 at 40k).
 - **Interrupted 2026-10-11 22:06:14 (+11:00)** by the user (Ctrl-C, log `console_20261011_140138.log`, exit 1), ≈ 1 h
   10 min after the 50k checkpoint (20:56) ⇒ ≈ 8k steps are redone. Last checkpoint:
@@ -192,6 +192,22 @@ History of the run:
 - **Resumed 2026-10-12 00:15:36 (+11:00)** in a new tmux `stage20` session, chain analog resume → PureSSM 100k
   anchor → graded 400k. Log `console_20261012_001536.log`: local-file resume loaded the 50k checkpoint, `resume guard:
   checkpoint schedule matches 100000 steps`. Same deviation as the graded arm (§3.2): data-loader stream positions
-  are not restored, so from 50k on the analog arm sees a different data order. W&B offline continues under a new id.
+  are not restored, so from 50k on the analog arm sees a different data order. W&B offline continues under the new
+  id `sx14rpo8`.
+- val/AP after the resume (`sx14rpo8`): 0.396 / 0.417 / 0.418 / 0.436 / **0.438** at 60k / 70k / 80k / 90k / 100k.
+  `max_steps=100000` reached, exit 0; the `&&` chain started the PureSSM anchor. Best = last = step 100k:
+  `sx14rpo8/checkpoints/epoch=002-step=100000-val_AP=0.44.ckpt`.
 
-*PureSSM-anchor 100k arm: pending (next in the chain).*
+### 3.4 100k ladder on validation (all three spiking arms done)
+
+| step | spike | graded | analog |
+|---|---|---|---|
+| 50k | 0.370 | 0.368 | 0.383 |
+| 100k | 0.418 | 0.425 | 0.438 |
+
+Final val/AP gaps: analog → graded −1.4, graded → spike −0.7 (validation, single seed; the test evals of Stage 21 are
+the reported numbers). The pre-registered ordering analog ≥ graded > spike holds at 100k. The PureSSM → analog rung
+waits for the anchor below.
+
+### 3.5 PureSSM anchor, 100k (W&B offline `igk6myyb`, started 2026-10-12 07:05:43) — running
+- val/AP 0.240 / 0.312 at 10k / 20k (analog 0.229 / 0.294); ≈ 2.37 it/s.
