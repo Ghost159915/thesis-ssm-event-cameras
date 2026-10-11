@@ -74,7 +74,12 @@ Order (Stage-20 plan): graded 100k (resumed) → analog 100k → PureSSM 100k an
        (same for spike). Logs land in `results/stage9/sweep_tr/<key>_dt{25,5}_nc.log` and the eval copies under
        `results/stage21_test_eval/<tag>_dt{25,5}/`. Retention = AP at 10× ÷ the arm's canonical 1× test AP; compare
        with PureSSM's 69.7 %. (The sweep refuses RUN_COMP=1 here: the spiking launcher unsets MAMBA_STEP_SCALE.)
-7. [ ] **Firing-pattern figure** (item 5) and **β per channel** (item 6) from the final checkpoints.
+7. [ ] **β per channel** (item 6; CPU only, safe during training):
+       `cd code && python -m event_ssm.eval.beta_report --ckpt binary=<spike 100k ckpt> --ckpt graded=<graded 100k ckpt>
+       --out ../results/stage22/beta/beta_100k` → table + histogram per stage (fills the β \res{} in §5.7).
+   [ ] **Firing-pattern figure** (item 5; idle GPU, minutes): `python code/event_ssm/scripts/stage22_firing_pattern.py
+       --ckpt <ckpt>` per arm → `results/stage22/firing/<tag>_<rec>.png` (events per frame vs per-stage firing rate,
+       with the correlation r).
 8. [ ] Optional: capture EventSSM 400k for the paired EventSSM vs PureSSM interval (46.2 vs 46.4, AP_L +3.0).
 
 ## F. After each result
