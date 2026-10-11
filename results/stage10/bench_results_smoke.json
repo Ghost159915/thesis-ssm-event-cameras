@@ -1,0 +1,281 @@
+{
+  "schema": 1,
+  "meta": {
+    "date": "2026-07-11T11:44:49",
+    "torch": "2.11.0+cu128",
+    "cuda": "12.8",
+    "gpu": "NVIDIA GeForce RTX 5070 Ti",
+    "driver": "595.71.05",
+    "clocks_sm_mhz": "585",
+    "git_sha": "5253fdc",
+    "clip_src": "/home/ghost/Desktop/thesis-ssm-event-cameras/data/gen1_raw/gen1/test/17-04-04_11-00-13_cut_15_122500000_182500000/event_representations_v2/stacked_histogram_dt=50_nbins=10/event_representations.h5",
+    "ckpts": {
+      "eventssm": "/home/ghost/Desktop/thesis-ssm-event-cameras/external/ssms_event_cameras/RVT/RVT/8zotrwjw/checkpoints/epoch=003-step=320000-val_AP=0.46.ckpt",
+      "baseline": "/home/ghost/Desktop/thesis-ssm-event-cameras/checkpoints/gen1_base.ckpt"
+    },
+    "test_ap": {
+      "eventssm": 0.462,
+      "baseline": 0.477
+    },
+    "weights": "plain mdl.* (non-EMA); compute metrics weight-independent"
+  },
+  "models": {
+    "eventssm": {
+      "params_m": {
+        "total": 19.184105,
+        "neck": 3.860992,
+        "head": 1.890709,
+        "backbone_spatial": 11.229824,
+        "backbone_temporal": 2.20258
+      },
+      "flops": {
+        "counted_gflops": 0.0,
+        "analytic_gflops": 1.06110976,
+        "total_gflops": 1.06110976,
+        "unsupported_ops": {
+          "trace_failed": 1,
+          "err": "Cannot insert a Tensor that requires grad as a constant. Consider making it a parameter or input, or detaching the gradient\nTensor:\n(1,1,.,.) = \n0.01 *\n  0.7632 -3.7324 -0.6392  0.8599  0.8668 -2.3547"
+        },
+        "counted_incomplete": true
+      },
+      "latency": {
+        "bf16": {
+          "full": {
+            "mean_ms": 10.861584900703747,
+            "std_ms": 0.4344564305158763,
+            "p50_ms": 10.701569000957534,
+            "p95_ms": 11.631596004008316,
+            "hz": 93.44424167246167,
+            "iters": 10
+          },
+          "network": {
+            "mean_ms": 10.230351197242271,
+            "std_ms": 0.24624158540622038,
+            "p50_ms": 10.263275995384902,
+            "p95_ms": 10.584799994830973,
+            "hz": 97.43477623028662,
+            "iters": 10
+          },
+          "components": {
+            "backbone": {
+              "mean_ms": 5.062734798411839,
+              "std_ms": 0.5221417572655765,
+              "p50_ms": 4.777713998919353,
+              "p95_ms": 6.391765011358075,
+              "hz": 209.30511960870513,
+              "iters": 10
+            },
+            "neck_head": {
+              "mean_ms": 5.388391301676165,
+              "std_ms": 0.3138620102990053,
+              "p50_ms": 5.244279003818519,
+              "p95_ms": 6.2665300065418705,
+              "hz": 190.68398139608314,
+              "iters": 10
+            },
+            "postprocess": {
+              "mean_ms": 0.5054894994827919,
+              "std_ms": 0.029739126288095344,
+              "p50_ms": 0.4966529959347099,
+              "p95_ms": 0.5932739877607673,
+              "hz": 2013.4782397073473,
+              "iters": 10
+            }
+          },
+          "throughput": {
+            "b4_fps": 305.3681740217246,
+            "b8_fps": 329.9427588994303
+          }
+        },
+        "fp32": {
+          "full": {
+            "mean_ms": 8.994318700570147,
+            "std_ms": 0.5472968646472163,
+            "p50_ms": 8.852929007844068,
+            "p95_ms": 10.554185006185435,
+            "hz": 112.95696589388189,
+            "iters": 10
+          },
+          "network": {
+            "mean_ms": 8.288390697271097,
+            "std_ms": 0.4396365238317199,
+            "p50_ms": 8.122246988932602,
+            "p95_ms": 9.564605992636643,
+            "hz": 123.11863962799985,
+            "iters": 10
+          },
+          "components": {
+            "backbone": {
+              "mean_ms": 5.154215304355603,
+              "std_ms": 0.22364359178093673,
+              "p50_ms": 5.058141003246419,
+              "p95_ms": 5.522253006347455,
+              "hz": 197.70109203325478,
+              "iters": 10
+            },
+            "neck_head": {
+              "mean_ms": 4.1573359980247915,
+              "std_ms": 0.1692567144313376,
+              "p50_ms": 4.125949999433942,
+              "p95_ms": 4.594840997015126,
+              "hz": 242.36842427494142,
+              "iters": 10
+            },
+            "postprocess": {
+              "mean_ms": 0.5250190966762602,
+              "std_ms": 0.03904971313509553,
+              "p50_ms": 0.5130939971422777,
+              "p95_ms": 0.621537008555606,
+              "hz": 1948.9606301566348,
+              "iters": 10
+            }
+          },
+          "throughput": {
+            "b4_fps": 234.51512729770937,
+            "b8_fps": 245.62118822671724
+          }
+        }
+      },
+      "vram": {
+        "inference_mb": 964.30419921875,
+        "train_mb": 6911.27197265625,
+        "state_kb_per_stream": 147980.001953125
+      },
+      "energy": {
+        "idle_w": 85.29375,
+        "load_w": 88.71578947368421,
+        "j_per_frame": 0.03939541353213858,
+        "frames": 435,
+        "seconds": 5.007833783995011
+      }
+    },
+    "baseline": {
+      "params_m": {
+        "total": 18.192149,
+        "neck": 3.860992,
+        "head": 1.890709,
+        "backbone": 12.440448
+      },
+      "flops": {
+        "counted_gflops": 0.0,
+        "analytic_gflops": 1.86884096,
+        "total_gflops": 1.86884096,
+        "unsupported_ops": {
+          "trace_failed": 1,
+          "err": "Cannot insert a Tensor that requires grad as a constant. Consider making it a parameter or input, or detaching the gradient\nTensor:\n(1,1,.,.) = \n 0.1147 -0.0368 -0.0030 -0.0428 -0.0490 -0.0013 -0.0048"
+        },
+        "counted_incomplete": true
+      },
+      "latency": {
+        "bf16": {
+          "full": {
+            "mean_ms": 15.449644000909757,
+            "std_ms": 0.48320139159752723,
+            "p50_ms": 15.355886993347667,
+            "p95_ms": 16.592731000855565,
+            "hz": 65.12160453077121,
+            "iters": 10
+          },
+          "network": {
+            "mean_ms": 16.469746397342533,
+            "std_ms": 1.5730919836940367,
+            "p50_ms": 16.105685994261876,
+            "p95_ms": 20.620155992219225,
+            "hz": 62.089873126564086,
+            "iters": 10
+          },
+          "components": {
+            "backbone": {
+              "mean_ms": 11.51979180140188,
+              "std_ms": 0.9953953356427213,
+              "p50_ms": 11.20202400488779,
+              "p95_ms": 14.116849008132704,
+              "hz": 89.26958195801662,
+              "iters": 10
+            },
+            "neck_head": {
+              "mean_ms": 6.2989029014715925,
+              "std_ms": 0.5781973586626025,
+              "p50_ms": 6.288593998760916,
+              "p95_ms": 7.376756999292411,
+              "hz": 159.01805716779248,
+              "iters": 10
+            },
+            "postprocess": {
+              "mean_ms": 0.6220707000466064,
+              "std_ms": 0.21071375754830177,
+              "p50_ms": 0.5178529972909018,
+              "p95_ms": 1.2005650060018525,
+              "hz": 1931.049941260172,
+              "iters": 10
+            }
+          },
+          "throughput": {
+            "b4_fps": 175.5422587636987,
+            "b8_fps": 195.46331124022774
+          }
+        },
+        "fp32": {
+          "full": {
+            "mean_ms": 12.543445799383335,
+            "std_ms": 0.4187824498382098,
+            "p50_ms": 12.426233995938674,
+            "p95_ms": 13.751382997725159,
+            "hz": 80.47490497336803,
+            "iters": 10
+          },
+          "network": {
+            "mean_ms": 11.73722829844337,
+            "std_ms": 0.10021727349561539,
+            "p50_ms": 11.74512499710545,
+            "p95_ms": 11.964976991293952,
+            "hz": 85.14170775078571,
+            "iters": 10
+          },
+          "components": {
+            "backbone": {
+              "mean_ms": 8.958216797327623,
+              "std_ms": 0.2610164140583469,
+              "p50_ms": 8.98577099724207,
+              "p95_ms": 9.432299004402012,
+              "hz": 111.28705598071906,
+              "iters": 10
+            },
+            "neck_head": {
+              "mean_ms": 4.3163145004655235,
+              "std_ms": 0.17032454365668262,
+              "p50_ms": 4.35305800056085,
+              "p95_ms": 4.698456003097817,
+              "hz": 229.7235644163619,
+              "iters": 10
+            },
+            "postprocess": {
+              "mean_ms": 0.5887530016480014,
+              "std_ms": 0.1503746165388541,
+              "p50_ms": 0.5060910043539479,
+              "p95_ms": 0.9179049957310781,
+              "hz": 1975.9292131195914,
+              "iters": 10
+            }
+          },
+          "throughput": {
+            "b4_fps": 175.4698116901132,
+            "b8_fps": 183.36082140787565
+          }
+        }
+      },
+      "vram": {
+        "inference_mb": 551.85400390625,
+        "train_mb": 9198.7333984375,
+        "state_kb_per_stream": 4800.0
+      },
+      "energy": {
+        "idle_w": 88.94125,
+        "load_w": 94.61894736842105,
+        "j_per_frame": 0.09036210451313377,
+        "frames": 315,
+        "seconds": 5.013311044007423
+      }
+    }
+  }
+}

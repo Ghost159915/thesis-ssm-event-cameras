@@ -1,0 +1,31 @@
+{
+  "stage": 19,
+  "arm": "analog_s4",
+  "spiking_stages": [
+    4
+  ],
+  "epochs": 150,
+  "n_steps": 150,
+  "peak_vram_gb": 4.367,
+  "median_step_ms": 200.5,
+  "git": "0efe360",
+  "final_beta_mean": {
+    "4": 0.8998937606811523
+  },
+  "final_beta_max": {
+    "4": 0.9018623232841492
+  },
+  "mode": "analog",
+  "initial_loss": 20.469536463419598,
+  "final_loss": 5.123744646708171,
+  "reduction": 3.995034466944126,
+  "final_rate": {
+    "4": 0.24952548742294312
+  },
+  "firing": {
+    "4": "OK"
+  },
+  "firing_gated": false,
+  "failures": [],
+  "passed": true
+}

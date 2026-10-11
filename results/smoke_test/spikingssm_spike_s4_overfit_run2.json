@@ -1,0 +1,47 @@
+{
+  "stage": 19,
+  "arm": "spike_s4",
+  "spiking_stages": [
+    4
+  ],
+  "epochs": 150,
+  "n_steps": 150,
+  "peak_vram_gb": 4.367,
+  "median_step_ms": 201.7,
+  "git": "d74d351",
+  "final_beta_mean": {
+    "4": 0.8999745845794678
+  },
+  "final_beta_max": {
+    "4": 0.9025840759277344
+  },
+  "spiking_cfg": {
+    "output_mode": "spike",
+    "spiking_stages": [
+      4
+    ],
+    "beta": 0.9,
+    "threshold": 1.0,
+    "alpha": 2.0,
+    "learn_beta": true,
+    "learn_threshold": false,
+    "reset": "subtract",
+    "detach_reset": true,
+    "residual": false
+  },
+  "mode": "spike",
+  "initial_loss": 17.899717966715496,
+  "final_loss": 7.965765635172526,
+  "reduction": 2.2470806682637,
+  "final_rate": {
+    "4": 0.2152506560087204
+  },
+  "firing": {
+    "4": "OK"
+  },
+  "firing_gated": true,
+  "failures": [
+    "loss reduction 2.25x < 3x (no-learning regression)"
+  ],
+  "passed": false
+}

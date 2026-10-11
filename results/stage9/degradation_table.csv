@@ -1,0 +1,6 @@
+mult,dt_ms,ours_AP,base_AP,ours_dev_pct,base_dev_pct,ours_comp_AP,base_comp_AP,ours_comp_dev_pct,base_comp_dev_pct,comp_convention
+0.25,200,0.4090,0.4095,-11.48,-14.14,,,,,up
+0.5,100,0.4554,0.4648,-1.43,-2.54,,,,,up
+1.0,50,0.4620,0.4769,0.00,0.00,,0.4769,,0.00,up
+2.0,25,0.4352,0.4504,-5.81,-5.55,,,,,up
+4.0,12,0.3539,0.3842,-23.39,-19.45,,0.2940,,-38.35,up

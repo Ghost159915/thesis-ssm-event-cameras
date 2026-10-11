@@ -1,0 +1,126 @@
+Using python-based detection evaluation
+[per-class] patched COCOeval.summarize -> per-class AP will print to stderr
+/home/ghost/miniforge3/envs/events_signals/lib/python3.11/site-packages/torchdata/datapipes/__init__.py:18: UserWarning: 
+################################################################################
+WARNING!
+The 'datapipes', 'dataloader2' modules are deprecated and will be removed in a
+future torchdata release! Please see https://github.com/pytorch/data/issues/1196
+to learn more and leave feedback.
+################################################################################
+
+  deprecation_warning()
+dataset:
+  name: gen1
+  path: /home/ghost/Desktop/thesis-ssm-event-cameras/data/gen1_raw/gen1
+  train:
+    sampling: mixed
+    random:
+      weighted_sampling: false
+    mixed:
+      w_stream: 1
+      w_random: 1
+  eval:
+    sampling: stream
+  data_augmentation:
+    random:
+      prob_hflip: 0.5
+      rotate:
+        prob: 0
+        min_angle_deg: 2
+        max_angle_deg: 6
+      zoom:
+        prob: 0.8
+        zoom_in:
+          weight: 8
+          factor:
+            min: 1
+            max: 1.5
+        zoom_out:
+          weight: 2
+          factor:
+            min: 1
+            max: 1.2
+    stream:
+      prob_hflip: 0.5
+      rotate:
+        prob: 0
+        min_angle_deg: 2
+        max_angle_deg: 6
+      zoom:
+        prob: 0.5
+        zoom_out:
+          factor:
+            min: 1
+            max: 1.2
+  ev_repr_name: stacked_histogram_dt=50_nbins=10
+  sequence_length: 21
+  resolution_hw:
+  - 240
+  - 304
+  downsample_by_factor_2: false
+  only_load_end_labels: false
+model:
+  name: rnndet
+  backbone:
+    name: ResNetMamba
+    compile:
+      enable: false
+      args:
+        mode: reduce-overhead
+    input_channels: 20
+    pretrained: true
+    d_state: 64
+    num_layers_per_stage: 1
+    in_stages:
+    - 2
+    - 3
+    - 4
+  fpn:
+    name: PAFPN
+    compile:
+      enable: false
+      args:
+        mode: reduce-overhead
+    depth: 0.67
+    in_stages:
+    - 2
+    - 3
+    - 4
+    depthwise: false
+    act: silu
+  head:
+    name: YoloX
+    compile:
+      enable: false
+      args:
+        mode: reduce-overhead
+    depthwise: false
+    act: silu
+  postprocess:
+    confidence_threshold: 0.001
+    nms_threshold: 0.45
+checkpoint: /home/ghost/Desktop/thesis-ssm-event-cameras/external/ssms_event_cameras/RVT/RVT/8zotrwjw/checkpoints/epoch=003-step=320000-val_AP=0.46.ckpt
+use_test_set: 1
+hardware:
+  num_workers:
+    eval: 2
+    train: 6
+  gpus: 0
+batch_size:
+  eval: 4
+  train: 8
+training:
+  precision: bf16-mixed
+  max_epochs: 10000
+  max_steps: 400000
+  learning_rate: 0.0002
+  lr_scheduler:
+    use: true
+    total_steps: ${..max_steps}
+    pct_start: 0.005
+    div_factor: 20
+    final_div_factor: 10000
+validation:
+  val_check_interval: 10000
+  check_val_every_n_epoch: null
+== Timing statistics ==

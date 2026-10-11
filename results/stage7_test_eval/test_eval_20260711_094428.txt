@@ -1,0 +1,185 @@
+Using python-based detection evaluation
+[per-class] patched COCOeval.summarize -> per-class AP will print to stderr
+/home/ghost/miniforge3/envs/events_signals/lib/python3.11/site-packages/torchdata/datapipes/__init__.py:18: UserWarning: 
+################################################################################
+WARNING!
+The 'datapipes', 'dataloader2' modules are deprecated and will be removed in a
+future torchdata release! Please see https://github.com/pytorch/data/issues/1196
+to learn more and leave feedback.
+################################################################################
+
+  deprecation_warning()
+[resnet_mamba] set in_res_hw=(256, 320), num_classes=2
+------ Configuration ------
+dataset:
+  name: gen1
+  path: /home/ghost/Desktop/thesis-ssm-event-cameras/data/gen1_stage9/preproc_tr
+  train:
+    sampling: mixed
+    random:
+      weighted_sampling: false
+    mixed:
+      w_stream: 1
+      w_random: 1
+  eval:
+    sampling: stream
+  data_augmentation:
+    random:
+      prob_hflip: 0.5
+      rotate:
+        prob: 0
+        min_angle_deg: 2
+        max_angle_deg: 6
+      zoom:
+        prob: 0.8
+        zoom_in:
+          weight: 8
+          factor:
+            min: 1
+            max: 1.5
+        zoom_out:
+          weight: 2
+          factor:
+            min: 1
+            max: 1.2
+    stream:
+      prob_hflip: 0.5
+      rotate:
+        prob: 0
+        min_angle_deg: 2
+        max_angle_deg: 6
+      zoom:
+        prob: 0.5
+        zoom_out:
+          factor:
+            min: 1
+            max: 1.2
+  ev_repr_name: stacked_histogram_dt=5_nbins=10
+  sequence_length: 21
+  resolution_hw:
+  - 240
+  - 304
+  downsample_by_factor_2: false
+  only_load_end_labels: false
+model:
+  name: rnndet
+  backbone:
+    name: ResNetMamba
+    compile:
+      enable: false
+      args:
+        mode: reduce-overhead
+    input_channels: 20
+    pretrained: true
+    d_state: 64
+    num_layers_per_stage: 1
+    in_stages:
+    - 2
+    - 3
+    - 4
+    in_res_hw:
+    - 256
+    - 320
+  fpn:
+    name: PAFPN
+    compile:
+      enable: false
+      args:
+        mode: reduce-overhead
+    depth: 0.67
+    in_stages:
+    - 2
+    - 3
+    - 4
+    depthwise: false
+    act: silu
+  head:
+    name: YoloX
+    compile:
+      enable: false
+      args:
+        mode: reduce-overhead
+    depthwise: false
+    act: silu
+    num_classes: 2
+  postprocess:
+    confidence_threshold: 0.001
+    nms_threshold: 0.45
+checkpoint: /home/ghost/Desktop/thesis-ssm-event-cameras/external/ssms_event_cameras/RVT/RVT/8zotrwjw/checkpoints/epoch=003-step=320000-val_AP=0.46.ckpt
+use_test_set: 1
+hardware:
+  num_workers:
+    eval: 2
+    train: 6
+  gpus: 0
+batch_size:
+  eval: 4
+  train: 8
+training:
+  precision: bf16-mixed
+  max_epochs: 10000
+  max_steps: 400000
+  learning_rate: 0.0002
+  lr_scheduler:
+    use: true
+    total_steps: ${..max_steps}
+    pct_start: 0.005
+    div_factor: 20
+    final_div_factor: 10000
+validation:
+  val_check_interval: 10000
+  check_val_every_n_epoch: null
+
+---------------------------
+[MambaTemporalBlock] Stage-9: step_scale=0.1 (from MAMBA_STEP_SCALE)
+[MambaTemporalBlock] Stage-9: step_scale=0.1 (from MAMBA_STEP_SCALE)
+[MambaTemporalBlock] Stage-9: step_scale=0.1 (from MAMBA_STEP_SCALE)
+/home/ghost/miniforge3/envs/events_signals/lib/python3.11/site-packages/lightning/fabric/utilities/cloud_io.py:73: Environment variable TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD detected, since the`weights_only` argument was not explicitly passed to `torch.load`, forcing weights_only=False.
+[MambaTemporalBlock] Stage-9: step_scale=0.1 (from MAMBA_STEP_SCALE)
+[MambaTemporalBlock] Stage-9: step_scale=0.1 (from MAMBA_STEP_SCALE)
+[MambaTemporalBlock] Stage-9: step_scale=0.1 (from MAMBA_STEP_SCALE)
+Using bfloat16 Automatic Mixed Precision (AMP)
+Trainer already configured with model summary callbacks: [<class 'lightning.pytorch.callbacks.model_summary.ModelSummary'>]. Skipping setting a default `ModelSummary` callback.
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+💡 Tip: For seamless cloud logging and experiment tracking, try installing [litlogger](https://pypi.org/project/litlogger/) to enable LitLogger, which logs metrics and artifacts automatically to the Lightning Experiments platform.
+💡 Tip: For seamless cloud uploads and versioning, try installing [litmodels](https://pypi.org/project/litmodels/) to enable LitModelCheckpoint, which syncs automatically with the Lightning model registry.
+creating streaming test datasets: 0it [00:00, ?it/s]creating streaming test datasets: 100it [00:00, 999.90it/s]creating streaming test datasets: 206it [00:00, 1029.49it/s]creating streaming test datasets: 309it [00:00, 1026.62it/s]creating streaming test datasets: 413it [00:00, 1028.67it/s]creating streaming test datasets: 469it [00:00, 1023.12it/s]
+num_full_sequences=469
+num_splits=0
+num_split_sequences=0
+Restoring states from the checkpoint path at /home/ghost/Desktop/thesis-ssm-event-cameras/external/ssms_event_cameras/RVT/RVT/8zotrwjw/checkpoints/epoch=003-step=320000-val_AP=0.46.ckpt
+/home/ghost/miniforge3/envs/events_signals/lib/python3.11/site-packages/lightning/pytorch/trainer/call.py:283: Be aware that when using `ckpt_path`, callbacks used to create the checkpoint need to be provided during `Trainer` instantiation. Please add the following callbacks: ["ModelCheckpoint{'monitor': 'val/AP', 'mode': 'max', 'every_n_train_steps': 0, 'every_n_epochs': 1, 'train_time_interval': None}"].
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+Loaded model weights from the checkpoint at /home/ghost/Desktop/thesis-ssm-event-cameras/external/ssms_event_cameras/RVT/RVT/8zotrwjw/checkpoints/epoch=003-step=320000-val_AP=0.46.ckpt
+/home/ghost/miniforge3/envs/events_signals/lib/python3.11/site-packages/lightning/pytorch/utilities/_pytree.py:21: `isinstance(treespec, LeafSpec)` is deprecated, use `isinstance(treespec, TreeSpec) and treespec.is_leaf()` instead.
+/home/ghost/miniforge3/envs/events_signals/lib/python3.11/site-packages/torch/functional.py:505: UserWarning: torch.meshgrid: in an upcoming release, it will be required to pass the indexing argument. (Triggered internally at /pytorch/aten/src/ATen/native/TensorShape.cpp:4381.)
+  return _VF.meshgrid(tensors, **kwargs)  # type: ignore[attr-defined]
+creating index...
+index created!
+Loading and preparing results...
+DONE (t=0.43s)
+creating index...
+index created!
+Running per image evaluation...
+Evaluate annotation type *bbox*
+DONE (t=10.76s).
+Accumulating evaluation results...
+DONE (t=2.73s).
+[per-class] ===== per-category AP (COCO) =====
+[per-class]       class  AP@[.50:.95]    AP_50
+[per-class]         car        0.3220   0.5719
+[per-class]  pedestrian        0.0816   0.2225
+[per-class] ===================================
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃        Test metric        ┃       DataLoader 0        ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│          test/AP          │    0.20180630527535456    │
+│        test/AP_50         │    0.3971829982536763     │
+│        test/AP_75         │    0.18263625236922917    │
+│         test/AP_L         │    0.2592700371884954     │
+│         test/AP_M         │    0.26243955809397485    │
+│         test/AP_S         │    0.12361328809693288    │
+└───────────────────────────┴───────────────────────────┘
+Testing ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 58503/-- 1:04:54 • -:--:-- 15.27it/s  
+== Timing statistics ==
