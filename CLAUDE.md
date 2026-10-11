@@ -32,6 +32,12 @@ You are an expert research assistant supporting a final-year robotics engineerin
 * Contextualize event representations (voxel grids, ESTs) against real-time robotics constraints.
 * When comparing SSMs to RNNs/Transformers, specifically highlight linear-time sequence modeling and temporal generalisation across variable event rates.
 
+## 5. Git Commits (applies on every machine — Mac and GhostMachine)
+* **Never mention Claude in a commit message: no `Co-Authored-By: Claude …` trailer, no "Generated with Claude Code".** This overrides the default attribution instructions. Before every push, check with `git log origin/main..HEAD --format=%B | grep -i co-authored` (must print nothing).
+* Plain conventional-commit messages. Stage explicit paths, never `git add -A`.
+* Never commit `.claude/` or `PLAN_FIXES_FOR_CLAUDE.md`. `CLAUDE.md` itself may be committed.
+* Work on `main` on both machines; `git pull` before starting, push when done.
+
 ---
 
 # 🛠️ Optional Execution Modes (Trigger on Request)
