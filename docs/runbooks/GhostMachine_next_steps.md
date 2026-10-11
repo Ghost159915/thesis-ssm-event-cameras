@@ -59,8 +59,11 @@ Order (Stage-20 plan): graded 100k (resumed) → analog 100k → PureSSM 100k an
        `stage10_run_local.sh --models all+spikingssm --spikingssm-ckpt <ckpt> --spikingssm-test-ap 0.x`
        (writes to `results/stage22/`, never overwrites the Stage-10/16 JSON). Firing rates come from the FINAL
        checkpoints (trained rates ≈ 2× the 25k pilot).
-5. [ ] **Threshold sweep** (item 2): re-run the Stage-21 eval on the trained spike and graded checkpoints at several
-       thresholds (post-hoc overrides → `<tag>_posthoc/`), recording firing rate and mAP.
+5. [ ] **Threshold sweep** (item 2, ≈ 1.5 h per checkpoint): for the spike and graded 100k checkpoints,
+       `bash code/event_ssm/scripts/stage22_threshold_sweep_local.sh <ckpt>` (thresholds 0.5 0.75 1.0 1.5 2.0 3.0;
+       idempotent, preflight-checked). θ = 1.0 must reproduce the canonical Stage-21 test AP. Then the figure:
+       `cd code && python -m event_ssm.eval.threshold_sweep --sweep graded=../results/stage22/threshold_sweep/graded_s234
+       --sweep binary=../results/stage22/threshold_sweep/spike_s234 --out ../results/stage22/threshold_sweep/threshold_pareto`.
 6. [ ] **Event-rate robustness of the spiking arms** (item 3): the Stage-9/16 true-rate protocol (2× and 10×) on
        spike and graded; compare with PureSSM's 69.7 % retention.
 7. [ ] **Firing-pattern figure** (item 5) and **β per channel** (item 6) from the final checkpoints.
