@@ -34,6 +34,9 @@
 \newif\iftbdshow \tbdshowtrue
 \newcommand{\tbd}[1]{\iftbdshow{\color{red}\small\textbf{[TO WRITE: }\textit{#1}\textbf{]}}\fi}
 \newcommand{\needsgpu}[1]{\iftbdshow{\color{orange!80!black}\small\textbf{[PENDING RUN: }\textit{#1}\textbf{]}}\fi}
+% \res{...} marks a NUMBER awaiting a run. Unlike \tbd/\needsgpu it is never hidden by \tbdshowfalse, so a
+% missing result cannot reach the submitted PDF silently. Search for \res{ to find every one.
+\newcommand{\res}[1]{{\color{red}\textbf{[#1]}}}
 
 \begin{document}
 
@@ -82,7 +85,13 @@ that, under the published checkpoint and code, it does not recover accuracy at a
 point and the published high-rate result is not reproducible, while the rate robustness itself is
 present without it.
 
-\tbd{one to two sentences on the spiking SSM result once Stage 20--22 have run}
+A spiking variant passes PureSSM's temporal output through a leaky integrate-and-fire readout whose three
+modes, analog, graded and binary, share one membrane, so that the cost of spiking separates into the cost
+of the neuron dynamics, of sparsity and of binarisation. On a common 100k-step schedule these cost
+\res{$\Delta_{\mathrm{dyn}}$}, \res{$\Delta_{\mathrm{sparse}}$} and \res{$\Delta_{\mathrm{bin}}$}~mAP
+(95\,\% paired bootstrap intervals), at a firing rate of \res{rate}; because spikes feed about 1\,\% of the
+detector's operations, the energy case for neuromorphic hardware rests on making the spatial backbone spike
+as well.
 
 \end{abstract}
 
@@ -192,7 +201,12 @@ in return?}
   \item \textbf{An efficiency frontier reported honestly}, including the results that do not flatter
         the proposed model --- launch-bound wall-clock latency and a streaming state 31 times larger
         than the baseline's.
-  \item \tbd{the spiking SSM contribution, stated once Stage 20--22 have run}
+  \item \textbf{A decomposition of the cost of spiking:} a hybrid spiking variant whose temporal readout is a
+        leaky integrate-and-fire layer with three readouts sharing one membrane (analog, graded, binary).
+        Stepping PureSSM $\rightarrow$ analog $\rightarrow$ graded $\rightarrow$ binary separates the
+        accuracy cost of the neuron dynamics, of sparsity and of binarisation (\res{$\Delta_{\mathrm{dyn}}$},
+        \res{$\Delta_{\mathrm{sparse}}$} and \res{$\Delta_{\mathrm{bin}}$}~mAP), where published spiking
+        detectors report at most a single spiking-versus-non-spiking difference.
 \end{enumerate}
 
 \section{Scope}
@@ -1300,35 +1314,141 @@ Section~\ref{sec:acc_results}.
 
 \section{Spiking SSM Detector}
 \label{sec:spiking_results}
-\needsgpu{Stages 20--22. This section is scaffolded so the writing can proceed around it.}
+The spiking model is a \textbf{hybrid}: only the temporal readout spikes, and the BiMamba spatial backbone
+is the non-spiking one of PureSSM (Section~\ref{subsec:spiking_method}). It is therefore not a
+like-for-like competitor to the fully spiking detectors of Table~\ref{tab:snn_landscape}, and its accuracy is
+reported as context, not as a position in that landscape. The result of this section is the decomposition:
+what each property of spiking costs, measured on one membrane.
 
-\tbd{Report, in this order: (i) Gen1 test mAP, positioned against the published SNN detectors as
-\emph{context} --- but state explicitly that this model is a \textbf{hybrid} (spiking temporal readout,
-non-spiking spatial backbone) and therefore not a like-for-like competitor to the full-spike architectures
-in Table~\ref{tab:snn_landscape}. Do NOT frame the result as beating or failing to beat SNN SOTA; that axis
-is wrong in both directions. (ii) the three-readout
-decomposition (spike / graded / analog), which separates the cost of sparsity from the cost of
-binarisation --- note that the analog arm shares the spiking membrane (leak and subtract-reset), so the
-step from PureSSM to the analog arm measures the cost of the neuron dynamics themselves, while integration
-correctness is established separately by the null test (\texttt{spiking\_stages = []} is numerically identical
-to PureSSM); (iii) firing rate and spike sparsity per stage; (iv) SOPs and the estimated energy,
-with the ANN-MAC versus SNN-SOP model stated explicitly, since sloppy energy accounting is the standard
-reviewer target.}
+All three readouts were trained on spiking stages 2--4 for 100k steps with the recipe of
+Section~\ref{sec:training}. The OneCycle schedule stretches over the run length, so a 100k-step model is
+not comparable with the 400k-step models of Sections~\ref{sec:acc_results}--\ref{sec:efficiency}; the first
+rung of the ladder is therefore a PureSSM trained on the same 100k schedule. Intervals are 95\,\% paired
+bootstrap intervals over the 470 test recordings (every arm scored on the same resampled recordings); they
+cover test-set sampling, not training randomness, since each arm was trained once.
 
+\subsection{Accuracy of the readouts}
+\label{subsec:spk_accuracy}
 \begin{table}[htbp]
 \centering
-\caption{Spiking readout ablation on Gen1 (to be completed).}
+\caption{Spiking readouts on Gen1 (test set, 100k-step schedule, spiking stages 2--4). Intervals: 95\,\%
+paired bootstrap over the 470 test recordings. Firing rate: share of nonzero readout outputs, weighted by the
+neck operations each stage feeds, on the final checkpoint.}
 \label{tab:spiking_ablation}
 \begin{tabular}{lcccc}
 \toprule
-\textbf{Readout} & \textbf{mAP} & \textbf{Firing rate} & \textbf{SOPs} & \textbf{Energy / frame} \\
+\textbf{Model (100k steps)} & \textbf{mAP [95\,\% CI]} & \textbf{AP\textsubscript{50}} & \textbf{AP\textsubscript{L}} & \textbf{Firing rate} \\
 \midrule
-analog (dense LIF) & --- & n/a & n/a & --- \\
-graded           & --- & --- & --- & --- \\
-spike (binary)   & --- & --- & --- & --- \\
+PureSSM (no LIF)   & \res{mAP [lo, hi]} & \res{} & \res{} & n/a \\
+analog (dense LIF) & \res{mAP [lo, hi]} & \res{} & \res{} & n/a (dense) \\
+graded             & \res{mAP [lo, hi]} & \res{} & \res{} & \res{} \\
+spike (binary)     & \res{mAP [lo, hi]} & \res{} & \res{} & \res{} \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+In the binary run, validation mAP rose at every evaluation, from 20.5 at 10k steps to 41.8 at 100k. On the test set the binary readout reaches \res{mAP}, against \res{mAP} for the
+PureSSM anchor on the same schedule (Table~\ref{tab:spiking_ablation}).
+
+\subsection{The readout ladder}
+\label{subsec:spk_ladder}
+The three steps of the ladder are differences of paired test scores,
+\begin{equation}
+\begin{aligned}
+  \Delta_{\mathrm{dyn}} &= \mathrm{AP}_{\mathrm{analog}} - \mathrm{AP}_{\mathrm{PureSSM}},\\
+  \Delta_{\mathrm{sparse}} &= \mathrm{AP}_{\mathrm{graded}} - \mathrm{AP}_{\mathrm{analog}},\\
+  \Delta_{\mathrm{bin}} &= \mathrm{AP}_{\mathrm{spike}} - \mathrm{AP}_{\mathrm{graded}},
+\end{aligned}
+  \label{eq:ladder}
+\end{equation}
+the costs of the LIF dynamics (leak and reset), of sparsity and of binarisation. The ordering
+analog $\geq$ graded $>$ spike was fixed before training. A step whose interval includes zero is reported as
+not distinguishable on Gen1 rather than as zero.
+
+\begin{figure}[htbp]
+\centering
+\fbox{\parbox{0.9\textwidth}{\centering\vspace{2em}\res{Figure: the ladder --- test mAP per arm with 95\,\% intervals,
+and the paired cost of each step about zero (\texttt{event\_ssm.eval.ladder\_plot})}\vspace{2em}}}
+\caption{The cost of spiking, step by step. Left: test mAP per arm. Right: the paired change at each step of
+the ladder; whiskers are 95\,\% bootstrap intervals over test recordings.}
+\label{fig:spiking_ladder}
+\end{figure}
+
+The steps measured \res{$\Delta_{\mathrm{dyn}}$ [lo, hi]}, \res{$\Delta_{\mathrm{sparse}}$ [lo, hi]} and
+\res{$\Delta_{\mathrm{bin}}$ [lo, hi]}~mAP (Figure~\ref{fig:spiking_ladder}); the pre-registered ordering
+\res{held / did not hold}. A 25k-step pilot on the same stages had given validation mAP of 35.1 (PureSSM),
+35.1 (analog), 34.0 (graded) and 30.5 (binary), so steps of 0.0, $-1.1$ and $-3.5$, and at matched steps
+during the 100k runs the binarisation gap narrowed to 1.2 at 80k on the validation split: binarisation costs
+most early in training and less as it proceeds. The graded run was interrupted twice and resumed from its
+40k and 80k checkpoints; the resumes restore weights, optimiser and schedule but not the data loaders'
+positions, so from 40k onward the graded arm saw a different data order than an uninterrupted run would
+(Section~\ref{sec:limitations}).
+
+\subsection{Firing activity and the threshold trade-off}
+\label{subsec:spk_firing}
+On the final checkpoints the readouts fire at \res{per-stage rates, stages 2/3/4} (graded) and
+\res{per-stage rates} (binary), measured on 16 test clips after a 32-frame warm-up. Activity rose during
+training: in the binary arm the training-time rates roughly doubled, from 0.25 to 0.48 at stage~2, 0.19 to 0.36
+at stage~3 and 0.22 to 0.39 at stage~4, so rates measured early in training understate the trained model's
+activity.
+
+The threshold is fixed at $\vartheta = 1$ in training and not learned, so the trained weights can be
+re-evaluated at other thresholds. Figure~\ref{fig:threshold_sweep} plots accuracy against the spike-weighted
+firing rate for $\vartheta \in \{0.5, 0.75, 1, 1.5, 2, 3\}$. Every point other than $\vartheta = 1$ is a
+\emph{post-hoc} operating point of the same weights, so the curve measures sensitivity to the threshold, not
+what a model trained at that sparsity would reach. \res{Describe the curve: where accuracy holds and where it
+falls; graded against binary.}
+
+\begin{figure}[htbp]
+\centering
+\fbox{\parbox{0.9\textwidth}{\centering\vspace{2em}\res{Figure: post-hoc threshold sweep --- test mAP against
+spike-weighted firing rate, graded and binary (\texttt{event\_ssm.eval.threshold\_sweep})}\vspace{2em}}}
+\caption{Post-hoc threshold sensitivity. Each point re-evaluates the trained weights at another firing
+threshold; the ringed point is the training threshold $\vartheta = 1$.}
+\label{fig:threshold_sweep}
+\end{figure}
+
+\subsection{Rate robustness of the spiking readouts}
+\label{subsec:spk_rate}
+Under the true-rate protocol of Section~\ref{sec:robustness} (5-ms windows at 200\,Hz, no compensation), the
+graded and binary readouts retain \res{\%} and \res{\%} of their 1$\times$ test mAP, against \res{\%} for
+the PureSSM 100k anchor under the same protocol. (The 69.7\,\% of Table~\ref{tab:regime2} belongs to the
+400k-step PureSSM and is not the comparison.) The leak and threshold were learned at the 50-ms training rate
+only, so this measures whether the LIF readout preserves the robustness of the uncompensated recurrence.
+\res{Interpret: preserved, reduced or improved.}
+
+\subsection{Synaptic operations and estimated energy}
+\label{subsec:spk_energy}
+The spikes feed only the first $1\times1$ convolutions of the YOLO-PAFPN neck: 52.4\,M multiply--accumulates
+(MACs) per frame for stages 2--4, against about 5.0\,G dense MACs for the whole detector. Energy is estimated
+from operation counts with the 45-nm constants standard in the spiking-detection literature,
+$E_{\mathrm{MAC}} = 4.6$\,pJ and $E_{\mathrm{AC}} = 0.9$\,pJ~\cite{horowitz2014computing}:
+\begin{equation}
+  E \;=\; E_{\mathrm{MAC}}\big(M_{\mathrm{total}} - M_{\mathrm{fed}}\big)
+     \;+\; e_{\mathrm{op}} \sum_{s} r_s\, M_{\mathrm{fed},s}
+     \;+\; E_{\mathrm{MAC}}\, N_{\mathrm{LIF}},
+  \label{eq:sop_energy}
+\end{equation}
+where $M_{\mathrm{fed},s}$ are the neck MACs fed by stage~$s$, $r_s$ its firing rate, $N_{\mathrm{LIF}}$ the
+286{,}720 LIF neurons per frame (one MAC each for $\beta m + y$), and $e_{\mathrm{op}} = E_{\mathrm{AC}}$ for
+the binary readout, whose nonzero inputs only add, or $E_{\mathrm{MAC}}$ for the graded readout, whose nonzero
+inputs carry a value. Even at zero activity the saving cannot exceed about 1.04\,\% of the detector's
+operations. The estimate counts operations only: memory traffic, which dominates energy on real hardware, is
+not modelled, and pricing an inactive input at zero assumes hardware that skips it.
+
+On this model the binary and graded readouts are estimated at \res{J/frame} and \res{J/frame}, against
+\res{J/frame} for dense execution (\res{synaptic operations per frame}).
+
+\subsection{Training dynamics}
+\label{subsec:spk_dynamics}
+Binarisation also slows learning. In the single-batch overfit check that gates every model, the analog and
+graded readouts reduced the loss 4.0- and 3.8-fold within 150 steps, while the binary readout reached only
+2.25--2.65-fold in three runs and passed the gate at 300 steps (4.95-fold). A gradient test isolating
+stage~4 found that the binary readout passes back 0.31 times the gradient of the analog readout, and the
+graded readout 0.51 times. The learned leak barely moved: in the 25k-step runs $\beta$ stayed within
+0.897--0.906 of its 0.9 initialisation in all 512 stage-4 channels, and in the 100k binary run the stage-3 mean
+reached 0.919 \res{per-channel $\beta$ on the final checkpoints}. The upstream Mamba recurrence appears to
+supply the temporal integration, leaving the membrane's own leak little to do.
 
 
 \chapter{Discussion}
@@ -1411,6 +1531,18 @@ Representation (NIR)~\cite{pedersen2024neuromorphic}, a vendor-neutral exchange 
 boundary, so that the model can be retargeted to Lava's successor or to another neuromorphic platform.
 The energy figures of Section~\ref{sec:spiking_results} are accordingly estimates from operation counts
 in simulation, not measurements on hardware.
+
+What the spiking readout of this thesis can save is small, and by construction rather than by result. Its
+spikes feed only the first convolutions of the neck, about 1\,\% of the detector's operations
+(Section~\ref{subsec:spk_energy}), so even a readout that never fired, on hardware that skipped every
+inactive input, would save at most about 1\,\% of the computation; and the trained readouts are far from
+silent (Section~\ref{subsec:spk_firing}). The case for this hybrid is therefore not energy. It is that it
+measures, on a selective state-space temporal core and with one shared membrane, what each property of
+spiking costs in accuracy: the neuron dynamics, the sparsity and the binarisation. That decomposition says
+where a fully spiking design should spend its effort. A large binarisation cost points to graded spikes,
+which Loihi~2 supports natively, while a small one would make binary spikes acceptable. The energy case
+itself requires the spatial backbone to spike as well, which is the obstacle examined in
+Section~\ref{subsec:fw_fullspike}.
 
 \section{Scope Change: the Obstacle-Avoidance Aim}
 \label{sec:scope_change}
@@ -1512,9 +1644,17 @@ a closed loop; that remains future work (Section~\ref{subsec:fw_closed_loop}).
         baseline's 8 (Section~\ref{sec:training}), so they saw half as many training sequences. The
         own-model-to-baseline gap may therefore be overstated; comparisons among own models are
         unaffected.
-  \item \tbd{spiking-specific limitations once Stage 20--22 have run --- binary information bottleneck,
-        surrogate-gradient sensitivity, and the fact that energy is estimated rather than measured on
-        silicon.}
+  \item \textbf{Spiking model.} (i) Its energy is an operation-count estimate with 45-nm constants, not a
+        measurement on neuromorphic silicon; memory traffic is not modelled, and the spike-fed share bounds
+        any saving at about 1\,\% of the detector's operations. (ii) The readouts were trained on a 100k-step
+        schedule, a quarter of the other models', and are compared only with a PureSSM trained on the same
+        schedule. (iii) Each arm was trained once, and the graded arm was resumed twice, from its 40k and
+        80k checkpoints, so its data order differs from an uninterrupted run. (iv) The binary readout is an
+        information bottleneck that also slows learning (it passes back about a third of the analog
+        readout's gradient at stage~4). (v) The surrogate gradient (arctan, $\alpha = 2$) and the training
+        threshold ($\vartheta = 1$) were not varied; other thresholds are post-hoc operating points of the same
+        weights. (vi) The learned leak stayed close to its initialisation, so the readout's own temporal
+        dynamics were little used.
 \end{itemize}
 
 
@@ -1555,9 +1695,12 @@ as follows.
   \item \textbf{A spiking state-space detector.} A spiking variant whose temporal readout is a
         leaky integrate-and-fire layer, with three readout modes that decompose the cost of spiking, was
         built as a drop-in backbone for the same pipeline and verified by tests, including that it reduces
-        numerically to PureSSM when no stage spikes (Section~\ref{subsec:spiking_method}).
-        \needsgpu{state its headline numbers here (mAP per readout, firing rate, SOPs, estimated energy)
-        once Stages 21--22 have run.}
+        numerically to PureSSM when no stage spikes (Section~\ref{subsec:spiking_method}). On a common
+        100k-step schedule the binary readout reaches \res{mAP} test mAP against \res{mAP} for PureSSM, and
+        the neuron dynamics, sparsity and binarisation cost \res{$\Delta_{\mathrm{dyn}}$},
+        \res{$\Delta_{\mathrm{sparse}}$} and \res{$\Delta_{\mathrm{bin}}$}~mAP at a firing rate of
+        \res{rate}. Because the spikes feed about 1\,\% of the detector's operations, the estimated energy
+        saving is bounded accordingly (\res{J/frame} against \res{J/frame} dense).
 \end{enumerate}
 
 Taken together, the results show that a state-space model can serve as the spatial mixer as well as the
