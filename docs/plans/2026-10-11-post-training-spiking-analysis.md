@@ -44,3 +44,23 @@ done → results → discussion). The 60-page `thesis/latex/main.tex` is NOT sub
   gaps); UAV descope as one justified paragraph; one spine — "what does an SSM actually contribute to event-based
   detection" — with the controlled ablation, ERF mechanism, Δt reproduction and spiking decomposition under it.
 - Open: the conference template and exact page limit.
+
+## Part C — Window length and latency (decided 2026-10-11)
+
+**Decision.** All models keep the 50-ms window (the RVT / S5-RVT protocol, for comparability with the baseline).
+This bounds latency by the window, not the sensor: on average 25 ms (up to 50 ms) of waiting plus 13–27 ms of
+inference, so the sensor's microsecond latency is not exploited at this setting. What remains: dynamic range, no
+motion blur within the 5-ms bins, sparse sensor output. The window is a latency–accuracy trade-off: SSMs tolerate
+shorter windows (true 10× = 5-ms windows at 200 Hz, zero-shot: 62–70 % retention; PureSSM best).
+
+**Written into `thesis/latex/main.tex` (2026-10-11):** one sentence in §3.1 (input bullet), a "Window-bounded
+latency" bullet in Limitations, and Future Work §"The latency–accuracy trade-off of the window"
+(`subsec:fw_window`). Carry the same point into the conference paper and expect it as an examiner question.
+
+**Does a smaller window need retraining?** No to *use* one, yes to get the *best* accuracy from it:
+- zero-shot (no retraining): already measured — 2× (25 ms) keeps 95–96 %, 10× (5 ms) keeps 62–70 %;
+- fine-tune from the 50-ms checkpoint: the cheap middle option (a fraction of a full run per model);
+- retrain at the target window, or on a mixture of windows (one model for every rate): full cost per model.
+Retraining also needs (a) the training/validation sets re-preprocessed at the new window (the Stage-9 tooling only
+rebuilt the TEST set), and (b) longer sequences: 21 frames × 5 ms = 105 ms of context, so keeping the recipe's
+1.05 s needs ~210-frame sequences (more memory). Out of scope for Thesis C; Future Work.

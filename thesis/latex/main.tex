@@ -602,7 +602,9 @@ model reuses the verified S5-RVT/RVT infrastructure \emph{unmodified} and Hydra-
 \begin{itemize}
   \item \textbf{Input representation:} a 20-channel stacked histogram of shape $(20, 240, 304)$
         (2 polarities $\times$ 10 temporal bins, $\Delta t = 50$\,ms), zero-padded by
-        the pipeline to $(20, 256, 320)$.
+        the pipeline to $(20, 256, 320)$. The 50-ms window is the RVT and S5-RVT protocol, kept so that
+        results stay comparable with the published baseline; it fixes the prediction rate at 20\,Hz and
+        bounds detection latency (Section~\ref{sec:limitations}).
   \item \textbf{Neck:} YOLO-PAFPN. \textbf{Head:} YOLOX decoupled head.
   \item \textbf{Loss:} binary cross-entropy (classification and objectness) $+$ IoU loss $1-\mathrm{IoU}^2$
         (weight 5) with SimOTA label assignment.
@@ -1489,6 +1491,15 @@ a closed loop; that remains future work (Section~\ref{subsec:fw_closed_loop}).
   \item \textbf{Label noise} in Gen1 caps achievable AP and adds a qualitative confound.
   \item \textbf{Fixed representation.} Every model inherits the stacked-histogram tokeniser; the
         representation is not part of the ablation.
+  \item \textbf{Window-bounded latency.} Every model bins events into 50-ms windows, so detection latency
+        is set by the window and the computation, not by the sensor: an event waits on average 25\,ms, and
+        up to 50\,ms, before it enters a frame, and inference adds 13--27\,ms on the test GPU
+        (Table~\ref{tab:efficiency}). At this setting the microsecond latency of the sensor is not
+        exploited, and the detector updates no faster than a 20-Hz frame camera; the sensor advantages that
+        remain are its dynamic range, the absence of motion blur within the 5-ms bins, and its sparse output.
+        The window is a latency--accuracy trade-off rather than a fixed constraint: with 5-ms windows at
+        200\,Hz and no retraining, the state-space models keep 62--70\,\% of their accuracy
+        (Section~\ref{sec:robustness}); Section~\ref{subsec:fw_window} outlines the full study.
   \item \textbf{Precision mix} --- bf16 mixed precision for the own models against 32-bit training for
         the published baseline (Table~\ref{tab:recipe}). Its effect on accuracy was not measured; like the
         batch size, it affects only the comparison against the baseline.
@@ -1596,6 +1607,23 @@ Section~\ref{sec:neuro_case} lie on this path: a fixed-step or on-chip-computed 
 decay, and a decision on where the non-spiking spatial backbone runs. The toolchain itself is a live
 risk. With Lava archived and its successor SDK unscheduled~\cite{intel2026lava}, the NIR export boundary
 is what keeps the work retargetable.
+
+\subsection{The latency--accuracy trade-off of the window}
+\label{subsec:fw_window}
+The 50-ms window is a parameter, and the true-rate study measured only its zero-shot end: models trained
+at 50~ms and evaluated on 25-ms and 5-ms windows kept 95--96\,\% and 62--70\,\% of their accuracy
+(Table~\ref{tab:regime2}). A full study would sweep the window (50, 25, 10 and 5\,ms) and report, for every
+model, accuracy against end-to-end latency, the window plus the computation. Three training regimes would
+separate what the architecture tolerates from what training recovers: zero-shot transfer, as here;
+fine-tuning from the 50-ms checkpoint; and training at the target window, or across a mixture of windows so
+that one model serves every rate. Shorter windows cost more than accuracy. The data must be re-preprocessed
+at each window, and a training sequence of 21 frames covers proportionally less time (105\,ms at 5\,ms per
+frame), so keeping the 1.05-s context of the present recipe needs sequences ten times longer: affordable for
+a linear-time scan, but heavier in memory. Window length and update rate can also be decoupled: overlapping
+windows keep 50\,ms of history while predicting more often, at the cost of more computation per second.
+Computation must keep pace with the update rate. Under CUDA-graph replay EventSSM and PureSSM run at 210 and
+181\,Hz (Section~\ref{sec:efficiency}), close to the 200\,Hz that 5-ms windows require, and the
+state-space recurrence processes each new frame at a fixed cost, without reprocessing the history.
 
 \subsection{Representation and tokenisation}
 Every model in this thesis inherits the same fixed tokeniser, a 20-channel stacked histogram over 50-ms
