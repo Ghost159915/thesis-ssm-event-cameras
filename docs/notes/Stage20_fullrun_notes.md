@@ -156,5 +156,10 @@ checkpoint_blocks true.
   W&B offline cannot resume a run, so the continuation logs under a **new offline id `uqhexctz`**. Its checkpoints
   from 50k onward go to `external/ssms_event_cameras/RVT/RVT/uqhexctz/checkpoints/`, not `5d1y0skm/`. The 10k–40k
   curve stays in `5d1y0skm`, and the two runs together make up the arm.
+- val/AP after the resume (`uqhexctz`): 0.368 / 0.387 / 0.394 / 0.416 at 50k / 60k / 70k / 80k.
+- **Interrupted again 2026-10-10 20:36:26 (Ctrl-C, exit 1; machine shut down 20:37)** at step 84,569. Last checkpoint
+  `uqhexctz/checkpoints/last_epoch=000-step=80000.ckpt` (20:03) ⇒ ≈ 4.6k steps are redone. The second resume has the
+  same data-order deviation as the first (from 80k on) and logs under a third W&B offline id; the arm's curve is then
+  `5d1y0skm` (10k–40k) + `uqhexctz` (50k–80k) + that id (90k–100k).
 
 *Analog and PureSSM-anchor 100k arms: pending.*
