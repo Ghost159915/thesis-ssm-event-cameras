@@ -144,7 +144,22 @@ checkpoint_blocks true.
   (Stage-19 notes D6).
 - Not comparable to the 400k runs (D1); it is compared only with the other 100k arms and the PureSSM 100k anchor (D6).
 
-### 3.2 Graded arm, `[2,3,4]`, 100k (W&B offline `5d1y0skm` → `uqhexctz` after the resume, started 2026-10-09 12:31) — interrupted, resumed 2026-10-10 14:30
+### 3.2 Graded arm, `[2,3,4]`, 100k (W&B offline `5d1y0skm` → `uqhexctz` → `rnak3sms`, started 2026-10-09 12:31, finished 2026-10-11 14:01, exit 0; two interruptions, both resumed)
+| step | 10k | 20k | 30k | 40k | 50k | 60k | 70k | 80k | 90k | 100k |
+|---|---|---|---|---|---|---|---|---|---|---|
+| val/AP | 0.192 | 0.278 | 0.309 | 0.352 | 0.368 | 0.387 | 0.394 | 0.416 | 0.415 | **0.425** |
+
+- Best = last = step 100k. Checkpoint:
+  `external/ssms_event_cameras/RVT/RVT/rnak3sms/checkpoints/epoch=000-step=100000-val_AP=0.42.ckpt` (test eval:
+  Stage 21, after the GPU frees up). Graded 0.425 vs spike 0.418 at 100k on val (test eval decides).
+- Zero SILENT / SATURATED / NON-FINITE lines in all three logs.
+- **Firing rates fell at stages 3–4 and rose slightly at stage 2** (training-time monitor, mean of the first vs the last
+  10 monitor lines): s2 0.20 → 0.26, s3 0.19 → 0.07–0.12, s4 0.19 → 0.10. Opposite to the spike arm, whose rates
+  roughly doubled (§3.1). Same caveat: Stage-22 SOP accounting on the final checkpoint gives the quoted rates.
+- **β stayed at its init** (0.894 / 0.902 / 0.899 at s2 / s3 / s4, all within the 25k range); unlike the spike arm,
+  no stage moved.
+
+History of the run:
 - val/AP 0.192 / 0.278 / 0.309 / 0.352 at 10k / 20k / 30k / 40k; zero SILENT / SATURATED / NON-FINITE lines.
 - **Interrupted 2026-10-09 19:02:55 (Ctrl-C, user needed the GPU)** at step ≈ 48.1k (epoch 0 = 47,364 steps + 715).
   Exit code 1, so the `&&` chain did not start analog (as designed). Last checkpoint: `last_epoch=000-step=40000.ckpt`
@@ -164,5 +179,12 @@ checkpoint_blocks true.
   `uqhexctz/checkpoints/last_epoch=000-step=80000.ckpt` (20:03) ⇒ ≈ 4.6k steps are redone. The second resume has the
   same data-order deviation as the first (from 80k on) and logs under a third W&B offline id; the arm's curve is then
   `5d1y0skm` (10k–40k) + `uqhexctz` (50k–80k) + that id (90k–100k).
+- **Resumed again 2026-10-11 11:14:42 (+11:00)** from the 80k checkpoint (log
+  `results/stage20/graded_s234_100k/console_20261011_111442.log`; `resume guard: checkpoint schedule matches 100000
+  steps`). Third W&B offline id **`rnak3sms`**, checkpoints in `RVT/RVT/rnak3sms/checkpoints/`. Finished at 14:01:37
+  (`max_steps=100000` reached, exit 0, 2 h 47 min for the last 20k steps), and the `&&` chain started analog.
 
-*Analog and PureSSM-anchor 100k arms: pending.*
+### 3.3 Analog arm, `[2,3,4]`, 100k (W&B offline `yeddueoq`, started 2026-10-11 14:01:38) — running
+- val/AP 0.229 / 0.294 / 0.326 / 0.370 at 10k / 20k / 30k / 40k (spike 0.351, graded 0.352 at 40k).
+
+*PureSSM-anchor 100k arm: pending (next in the chain).*
