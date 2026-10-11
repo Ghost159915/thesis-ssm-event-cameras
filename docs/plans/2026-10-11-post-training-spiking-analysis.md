@@ -16,6 +16,9 @@ one week of 2026-10-11). None of the items below needs a new training run — al
 
 Minimum set if time is short: **1, 2, 3.**
 
+**Item 1 status (2026-10-11):** Part B (resampling + intervals, `code/event_ssm/eval/bootstrap.py`, 16 CPU tests) done;
+Part A (recording the evaluator inputs) + identity check to do on GhostMachine — `docs/runbooks/Stage21_bootstrap_ghostmachine.md`.
+
 Writing rules for §5.7 / Ch.6: phrase the ladder so it survives gaps within noise ("small and ordered as
 pre-registered", with CIs); Ch.6 must address the energy ceiling (≈1 % spike-fed ops, high firing rates) head-on;
 the graded 100k arm's data-order deviation (two resumes) goes in Limitations.
