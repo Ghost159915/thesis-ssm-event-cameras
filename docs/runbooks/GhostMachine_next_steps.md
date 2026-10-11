@@ -23,8 +23,8 @@ Rule throughout: **while a training run is on the GPU, do only CPU work** (no te
 All Stage 8–22 outputs (benchmark JSONs, rate curves, SOP tables) exist only on this machine (`/results/` is
 gitignored).
 
-- [ ] Pull the `.gitignore` change that tracks small result files (figures, JSON, CSV, markdown; checkpoints
-      and logs stay ignored) — made on the Mac, see "Mac" below.
+- [ ] Pull the `.gitignore` change that tracks small result files (figures, JSON, CSV, markdown, test-eval .txt; checkpoints
+      and logs stay ignored) — pushed from the Mac on 2026-10-11.
 - [ ] Dry run and check the size: `git add -n results/ | wc -l` and
       `git add -n results/ | sed "s/^add '//;s/'$//" | xargs du -ch | tail -1`. Exclude any unexpectedly large file.
 - [ ] Commit and push. This also brings the Stage-9 true-rate curve to the Mac for slide 7.

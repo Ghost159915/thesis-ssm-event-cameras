@@ -76,7 +76,16 @@ logs/
 *.pdf
 .claude/
 /external/
-/results/
+# results/: track only small result files (figures, JSON, CSV, markdown, test-eval .txt records) so the citable outputs are backed up;
+# checkpoints, logs, videos and everything else stay ignored. (Directories are re-included so git can see the files.)
+/results/**
+!/results/**/
+!/results/**/*.png
+!/results/**/*.svg
+!/results/**/*.json
+!/results/**/*.csv
+!/results/**/*.md
+!/results/**/*.txt
 graphify-out/
 
 # never-commit scratch (planning notes for Claude)
