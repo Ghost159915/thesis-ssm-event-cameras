@@ -2,7 +2,7 @@
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
-\usepackage[a4paper, margin=0.68in]{geometry}
+\usepackage[a4paper, margin=0.75in]{geometry}
 \usepackage{amsmath, amssymb}
 \usepackage{booktabs}
 \usepackage{tabularx}
@@ -10,155 +10,141 @@
 \usepackage{ragged2e}
 \usepackage[colorlinks=true, linkcolor=black, urlcolor=blue, citecolor=blue]{hyperref}
 \usepackage{titlesec}
-\titlespacing*{\section}{0pt}{4pt}{2pt}
+\titlespacing*{\section}{0pt}{6pt}{3pt}
 \titleformat{\section}{\normalfont\large\bfseries}{\thesection.}{0.5em}{}
 \setlength{\parindent}{0pt}
-\setlength{\parskip}{2.5pt}
+\setlength{\parskip}{4pt}
 \newcolumntype{Y}{>{\RaggedRight\arraybackslash}X}
 \pagestyle{empty}
 
 \begin{document}
 
 \begin{center}
-{\large\bfseries A Spiking State-Space Detector for Event-Based Micro-UAV Perception on Intel Loihi 2}\\[3pt]
-\small Dr Will Midgley (PI) \& Benas Vaiciulis (student researcher) \,$\cdot$\, UNSW Sydney \,$\cdot$\,
-PyTorch $\rightarrow$ NIR $\rightarrow$ Loihi 2\\[2pt]
-\small\textbf{Request:} Neuromorphic Research Cloud (vLab) access now; hardware only after a positive
-vLab benchmark.
+{\large\bfseries A Spiking State-Space Detector for Event Cameras on Intel Loihi 2}\\[3pt]
+\small Dr Will Midgley (PI) \& Benas Vaiciulis (student researcher) \,$\cdot$\, UNSW Sydney\\[2pt]
+\small\textbf{Request:} Neuromorphic Research Cloud (vLab) access.
 \end{center}
 \vspace{-2pt}
 \hrule
 \vspace{4pt}
 
-\textbf{Objective.} Map a \emph{spiking state-space} object detector for event cameras onto \textbf{Intel Loihi 2},
-targeting the size-weight-and-power (SWaP) budget of micro-UAVs. The spiking model is built and training. It is a
-controlled swap into a \emph{completed and fully benchmarked} non-spiking reference pipeline, so the experiment
-measures one thing cleanly: \textbf{what does spiking a state-space detector cost, where does that cost come
-from, and what does neuromorphic hardware give back?}
+\textbf{Objective.} Run a spiking state-space object detector for event cameras on Intel Loihi 2, aiming
+at the tight power budget of micro-UAVs, and measure what spiking costs in accuracy and what the chip gives back in
+energy and latency.
 
 %---------------------------------------------------------------
-\section{The accuracy gap has closed; its cost has not been decomposed}
-On Prophesee Gen1, the standard event-camera detection benchmark, spiking detectors have caught up: against
-47.7 mAP for the non-spiking S5-RVT~[1], the hybrid HsVT~[2] reports up to 47.8 and the spiking SpikeDet~[3] up to
-47.6. The neuromorphic case therefore rests on energy and latency, not accuracy. \emph{Where} the cost of
-spiking comes from is unmeasured. SpikeYOLO~[4] and EMS-YOLO~[5] compare against an ANN of equivalent architecture, so the total cost is known for those designs; no published detector separates
-it into the cost of the neuron dynamics, of sparsity and of binarisation, and none uses a selective state-space
-temporal core.
-
-\begin{table}[htbp]
-\centering\small
-\setlength{\tabcolsep}{4.5pt}
-\begin{tabularx}{\textwidth}{@{}Y l c c@{}}
-\toprule
-\textbf{Model (Gen1 test, COCO mAP; ranges over model sizes)} & \textbf{Type} & \textbf{mAP} & \textbf{Params} \\
-\midrule
-S5-RVT, Zubi\'c \emph{et al.}, CVPR 2024~[1] & ANN (SSM) & 47.7 & 18.2\,M \\
-\textbf{EventSSM} (ours) --- ResNet-18 conv $+$ Mamba temporal & ANN (SSM) & 46.2 & 19.2\,M \\
-\textbf{PureSSM} (ours) --- BiMamba spatial $+$ Mamba temporal & ANN (SSM) & 46.4 & \textbf{16.3\,M} \\
-\midrule
-HsVT, ICML 2025~[2] --- spiking temporal block & hybrid SNN & 44.9--47.8 & --- \\
-SpikeDet, preprint v5 2026 (v1: SpikSSD, 40.8)~[3] & SNN & 46.5--47.6 & --- \\
-SpikeYOLO, ECCV 2024~[4] & SNN & 38.5--40.4 & 13.2 / 23.1\,M \\
-EMS-YOLO, ICCV 2023~[5] & SNN & 26.7--31.0 & 6.2 / 14.4\,M \\
-\midrule
-\textbf{Proposed (this project)} & \textbf{hybrid SNN} & \textbf{training} & 16.3\,M \\
-\bottomrule
-\end{tabularx}
-\end{table}
-
-\vspace{-4pt}
-\textbf{Scope, stated plainly.} We spike the \emph{temporal} readout of an already-benchmarked non-spiking
-detector (PureSSM) and change nothing else. The result is a \textbf{hybrid} (spiking temporal path, non-spiking
-spatial backbone), as in HsVT~[2], and \emph{not} a like-for-like competitor to the fully spiking
-detectors above. Three readouts share one leaky integrate-and-fire membrane --- \emph{analog} (dense),
-\emph{graded} (sparse, value-carrying) and \emph{binary} --- so the steps PureSSM $\rightarrow$ analog
-$\rightarrow$ graded $\rightarrow$ binary isolate the cost of the \textbf{neuron dynamics}, of \textbf{sparsity}
-and of \textbf{binarisation}. A state-space neuron already supplies recurrence, so we expect binarisation to cost
-most --- the cost Loihi 2's \textbf{graded spikes} target. 25k-step pilots agree (validation AP, compressed
-schedule, not comparable to the table): PureSSM 35.1, analog 35.1, graded 34.0, binary 30.5. The equal-budget
-100k-step ladder is training now.
+\section{Motivation}
+On Prophesee Gen1, the standard event-camera detection benchmark, spiking detectors now match non-spiking ones:
+HsVT~[2] reports up to 47.8 mAP and SpikeDet~[3] up to 47.6, against 47.7 for the non-spiking S5-RVT~[1]. The case
+for neuromorphic hardware therefore rests on energy and latency. What remains unmeasured is where the
+accuracy cost of spiking comes from. Existing detectors report at most one spiking-vs-non-spiking difference~[4,\,5];
+none splits it into its parts, and none uses a selective state-space (Mamba) temporal core.
 
 %---------------------------------------------------------------
 \section{What is already built}
-We reproduced S5-RVT exactly (Gen1 test AP $=47.7$) and built two detectors as \emph{controlled} backbone swaps
-into that pipeline (same YOLO-PAFPN neck, YOLOX head, loss, data and evaluator). On a calibrated, idle-GPU-guarded
-harness PureSSM is the \textbf{smallest} (16.3\,M), \textbf{cheapest} (10.0\,GFLOP), \textbf{most accurate per
-FLOP} (4.63 mAP/GFLOP) and \textbf{most rate-robust} model: it retains \textbf{69.7\,\%} of its accuracy under a
-true $10\times$ event-rate change (S5-RVT: 62.2\,\%).
+We reproduced S5-RVT exactly (47.7 mAP) and built two non-spiking detectors as controlled swaps into the same
+pipeline (same neck, head, loss, data and evaluator):
 
-\textbf{The spiking model is built.} A leaky integrate-and-fire readout, trained with a surrogate gradient, wraps
-each of PureSSM's Mamba temporal blocks unmodified. With no spiking stage it is numerically identical to PureSSM;
-streaming and full-sequence inference differ in under 0.1\,\% of elements; a 428-test suite covers the cell, the
-integration and the cross-clip state; and pilots of all three readouts passed our pre-registered
-stability criteria (finite loss, no silent or saturated layer, rising accuracy).
+\begin{table}[htbp]
+\centering\small
+\begin{tabularx}{\textwidth}{@{}Y c c c c c@{}}
+\toprule
+\textbf{Model (Gen1 test; GPU: RTX 5070 Ti)} & \textbf{mAP} & \textbf{Params} & \textbf{GFLOP} &
+\textbf{Latency} & \textbf{J/frame} \\
+\midrule
+S5-RVT~[1] (reproduced) & 47.7 & 18.2\,M & 11.1 & 17.1\,ms & 0.72 \\
+EventSSM (ours): ResNet-18 $+$ Mamba temporal & 46.2 & 19.2\,M & 12.7 & 12.6\,ms & 0.44 \\
+PureSSM (ours): BiMamba spatial $+$ Mamba temporal & 46.4 & \textbf{16.3\,M} & \textbf{10.0} & 26.9\,ms & 0.65 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+\vspace{-6pt}
+PureSSM is the smallest and cheapest model and the most robust to event-rate change: it keeps 69.7\,\% of
+its accuracy when the event rate rises tenfold (S5-RVT: 62.2\,\%). Latency and energy are full-pipeline streaming
+measurements on an idle-GPU-guarded harness; they are the GPU reference that a
+Loihi 2 deployment has to beat.
+
+\textbf{The spiking model is built and trained in simulation.} A leaky integrate-and-fire (LIF) readout, trained
+with a surrogate gradient, is added after each of PureSSM's Mamba temporal blocks; the spatial backbone stays
+non-spiking (a hybrid design, like HsVT~[2]). Three readouts share the same LIF neuron, analog,
+graded and binary, so comparing them separates the cost of the neuron dynamics, of sparsity and of
+binarisation. On a 100k-step Gen1 run the binary readout reaches 41.8 validation AP, with every layer active
+throughout; at the same step the graded readout leads the binary one (41.6 vs 40.4 at 80k). These runs use a
+shorter schedule than the table above, so the numbers are not directly comparable; the full ladder is completing.
 
 %---------------------------------------------------------------
-\section{Why Loihi 2 specifically}
-\begin{enumerate}[leftmargin=1.4em, itemsep=1.5pt, topsep=1.5pt]
-  \item \textbf{The temporal core is a diagonal linear recurrence} $x_k=\bar{A}_k x_{k-1}+\bar{B}_k u_k,\;y_k=C_k x_k$
-  --- a bank of independent scalar states. Loihi 2's \textbf{programmable neuron microcode}~[7] implements this class
-  of dynamics directly, instead of a fixed LIF primitive. Meyer \emph{et al.}~[6] mapped a diagonal
-  SSM (S4D) to Loihi 2 and, for token-by-token processing --- the regime of a streaming event camera --- measured
-  ${\sim}1000\times$ lower energy and ${\sim}75\times$ lower latency than a recurrent S4D on a Jetson Orin Nano.
-  \item \textbf{Event sparsity is wasted on a GPU but rewarded on Loihi 2.} We measured that sparse event input
-  yields \emph{no} GPU speed-up, as dense kernels process idle pixels regardless; on an event-driven substrate idle
-  pixels cost no energy. The 1\,Mpx event-detection paper names neuromorphic hardware as the route to the
-  sparsity its own dense pipeline wastes~[8].
-  \item \textbf{Graded spikes address the binary bottleneck.} Integer-valued spiking detectors~[3,\,4] train with
-  multi-bit activations and expand each into several binary spikes at inference. Loihi 2's graded spikes carry an
-  integer payload natively~[7] --- the hardware counterpart of our graded readout --- so that accuracy recovery is
-  a Loihi 2 capability, not a software workaround.
+\section{Why Loihi 2}
+\begin{enumerate}[leftmargin=1.4em, itemsep=2pt, topsep=2pt]
+  \item \textbf{At its core, our temporal block is a diagonal linear recurrence}, which Loihi 2's programmable
+  neurons~[7] can implement directly; its projections map to ordinary synaptic layers. Meyer \emph{et al.}~[6] ran a diagonal state-space model on Loihi 2 with about
+  $1000\times$ lower energy and $75\times$ lower latency than on a Jetson Orin Nano for streaming input.
+  \item \textbf{Event sparsity is wasted on a GPU.} We measured no GPU speed-up from sparse event input; on an
+  event-driven chip, idle pixels cost no energy~[8]. This is the long-term case for a fully spiking detector.
+  \item \textbf{Graded spikes} on Loihi 2 carry an integer value~[7], the hardware match for our graded readout.
 \end{enumerate}
 
-With PureSSM's rate robustness, this leads from ${\sim}0.65$\,J/frame on a GPU toward UAV-scale power.
-
 %---------------------------------------------------------------
-\section{Approach and milestones}
-The trained model keeps Mamba's \emph{selective} step: the decay $\bar{A}_k=\exp(\Delta_k A)$ is recomputed from
-the input at every step, whereas the S4D port~[6] relies on fixed dynamics. The mapping therefore needs on-chip
-computation of the decay or a \textbf{fixed-step} (S4D/S5-style) variant retrained through the same pipeline; our
-rate study indicates a fixed step need not cost robustness (at a true $10\times$ rate the fixed-step S5-RVT retains
-62.2\,\%, our selective EventSSM 63.0\,\%). The non-spiking spatial backbone would run on a conventional
-accelerator beside the chip. Following Intel's guidance to design locally first, we train in PyTorch
-(surrogate gradients), export through \textbf{NIR}, the vendor-neutral neuromorphic intermediate
-representation, and benchmark on vLab before any hardware request. \emph{As the Lava repositories were archived in May 2026, we treat NIR as the export
-boundary so the model retargets cleanly to a successor SDK; guidance on Intel's preferred path is welcome.}
+\section{Plan}
+Mamba recomputes its decay from the input at every step, whereas the Loihi port in~[6] uses fixed dynamics. We will
+therefore either compute the decay on-chip or retrain a fixed-step variant; our rate study suggests a fixed step
+need not cost robustness. We train in PyTorch and export through \textbf{NIR}, the vendor-neutral neuromorphic
+format. Since the Lava repositories were archived in May 2026, NIR lets the model move to Intel's successor SDK;
+we welcome guidance on Intel's preferred path.
 
-\vspace{-1pt}
 \begin{center}\small
 \begin{tabularx}{\textwidth}{@{}l Y@{}}
 \toprule
-\textbf{M1} (wk 1--4) & Spiking SSM cell (SSM $+$ LIF readout $+$ surrogate gradient), unit-tested. \textbf{Done.} \\
-\textbf{M2} (wk 5--10) & Integrated into the frozen detector; trained on Gen1; accuracy, firing rate and sparsity.
-\textbf{Integrated; 100k-step ladder training.} \\
-\textbf{M3} (wk 11--16) & Fixed-step or on-chip-decay temporal block; NIR export $\rightarrow$ Loihi runtime
-(Lava or successor); \textbf{vLab benchmark} --- accuracy, energy (SOPs), latency vs GPU/embedded baselines. \\
-\textbf{M4} (gated on M3) & On-chip validation on Loihi 2 (Kapoho Point); energy--accuracy--latency
-characterisation; publication. \\
+\textbf{M1} & Spiking state-space cell, unit-tested. \textbf{Done.} \\
+\textbf{M2} & Integrated into the detector and trained on Gen1. \textbf{Binary readout trained; ladder completing.} \\
+\textbf{M3} & Loihi-compatible temporal block; NIR export; \textbf{vLab benchmark} of accuracy, energy and latency
+against the GPU baseline; publication. \\
 \bottomrule
 \end{tabularx}
 \end{center}
 
-\vspace{2pt}
-\textbf{Readiness against the INRC checklist --- stated plainly.}
-(i) \emph{Project plan} --- this document.
-(ii) \emph{Built and tested an SNN} --- \textbf{partly met}: built, tested and training in simulation (Section~2),
-since ANN and RNN experience alone does not prepare a team for Loihi.
-(iii) \emph{Loihi toolchain} --- not yet; M3, via NIR.
-(iv) \emph{Evaluated on vLab} --- M3, the gate on any hardware request. \emph{Hence vLab access now:} the cloud is
-where we would port and validate the SNN; hardware follows only once M3 justifies it.
+\textbf{What the vLab benchmark measures (M3).} The part mapped to the chip is the spiking temporal path
+(2.2\,M of PureSSM's 16.3\,M parameters); the spatial backbone stays on a conventional accelerator. M3 asks three
+questions: (1) does the exported model give the same detections as the PyTorch model, measured as Gen1 mAP;
+(2) what are the energy and latency per frame of the temporal path on Loihi 2, compared with the same path on the
+GPU above; and (3) how do these change with the firing threshold, which trades accuracy against spike activity.
+We state the scope plainly: the temporal path carries a small share of the detector's compute (spikes feed about 1\,\% of its
+operations), so M3 measures the cost and benefit of the temporal block on Loihi 2, not a whole-system energy saving.
+That saving needs the spatial backbone to spike as well; a positive M3 is what would justify that step and any
+later hardware request.
 
-\vspace{2pt}
-\textbf{Contributed back.} An open-source, NIR-exportable spiking state-space detector --- to our knowledge the
-first for event cameras on Loihi 2; the first decomposition of the cost of spiking a detector into neuron
-dynamics, sparsity and binarisation; and a Gen1 benchmark point for INRC event-vision work.
+\section{Risks and mitigations}
+\begin{center}\small
+\begin{tabularx}{\textwidth}{@{}>{\RaggedRight\arraybackslash}p{0.36\textwidth} Y@{}}
+\toprule
+\textbf{Risk} & \textbf{Mitigation} \\
+\midrule
+Mamba's input-dependent decay has no direct Loihi primitive. & Retrain a fixed-step variant through the same
+pipeline and measure what it costs in accuracy and rate robustness. \\
+Recurrent state is large: 144\,MB per stream for the whole model (fp32), likely more than one chip's memory. &
+Map the deepest, smallest stages first; reduce the state size or precision; spread across several chips. \\
+Spike activity is high: firing rates of 0.36--0.48 during training. & The threshold is already a tunable
+parameter; a threshold sweep gives the energy--accuracy trade-off directly. \\
+Lava is archived and its successor has no release date. & NIR export keeps the model independent of the SDK. \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\textbf{Resources requested.} vLab accounts for the PI and the student researcher for the duration of M3; no
+hardware loan. The student's thesis ends in November 2026 (M1--M2); the PI carries M3 beyond it. All code, trained checkpoints and NIR exports
+will be released openly.
+
+\textbf{Readiness (INRC checklist).} Project plan: this document. Built and tested an SNN: yes, in simulation.
+Loihi toolchain and vLab evaluation: not yet; both are M3, which is why we request vLab access now.
+
+\textbf{Contributed back.} An open, NIR-exportable spiking state-space detector, the first breakdown of the cost
+of spiking a detector, and a Gen1 benchmark point for INRC event-vision work.
 
 %---------------------------------------------------------------
 \vspace{2pt}
 {\footnotesize
 \textbf{References.}
 [1] N. Zubi\'c, D. Gehrig, M. Gehrig, and D. Scaramuzza, ``State space models for event cameras,'' in
-\emph{Proc. CVPR}, 2024, pp.~5819--5828.\hspace{0.5em}
+\emph{Proc. CVPR}, 2024.\hspace{0.5em}
 [2] Q. Xu, J. Deng, J. Shen, B. Chen, H. Tang, and G. Pan, ``Hybrid spiking vision transformer for object
 detection with event cameras,'' in \emph{Proc. ICML}, 2025.\hspace{0.5em}
 [3] Y. Fan, C. Liu, M. Li, D. Liu, Y. Su, Y. Liu, and W. Zhang, ``SpikeDet: Better firing patterns for accurate
