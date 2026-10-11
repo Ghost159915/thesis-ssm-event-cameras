@@ -99,6 +99,18 @@ cd code && python -m event_ssm.eval.bootstrap \
 
 Output: `results/stage21_bootstrap/ladder_100k/bootstrap.{json,md}` → §5.7 table and slide 8.
 
+Then the ladder figure (two panels: test AP per arm, and the paired cost of each step about zero):
+
+```bash
+python -m event_ssm.eval.ladder_plot --bootstrap ../results/stage21_bootstrap/ladder_100k/bootstrap.json \
+  --label puressm=PureSSM --label analog=Analog --label graded=Graded --label binary=Binary \
+  --gap-label puressm:analog="Neuron dynamics" --gap-label analog:graded=Sparsity \
+  --gap-label graded:binary=Binarisation --out ../results/stage21_bootstrap/ladder_100k/ladder_AP
+```
+
+→ `ladder_AP.png` (300 dpi) + `ladder_AP.svg` for §5.7 and slide 8. Repeat with `--metric AP_L` (or any metric the
+evaluator reports) for a large-object version.
+
 **Optional, worth it:** the same for the earlier models — capture EventSSM 400k (`stage7_test_eval_local.sh`)
 and pair it with `puressm_400k.pkl` (`--pair eventssm:puressm`) to turn the 46.2 vs 46.4 "tie" and the
 +3.0 AP_L into measured intervals. S5-RVT via `stage8_baseline_eval_local.sh` only if baseline CIs are wanted.
