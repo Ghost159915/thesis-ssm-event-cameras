@@ -200,14 +200,24 @@ History of the run:
 
 ### 3.4 100k ladder on validation (all three spiking arms done)
 
-| step | spike | graded | analog |
-|---|---|---|---|
-| 50k | 0.370 | 0.368 | 0.383 |
-| 100k | 0.418 | 0.425 | 0.438 |
+| step | PureSSM | analog | graded | spike |
+|---|---|---|---|---|
+| 50k | 0.389 | 0.383 | 0.368 | 0.370 |
+| 100k | 0.442 | 0.438 | 0.425 | 0.418 |
 
-Final val/AP gaps: analog → graded −1.4, graded → spike −0.7 (validation, single seed; the test evals of Stage 21 are
-the reported numbers). The pre-registered ordering analog ≥ graded > spike holds at 100k. The PureSSM → analog rung
-waits for the anchor below.
+Final val/AP gaps (all four 100k runs done 2026-10-12): PureSSM → analog −0.4 (LIF dynamics), analog → graded −1.4
+(sparsity), graded → spike −0.7 (binarisation); spiking total −2.4. Validation, single seed; the Stage-21 test evals
+with bootstrap intervals are the reported numbers. The pre-registered ordering analog ≥ graded > spike holds, and
+PureSSM ≥ analog.
 
-### 3.5 PureSSM anchor, 100k (W&B offline `igk6myyb`, started 2026-10-12 07:05:43) — running
-- val/AP 0.240 / 0.312 at 10k / 20k (analog 0.229 / 0.294); ≈ 2.37 it/s.
+### 3.5 PureSSM anchor, 100k (W&B offline `igk6myyb`, started 2026-10-12 07:05:43, finished 20:31:11, exit 0)
+- val/AP 0.240 / 0.312 / 0.332 / 0.367 / 0.389 / 0.390 / 0.401 / 0.430 / 0.438 / **0.442** at 10k … 100k; ≈ 2.37
+  it/s, no interruption. Analog led at 60k–70k (0.396 / 0.417 vs 0.390 / 0.401), PureSSM led again from 80k:
+  run-to-run wobble of ≈ 1.5 points between neighbouring checkpoints, so the −0.4 final gap is well inside it.
+- Best = last = step 100k: `igk6myyb/checkpoints/epoch=002-step=100000-val_AP=0.44.ckpt`. The `&&` chain started
+  graded 400k.
+
+### 3.6 Graded arm, `[2,3,4]`, 400k (W&B offline `x3nh6fb0`, started 2026-10-12 20:31:11) — running
+- val/AP 0.212 / 0.304 at 10k / 20k; ≈ 2.31 it/s ⇒ ≈ 51 h left at 24.4k (finish ≈ Thu 15 Oct, early morning).
+- Not stopped for the Stage-21 test evals (user let the chain continue): the 100k test evals, the bootstrap identity
+  check and the captures run after this run, or in a planned stop just after a 10k checkpoint.
