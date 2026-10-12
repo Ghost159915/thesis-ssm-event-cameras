@@ -4,7 +4,8 @@
 linked runbooks; this page is the order of play. Tick items off as you go.
 
 Rule throughout: **while a training run is on the GPU, do only CPU work** (no test evals, no benchmark, no
-`pytest -m gpu`). A plain `pytest` is CPU-only and safe: since 2026-10-11 every CUDA test module carries the `gpu` mark.
+`pytest -m gpu`). A plain `pytest` is CPU-only and safe: every CUDA test carries the `gpu` mark (modules since 2026-10-11; tests
+using the `device` fixture via a `conftest.py` hook since 2026-10-12).
 
 ---
 

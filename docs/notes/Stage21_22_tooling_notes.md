@@ -131,3 +131,46 @@ findings. One important finding: the D6 S5-RVT total, fixed above. **Deferred mi
 187 CPU tests pass across the files touched on 2026-10-07: `test_spiking_ckpt.py`, `test_stage21_eval_script.py`,
 `test_bench_{models,schema,report,metrics,clip}.py`, `test_resume_guard.py`, and the Stage-19/20 launcher tests.
 GPU-dependent paths (real evaluation, benchmark timing) run only when the GPU is idle.
+
+## 4. Review of the 2026-10-11 Mac work on GhostMachine (2026-10-12)
+
+The 14 commits pushed from the Mac on 2026-10-11 (`36a0f35`..`74bc9fb`) were checked here, where `external/`, the
+real checkpoints and the RVT evaluator exist. The training chain (PureSSM 100k anchor) kept running throughout, so
+every check was CPU-only (`CUDA_VISIBLE_DEVICES=""`).
+
+**Checked and working.**
+- `eval/bootstrap.py`: `RvtScorer` matches the real `PropheseeEvaluator` API (`dataset`, `downsample_by_2`,
+  `add_labels`/`add_predictions`, `evaluate_buffer(img_height, img_width)`). Resampling with duplicates is valid:
+  RVT numbers COCO images by position in the flattened list, so a recording drawn twice counts twice. The PureSSM
+  official AP (0.464275…) is within the identity check's 5e-5 tolerance of `--expect puressm=0.4643`.
+- `integration/spiking_ckpt.py` on the three real 100k checkpoints: tags `spike_s234` / `graded_s234` /
+  `analog_s234`; `learn_threshold=False` in all three (so the threshold sweep is permitted); `check-extra` files
+  a threshold override as `posthoc`, a 5-ms window as `dt5`, both as `posthoc_dt5`.
+- `eval/beta_report.py` on the real spike + graded 100k checkpoints: table and figure render. After 100k steps β
+  has moved at most 0.044 from its 0.9 initialisation (all channels 0.856–0.934), confirming the Stage-19 D6
+  reading at a 4× longer schedule. The figure takes at most two checkpoints; with three (adding analog) the table
+  and JSON are written, then the figure step raises.
+- `eval/threshold_sweep.parse_ap` and the sweep's `ap_of` read the real Lightning test table correctly.
+- `main.tex` (64 pp) and `conference.tex` (3 pp) build with 0 undefined references; all shell scripts parse.
+
+**Bug 1 — 38 CUDA tests were not gpu-marked (fixed).** `db1e2a8` marked the five CUDA-only modules, but 38 tests in
+five other modules (`test_monitors`, `test_register_puressm`, `spikingssm/test_register_spikingssm`,
+`puressm/test_bimamba_spatial`, `eventssm/test_resnet_spatial`) request the CUDA `device` fixture without the mark,
+so a plain `pytest` would have run them on the GPU during training. The modules mix CPU and CUDA tests, so a
+module-level mark would also have dropped real CPU tests. **Fix:** a `pytest_collection_modifyitems` hook in
+`event_ssm/conftest.py` marks every test that requests `device` as `gpu` (`tryfirst`, so it runs before the `-m`
+deselection). Regression test `tests/test_gpu_marking.py` (collect-only subprocess; fails if any selected test
+still requests `device`). Default selection: 389 pass, 1 skip, 101 deselected; `-m gpu` selects 101.
+
+**Bug 2 — the threshold sweep's preflight could never pass (fixed).** `stage22_threshold_sweep_local.sh` passed
+`--cfg job model.backbone.spiking.threshold=T` to the Stage-21 launcher, which appends extra arguments after its own
+overrides. Hydra's parser rejects overrides that follow an option ("unrecognized arguments", exit 2), so the
+composed threshold was always empty and every threshold was skipped as PREFLIGHT FAILED: a sweep that silently
+produced nothing (fail-closed, no wrong numbers). Verified on the real spike checkpoint before and after. **Fix:**
+the override goes before `--cfg job`; Hydra then takes the later value (composed `threshold: 0.75` for T = 0.75).
+Regression test `tests/models/spikingssm/test_threshold_sweep_script.py`: the real launcher in a fake repo whose
+evaluator stub parses with Hydra's own `get_args_parser()`. The existing launcher tests had not caught it because
+their stub accepts any argument order.
+
+**Still open on this machine:** bootstrap Part A (`eval/bootstrap_capture.py` + hooks), then the GPU items of
+`docs/runbooks/GhostMachine_next_steps.md` §E once the GPU is idle.
