@@ -17,6 +17,7 @@ setup_paths()          # code + RVT on sys.path; hdf5plugin -- but DO NOT regist
 
 import perclass_patch   # same scripts/ dir
 perclass_patch.apply()  # ADDITIVE car/pedestrian AP to stderr; aggregate metrics unchanged (still 47.7)
+from event_ssm.eval import bootstrap_capture; bootstrap_capture.apply()   # no-op unless BOOTSTRAP_CAPTURE is set
 
 if __name__ == "__main__":
     val_py = str(RVT / "validation.py")

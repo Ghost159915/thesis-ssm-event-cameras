@@ -22,6 +22,7 @@ register()           # patch build_recurrent_backbone + dynamically_modify_train
 
 import perclass_patch  # same scripts/ dir (auto on sys.path[0] when run as a script)
 perclass_patch.apply() # ADDITIVE car/pedestrian AP to stderr; the 6 aggregate metrics are unchanged
+from event_ssm.eval import bootstrap_capture; bootstrap_capture.apply()   # no-op unless BOOTSTRAP_CAPTURE is set
 
 if __name__ == "__main__":
     val_py = str(RVT / "validation.py")
