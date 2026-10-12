@@ -42,9 +42,11 @@ for T in "${THRS[@]}"; do
   if [[ -n "$(ap_of "$LOG")" ]]; then
     echo "[stage22-thr] θ=$T eval: done ($(ap_of "$LOG")), skipping"
   else
-    # 1. preflight: the composed config must carry exactly this threshold (no duplicate-override surprises)
+    # 1. preflight: the composed config must carry exactly this threshold (no duplicate-override surprises).
+    #    `--cfg job` goes LAST: the launcher appends these after its own overrides, and Hydra's parser rejects
+    #    overrides that follow an option ("unrecognized arguments").
     CFG="$(SPIKING_ALLOW_ARM_OVERRIDE=1 bash "$SCRIPTS/stage21_spikingssm_test_eval_local.sh" "$CKPT" \
-           --cfg job "model.backbone.spiking.threshold=$T" 2>/dev/null)"
+           "model.backbone.spiking.threshold=$T" --cfg job 2>/dev/null)"
     GOT="$(awk '/^[[:space:]]*spiking:/{f=1} f && /^[[:space:]]+threshold:/{print $2; exit}' <<< "$CFG")"
     if ! python -c "import sys; sys.exit(0 if abs(float('$GOT' or 'nan') - float('$T')) < 1e-9 else 1)"; then
       echo "[stage22-thr] θ=$T PREFLIGHT FAILED: composed threshold '${GOT}' != $T — skipping this threshold" >&2
