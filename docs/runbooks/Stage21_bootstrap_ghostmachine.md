@@ -7,6 +7,17 @@ the RVT code in `external/`, which exists only on this machine.
 
 Steps 1–3 are CPU / code work and are safe while training runs. Steps 4–5 need an **idle GPU** (test evals).
 
+> **Steps 1–3 DONE 2026-10-12 on GhostMachine.** Hook points confirmed as described below (one correction: the
+> evaluator is constructed with keywords, `PropheseeEvaluator(dataset=..., downsample_by_2=...)`, and every element
+> is one (time step, labelled batch slot) pair, not one recording). Built: `code/event_ssm/eval/bootstrap_capture.py`
+> (recording id = counter per (dataloader worker, batch slot), bumped on `IS_FIRST_SAMPLE`; the evaluator's own
+> buffer is saved, so the capture is exactly what was scored; the official metrics are stored in the capture's
+> `meta["official_metrics"]`), hooks in `stage7_eval.py` + `stage8_baseline_eval.py`, 9 CPU tests in
+> `tests/eval/test_bootstrap_capture{,_hooks}.py` — including the identity check in miniature against the REAL RVT
+> evaluator. The launchers pass `BOOTSTRAP_CAPTURE` through unchanged. **Next = step 4 (idle GPU).**
+> After the first capture, note its size (`ls -lh`): the captures are held in RAM by every bootstrap worker, so
+> pick `--workers` with `free -g` in view.
+
 ---
 
 ## 1. Pull and run the Part B tests (CPU, safe during training)

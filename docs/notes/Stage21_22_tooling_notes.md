@@ -174,3 +174,32 @@ their stub accepts any argument order.
 
 **Still open on this machine:** bootstrap Part A (`eval/bootstrap_capture.py` + hooks), then the GPU items of
 `docs/runbooks/GhostMachine_next_steps.md` §E once the GPU is idle.
+
+## 5. Bootstrap Part A — the capture (2026-10-12)
+
+`code/event_ssm/eval/bootstrap_capture.py`, opt-in through `BOOTSTRAP_CAPTURE=/abs/path.pkl` (unset ⇒ nothing is
+imported or patched). Hooked, one line each, in `scripts/stage7_eval.py` (EventSSM / PureSSM / SpikingSSM launchers)
+and `scripts/stage8_baseline_eval.py` (S5-RVT). Nothing in `external/` is edited.
+
+- **How each element gets its recording (read from the RVT code).** Test loading is `ShardedStreamingDataPipe`: each
+  recording is one whole stream on a fixed (dataloader worker, batch slot); its first sample has
+  `IS_FIRST_SAMPLE = True`; padding samples have False and no labels. `Module._val_test_step_impl` hands the evaluator
+  one element per (time step, labelled slot), in the order it calls
+  `SparselyBatchedObjectLabels.get_valid_labels_and_batch_indices()`. The capture wraps those two methods: a counter
+  per (worker, slot) bumped on the first-sample flag, and the slot list of the running step. Wrapping the real lookup
+  (rather than re-implementing the step's loop) keeps the element order exact by construction.
+- **What is saved.** The evaluator's own buffer at `evaluate_buffer` time (exactly what was scored), the bound
+  constructor and `evaluate_buffer` arguments (for `bootstrap.RvtScorer`), and the official metrics in
+  `meta["official_metrics"]`. TEST evaluations only; written atomically (tmp + rename).
+- **Fail-safe.** The original methods always run and their results are returned unchanged. Any inconsistency
+  (element count ≠ gathered slots, a slot without a first sample, a bookkeeping exception) disables the capture with a
+  loud message and no file; the evaluation is never interrupted. A relative path is refused at start-up (the
+  launchers `cd` into RVT/).
+- **Tests (CPU, 9).** `tests/eval/test_bootstrap_capture.py` (7): recording tagging over two workers × two slots with
+  a mid-stream recording change and a padding batch; validation not captured; an unaccounted element disables the
+  capture but not the eval; idempotent install; and re-scoring a capture with `RvtScorer` reproduces the **real** RVT
+  `PropheseeEvaluator` metrics exactly (non-trivial AP). Two deliberate mutations (ignore the worker id; capture
+  validation too) each fail the suite. `tests/eval/test_bootstrap_capture_hooks.py` (2): both entry points, run for
+  real with `--cfg job`, install the capture only when the variable is set. Full CPU suite: 398 pass.
+- **Not yet verified (needs the idle GPU):** the identity check on a real test eval (runbook step 4). If the capture
+  turns out large, the bootstrap's `--workers` must be chosen against free RAM (each worker holds every capture).

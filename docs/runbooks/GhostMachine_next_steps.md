@@ -37,10 +37,10 @@ gitignored).
 
 Follow `docs/runbooks/Stage21_bootstrap_ghostmachine.md` steps 2–3:
 
-- [ ] Read the RVT evaluator and the detection test step; confirm the hook points.
-- [ ] Write `code/event_ssm/eval/bootstrap_capture.py` + its CPU tests; add the opt-in hook line to
+- [x] Read the RVT evaluator and the detection test step; confirm the hook points. (2026-10-12)
+- [x] Write `code/event_ssm/eval/bootstrap_capture.py` + its CPU tests; add the opt-in hook line to
       `stage7_eval.py` and `stage8_baseline_eval.py`.
-- [ ] Commit and push.
+- [x] Commit and push. (2026-10-12)
 
 ## D. Let the training chain finish
 
