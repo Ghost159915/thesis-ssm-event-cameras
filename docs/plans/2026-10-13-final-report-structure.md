@@ -107,10 +107,34 @@ If it runs over, trim the literature review first (7,059 words vs the reference'
 
 ## 3. Open questions (check before restructuring)
 
-- [ ] **Exact length rule** for Thesis C (MMAN4953): is it 50 pages of body, a word limit, or both? Font/spacing rules?
-      Only the MMAN4951 rubric is filed (`thesis/admin/`). Get the MMAN4953 rubric.
+- [x] **Thesis C rubric** obtained 2026-10-13 (Section 4 below; files in `thesis/admin/`).
+- [ ] **Exact length rule**: the rubric sets no page or word limit. Confirm the ~50-page body figure in the course
+      outline or with the supervisor; check for font/spacing rules there too.
 - [x] **zID**: z5457896 (on the title page).
 - [ ] Degree name for the title page (e.g. "Bachelor of Engineering in Mechatronic Engineering").
 - [x] Methodology and Experimental Setup: **merged** into one Chapter 4 (user, 2026-10-13).
 - [ ] Future Work: inside Discussion (reference) or its own section of Ch. 7 (ours now)?
 - [x] `conference.tex`: **deleted** (user, 2026-10-13).
+
+---
+
+## 4. Thesis C marking rubric (MMAN4953 / MMAN9453, obtained 2026-10-13)
+
+Files: `thesis/admin/MMAN4953_Marking_Rubrics_Report.pdf` (**the one that applies: final thesis report**) and
+`thesis/admin/MMAN4953_Marking_Rubrics_Paper.pdf` (the "thesis by manuscript" option, not taken). Bands: Accomplished
+85–100, Distinguished 75–84, Solid 65–74, Adequate 50–64, Deficient 0–49. **No page or word limit is stated.**
+
+### Report rubric
+
+| Criterion | Weight | What the top band (85–100) asks for | What it means for `main.tex` |
+|---|---|---|---|
+| Literature review / background, putting the results in context | **10 %** | critical assessment of the literature, at the depth and breadth of a journal review or industry report; knowledge gaps identified; conceptual links between reviewed works and to the project | already strong (Ch. 2, gaps A–C). At 10 % it is the lowest-weighted part, yet it is 7,059 words (~36 % of the draft body): the first place to trim if over length. Results must also be *put in context* against the literature in Ch. 5–6. |
+| Execution of the research project, quality of analysis, discussion of results | **50 %** | (Distinguished) all pieces assembled into a coherent engineering story with excellent outcomes; (Accomplished) additionally something unexpected, thoughtful and original, e.g. a novel perspective | the bulk of the mark lives in Ch. 4–6. Make the story explicit: question → controlled method → results → interpretation. Original elements to foreground: the Δt-rescaling reproduction finding, the receptive-field mechanism, the spiking-cost decomposition. Interpret, don't just observe (the Adequate band is "observation of results"). |
+| Conclusions and value added | **20 %** | could form the basis of a peer-reviewed publication or professional dissemination; (Distinguished) good, thoughtful discussion of **limitations** and insight into **future work** / new avenues | Ch. 7 + Limitations + Future Research. Say what is new and to whom it matters; limitations specific and honest (single seed, 50-ms latency bound, estimated energy); future work beyond "predictable extensions" (INRC/Loihi, window trade-off, fully spiking detector, 1Mpx). |
+| Document presentation | **20 %** | clear logical structure with headings; very easy to read; good spelling, grammar and style; formatting consistent throughout; figures and tables clear, consistent and **economical**; referencing appropriate | the structure is in place. Watch: every figure/table labelled, captioned and cited in the text; one consistent style for units, numbers and captions; IEEE references consistent; no redundant figures. |
+
+### Manuscript rubric (for reference only; not the chosen option)
+
+Background and literature review 20 %, Methodology 20 %, Execution and discussion 40 %, Conclusions,
+recommendations and value adding 20 %. Top band: publishable in a Q1–Q2 journal with minimal changes.
+

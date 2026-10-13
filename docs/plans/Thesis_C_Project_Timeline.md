@@ -8,8 +8,9 @@
 > changes, change it there and reflect it here.
 
 **Term window:** T3 2026 teaching **Mon 14 Sep → Fri 20 Nov** (10 weeks + a flexibility week).
-**🔴 ACTION #1 — unresolved:** confirm the **exact Thesis C submission date** and obtain the **Thesis C
-marking rubric**. Only `MMAN4951` (Thesis A) is filed in `thesis/admin/`. Every date below assumes
+**🔴 ACTION #1 — half resolved:** the **Thesis C marking rubric** is filed (2026-10-13:
+`thesis/admin/MMAN4953_Marking_Rubrics_Report.pdf`; weights 10 / 50 / 20 / 20, see
+`docs/plans/2026-10-13-final-report-structure.md` §4). Still to confirm: the **exact submission date**. Every date below assumes
 submission lands on or shortly after 20 Nov; if it is earlier, everything compresses and the Week-4 gate
 gets stricter.
 
@@ -171,7 +172,7 @@ Recording these so they stay decided and do not quietly return:
 
 ## 8. Immediate actions (this week, W0)
 
-- [ ] 🔴 Confirm Thesis C submission date + get the marking rubric.
+- [ ] 🔴 Confirm Thesis C submission date. (Rubric obtained 2026-10-13: `thesis/admin/MMAN4953_Marking_Rubrics_Report.pdf`.)
 - [ ] Send `thesis/inrc_proposal/inrc_loihi_proposal.pdf` to Will, with: the PI ask, the $90–130 cloud
       request, and the note that Intel's first email should be the three questions, not the proposal.
 - [ ] Commit the current working tree (Stage 17, thesis restructure, plan, figure).
