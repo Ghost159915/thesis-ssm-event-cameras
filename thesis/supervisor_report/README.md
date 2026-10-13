@@ -80,3 +80,33 @@ the source:
 - Efficiency → `docs/results/Stage16_results.md` §1–2
 - Label quality → `docs/notes/Gen1_resolution_labels_and_eventvis_notes.md` §3
 - Full synthesis → `docs/results/Thesis_Progress_Writeup.md`
+
+---
+
+# Supervisor progress report — October 2026
+
+`progress_report_2026-10.tex` (6 pages): Thesis C progress since the August report, the spiking model, the
+100k-step readout ladder, the learned-leak and energy findings, what the results mean, corrections to the
+August report, remaining work and discussion points. Built for the supervisor meeting of 13 October 2026.
+
+```bash
+cd thesis/supervisor_report
+python figs/make_figs_2026-10.py          # CPU only: fig_ladder_100k.{png,pdf}, fig_lif_panel.png
+latexmk -pdf progress_report_2026-10.tex  # bibliography: ../latex/references.bib (ieeetr)
+```
+
+The β figure is read straight from `results/stage22/beta/beta_100k.png`, written by
+`python -m event_ssm.eval.beta_report --ckpt binary=<spike 100k ckpt> --ckpt graded=<graded 100k ckpt>
+--out ../results/stage22/beta/beta_100k` (CPU, real 100k checkpoints).
+
+## Number provenance (October)
+
+- 100k ladder (validation) → `docs/notes/Stage20_fullrun_notes.md` §3.2–3.5 (console-log `val/AP` lines);
+  the values are also hard-coded, with that source, in `figs/make_figs_2026-10.py`
+- 25k pilot ladder, kill-switch, smoke → `docs/notes/Stage19_smoke_notes.md` §3.4–3.6
+- 400k models, corrected FLOPs → `thesis/latex/main.tex` `tab:accuracy`, `tab:regime2`, `tab:efficiency`;
+  FLOP correction in `docs/notes/Stage21_22_tooling_notes.md` (D6)
+- SNN landscape → `thesis/latex/main.tex` `tab:snn_landscape`
+- β → `results/stage22/beta/beta_100k.md`
+- 1 % spike-fed bound → `docs/notes/Stage21_22_tooling_notes.md` (SOP accounting)
+- 400k graded progress → `results/stage20/graded_s234_400k/console_*.log`
