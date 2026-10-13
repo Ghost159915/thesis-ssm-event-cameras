@@ -217,7 +217,7 @@ PureSSM ≥ analog.
 - Best = last = step 100k: `igk6myyb/checkpoints/epoch=002-step=100000-val_AP=0.44.ckpt`. The `&&` chain started
   graded 400k.
 
-### 3.6 Graded arm, `[2,3,4]`, 400k (W&B offline `x3nh6fb0`, started 2026-10-12 20:31:11) — running
+### 3.6 Graded arm, `[2,3,4]`, 400k (W&B offline `x3nh6fb0`, started 2026-10-12 20:31:11) — paused at 197k, resume from 180k
 - val/AP 0.212 / 0.304 / 0.328 / 0.355 / 0.374 / 0.379 / 0.394 / 0.411 / 0.420 at 10k–90k; at 100k below 0.420 (not a
   new best, so Lightning printed no value); **0.436 at 110k** (2026-10-13 ≈ 10:30), already above the graded 100k
   run's final 0.425; 120k and 130k below 0.436 (no value printed); **0.445 at 140k** (2026-10-13 ≈ 15:30), above
@@ -225,7 +225,8 @@ PureSSM ≥ analog.
   not a ladder gap. ≈ 2.28 it/s training, ≈ 2.01 it/s including validation; ≈ 144k steps at 16:28 on 13 Oct ⇒ finish
   ≈ Thu 15 Oct ≈ 04:00.
 - val/AP after 140k: 150k–170k below 0.445; **0.456 at 180k** (new best, 21:37); 190k below 0.456.
-- **Stop requested 2026-10-13 ≈ 23:50 (user needed the GPU)** at step ≈ 197k. Newest checkpoint
+- **Interrupted 2026-10-13 23:52:19 (Ctrl-C, exit 1; user needed the GPU)** at step 197,247 (epoch 4 starts at
+  189,456; +7,791). Newest checkpoint
   `x3nh6fb0/checkpoints/last_epoch=003-step=180000.ckpt` (= best, 0.456) ⇒ ≈ 17k steps redone. Checkpoints are written
   only on a new best (Lightning `save_last` copies only when a top-k file is saved), so the 190k state was never saved.
   Resume: `STAGE7_RESUME=<that file> ARM=graded STAGES=2,3,4 BUDGET=400k bash $S/stage20_full_local.sh`. Same
