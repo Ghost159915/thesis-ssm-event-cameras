@@ -108,8 +108,9 @@ If it runs over, trim the literature review first (7,059 words vs the reference'
 ## 3. Open questions (check before restructuring)
 
 - [x] **Thesis C rubric** obtained 2026-10-13 (Section 4 below; files in `thesis/admin/`).
-- [ ] **Exact length rule**: the rubric sets no page or word limit. Confirm the ~50-page body figure in the course
-      outline or with the supervisor; check for font/spacing rules there too.
+- [x] **Length rule (user, 2026-10-13): the body of the final report must be NO MORE THAN 50 pages** (bibliography
+      and appendices excluded). The rubric itself states no limit. Font/spacing rules: none known; keep the current
+      11 pt, A4, 1-inch margins unless told otherwise.
 - [x] **zID**: z5457896 (on the title page).
 - [ ] Degree name for the title page (e.g. "Bachelor of Engineering in Mechatronic Engineering").
 - [x] Methodology and Experimental Setup: **merged** into one Chapter 4 (user, 2026-10-13).
@@ -122,7 +123,8 @@ If it runs over, trim the literature review first (7,059 words vs the reference'
 
 Files: `thesis/admin/MMAN4953_Marking_Rubrics_Report.pdf` (**the one that applies: final thesis report**) and
 `thesis/admin/MMAN4953_Marking_Rubrics_Paper.pdf` (the "thesis by manuscript" option, not taken). Bands: Accomplished
-85–100, Distinguished 75–84, Solid 65–74, Adequate 50–64, Deficient 0–49. **No page or word limit is stated.**
+85–100, Distinguished 75–84, Solid 65–74, Adequate 50–64, Deficient 0–49. The rubric states no page or word limit;
+the **50-page maximum for the body** comes from the course requirements (confirmed by the user, 2026-10-13).
 
 ### Report rubric
 
