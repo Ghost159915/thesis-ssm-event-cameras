@@ -71,7 +71,7 @@ code/event_ssm/                 the detectors (drop-in backbones for the vendore
 env/                            conda/pip lockfiles (Blackwell sm_120, cu128)
 docs/                           all prose — see docs/README.md
 thesis/
-  ├─ latex/                       main.tex (final report: headings + literature review, being written), draft_main.tex
+  ├─ latex/                       main.tex (final report being written: headings, bullet guides, all maths/tables/figures, literature review), draft_main.tex
   │                               (full 64-page draft, source material), LitReview_ThesisA.tex, references.bib
   ├─ inrc_proposal/               2-page Intel INRC Loihi 2 proposal
   ├─ presentation/                talk deck (source + offline preview), presentation guide, model explainer

@@ -2,9 +2,10 @@
 
 **Files (2026-10-13):** the full 64-page draft was renamed `thesis/latex/draft_main.tex` (source material, all
 measured numbers, `\res{}` placeholders). The new `thesis/latex/main.tex` is the report the author writes: the
-structure below as headings only, plus Chapter 2 (Literature Review) copied verbatim from the draft. Its front matter,
-roman/arabic/roman numbering and running header are in place; it builds with only two undefined references, the
-LIF equations (`eq:lif_integrate`, `eq:lif_reset`) that Chapter 2 cites and the Methodology will define.
+structure below with headings, bullet points of what each section should cover, and every equation, table and figure
+from the draft placed in its new section (no prose); Chapter 2 (Literature Review) and the nomenclature are copied
+verbatim. Front matter, roman/arabic/roman numbering and running header are in place; it builds with 0 errors and 0
+undefined references (52 pages; the body is 32 pages of headings, bullets and floats).
 `conference.tex` was deleted. zID z5457896 is on the title page; degree name and submission date are `\res{}`
 placeholders.
 
