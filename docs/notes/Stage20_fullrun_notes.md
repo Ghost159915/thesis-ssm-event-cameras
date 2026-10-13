@@ -224,5 +224,12 @@ PureSSM ≥ analog.
   every 100k arm including the PureSSM anchor (0.442) — different schedule length (D1), so this is a progress check,
   not a ladder gap. ≈ 2.28 it/s training, ≈ 2.01 it/s including validation; ≈ 144k steps at 16:28 on 13 Oct ⇒ finish
   ≈ Thu 15 Oct ≈ 04:00.
+- val/AP after 140k: 150k–170k below 0.445; **0.456 at 180k** (new best, 21:37); 190k below 0.456.
+- **Stop requested 2026-10-13 ≈ 23:50 (user needed the GPU)** at step ≈ 197k. Newest checkpoint
+  `x3nh6fb0/checkpoints/last_epoch=003-step=180000.ckpt` (= best, 0.456) ⇒ ≈ 17k steps redone. Checkpoints are written
+  only on a new best (Lightning `save_last` copies only when a top-k file is saved), so the 190k state was never saved.
+  Resume: `STAGE7_RESUME=<that file> ARM=graded STAGES=2,3,4 BUDGET=400k bash $S/stage20_full_local.sh`. Same
+  data-order deviation as §3.2, new W&B offline id and checkpoint dir; the dir change also resets Lightning's top-1
+  tracking, so the **final best checkpoint must be picked across both dirs** (`x3nh6fb0` ≤ 180k + the new id).
 - Not stopped for the Stage-21 test evals (user let the chain continue): the 100k test evals, the bootstrap identity
   check and the captures run after this run, or in a planned stop just after a 10k checkpoint.

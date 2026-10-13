@@ -68,8 +68,10 @@ Detach with **Ctrl-b, then d**. It keeps going with the terminal closed.
 
 ## If you need the GPU again
 
-Stopping just **after** a checkpoint loses the least: checkpoints are written every 10k steps, right after each
-`global step …0000: 'val/AP'` line. Ctrl-C at any other time loses everything since the last one. To resume again,
+Stopping just **after** a checkpoint loses the least. ⚠️ Correction (2026-10-13): a checkpoint (best *and* `last_*`)
+is written only when a 10k validation sets a **new best** val/AP (`… 'val/AP' reached …`); a `was not in top 1` line
+writes nothing (Lightning `save_last` copies only when a top-k file is saved). The 100k arms improved at almost every
+validation, which hid this. Ctrl-C loses everything since the last *best*. To resume again,
 point `CKPT` at the newest `last_*.ckpt` of the run that was stopped (`ls -t <run>/checkpoints/last_*.ckpt | head -1`)
 and use that run's `ARM`/`BUDGET`.
 
