@@ -220,6 +220,9 @@ PureSSM ≥ analog.
 ### 3.6 Graded arm, `[2,3,4]`, 400k (W&B offline `x3nh6fb0`, started 2026-10-12 20:31:11) — running
 - val/AP 0.212 / 0.304 / 0.328 / 0.355 / 0.374 / 0.379 / 0.394 / 0.411 / 0.420 at 10k–90k; at 100k below 0.420 (not a
   new best, so Lightning printed no value); **0.436 at 110k** (2026-10-13 ≈ 10:30), already above the graded 100k
-  run's final 0.425. ≈ 2.27 it/s; ≈ 112k steps at 12:00 on 13 Oct ⇒ finish ≈ Thu 15 Oct, early morning.
+  run's final 0.425; 120k and 130k below 0.436 (no value printed); **0.445 at 140k** (2026-10-13 ≈ 15:30), above
+  every 100k arm including the PureSSM anchor (0.442) — different schedule length (D1), so this is a progress check,
+  not a ladder gap. ≈ 2.28 it/s training, ≈ 2.01 it/s including validation; ≈ 144k steps at 16:28 on 13 Oct ⇒ finish
+  ≈ Thu 15 Oct ≈ 04:00.
 - Not stopped for the Stage-21 test evals (user let the chain continue): the 100k test evals, the bootstrap identity
   check and the captures run after this run, or in a planned stop just after a 10k checkpoint.
