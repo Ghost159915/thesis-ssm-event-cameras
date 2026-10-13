@@ -33,7 +33,7 @@ Metric: COCO mAP at IoU 0.50:0.95 on the Gen1 test set (AP_50 of the reproductio
   the energy case needs a spiking spatial backbone too (Future Work; Loihi 2 via NIR).
 
 Full write-ups: [`docs/results/`](docs/results/) (Stage 8/9/15/16 results, `Thesis_Progress_Writeup.md` for
-EventSSM + PureSSM) and the dissertation [`thesis/latex/main.tex`](thesis/latex/main.tex).
+EventSSM + PureSSM) and the full draft [`thesis/latex/draft_main.tex`](thesis/latex/draft_main.tex).
 
 ## Status (2026-10-11)
 
@@ -43,8 +43,10 @@ EventSSM + PureSSM) and the dissertation [`thesis/latex/main.tex`](thesis/latex/
 - **In progress:** Stage 20 training chain on the workstation (graded 100k → analog 100k → PureSSM 100k anchor →
   optional graded 400k); bootstrap confidence intervals (Part B done, Part A on the workstation).
 - **Next:** Stage 21 test evals, Stage 22 SOP/energy, spiking analysis (bootstrap CIs, threshold sweep, rate
-  robustness, firing figure), then finish `main.tex` §5.7.
-- **Submission:** a ~20-page conference-style paper condensed from `main.tex`, plus a ~10-minute presentation.
+  robustness, firing figure), then the final report (`main.tex`).
+- **Submission:** the standard thesis report, written by the author in `thesis/latex/main.tex` (~50 pages of body,
+  bibliography and appendices excluded;
+  structure guide in [`docs/plans/2026-10-13-final-report-structure.md`](docs/plans/2026-10-13-final-report-structure.md)), plus a ~10-minute presentation.
 
 Where to look next:
 - Workstation to-do list: [`docs/runbooks/GhostMachine_next_steps.md`](docs/runbooks/GhostMachine_next_steps.md)
@@ -69,7 +71,8 @@ code/event_ssm/                 the detectors (drop-in backbones for the vendore
 env/                            conda/pip lockfiles (Blackwell sm_120, cu128)
 docs/                           all prose — see docs/README.md
 thesis/
-  ├─ latex/                       main.tex (full dissertation), conference.tex (paper skeleton), LitReview_ThesisA.tex, references.bib
+  ├─ latex/                       main.tex (final report: headings + literature review, being written), draft_main.tex
+  │                               (full 64-page draft, source material), LitReview_ThesisA.tex, references.bib
   ├─ inrc_proposal/               2-page Intel INRC Loihi 2 proposal
   ├─ presentation/                talk deck (source + offline preview), presentation guide, model explainer
   ├─ supervisor_report/           August progress report

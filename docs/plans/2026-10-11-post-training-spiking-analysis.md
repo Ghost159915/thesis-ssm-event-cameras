@@ -1,4 +1,4 @@
-# Post-training plan: strengthening the spiking results + condensing to a conference paper
+# Post-training plan: strengthening the spiking results (+ submission format, Part B, SUPERSEDED)
 
 **Agreed 2026-10-11.** Start AFTER all Stage-20 training and the Stage-21 test evals are done (user target: within
 one week of 2026-10-11). None of the items below needs a new training run — all use the existing checkpoints.
@@ -23,7 +23,10 @@ Writing rules for §5.7 / Ch.6: phrase the ladder so it survives gaps within noi
 pre-registered", with CIs); Ch.6 must address the energy ceiling (≈1 % spike-fed ops, high firing rates) head-on;
 the graded 100k arm's data-order deviation (two resumes) goes in Limitations.
 
-## Part B — Deliverables and workflow (user decision, 2026-10-11)
+## Part B — Deliverables and workflow (user decision, 2026-10-11) — ⚠️ SUPERSEDED 2026-10-13
+
+> **Superseded:** the submission is now the standard ~50-page report written directly in `main.tex`, not a
+> conference paper. See `docs/plans/2026-10-13-final-report-structure.md`. Kept below as history.
 
 **What is submitted:** ONLY a ~20-page conference-style paper, plus a ~10-minute presentation (problem → what was
 done → results → discussion). The 60-page `thesis/latex/main.tex` is NOT submitted.
@@ -53,9 +56,9 @@ inference, so the sensor's microsecond latency is not exploited at this setting.
 motion blur within the 5-ms bins, sparse sensor output. The window is a latency–accuracy trade-off: SSMs tolerate
 shorter windows (true 10× = 5-ms windows at 200 Hz, zero-shot: 62–70 % retention; PureSSM best).
 
-**Written into `thesis/latex/main.tex` (2026-10-11):** one sentence in §3.1 (input bullet), a "Window-bounded
+**Written into `thesis/latex/main.tex` (2026-10-11; renamed `draft_main.tex` on 2026-10-13):** one sentence in §3.1 (input bullet), a "Window-bounded
 latency" bullet in Limitations, and Future Work §"The latency–accuracy trade-off of the window"
-(`subsec:fw_window`). Carry the same point into the conference paper and expect it as an examiner question.
+(`subsec:fw_window`). Keep it in the final report and expect it as an examiner question.
 
 **Does a smaller window need retraining?** No to *use* one, yes to get the *best* accuracy from it:
 - zero-shot (no retraining): already measured — 2× (25 ms) keeps 95–96 %, 10× (5 ms) keeps 62–70 %;

@@ -13,4 +13,4 @@ The guide was written for a 12-slide plan; the finished deck has 10 slides becau
 (guide slides 2–3 → deck slide 2) and accuracy and receptive field share one slide (guide 7–8 → deck 6).
 
 Placeholders still to fill after Stages 20–22 are marked in orange brackets on deck slides 8 and 10, matching the `\res{}`
-markers in `thesis/latex/main.tex` §5.7. Copies here do not update automatically: re-export after editing the live versions.
+markers in `thesis/latex/draft_main.tex` §5.7. Copies here do not update automatically: re-export after editing the live versions.
