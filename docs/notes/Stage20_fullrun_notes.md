@@ -217,7 +217,7 @@ PureSSM ≥ analog.
 - Best = last = step 100k: `igk6myyb/checkpoints/epoch=002-step=100000-val_AP=0.44.ckpt`. The `&&` chain started
   graded 400k.
 
-### 3.6 Graded arm, `[2,3,4]`, 400k (W&B offline `x3nh6fb0`, started 2026-10-12 20:31:11) — paused at 197k, resume from 180k
+### 3.6 Graded arm, `[2,3,4]`, 400k (W&B offline `x3nh6fb0` → `94t9he3c`, started 2026-10-12 20:31:11; one interruption, resumed 2026-10-14 17:45)
 - val/AP 0.212 / 0.304 / 0.328 / 0.355 / 0.374 / 0.379 / 0.394 / 0.411 / 0.420 at 10k–90k; at 100k below 0.420 (not a
   new best, so Lightning printed no value); **0.436 at 110k** (2026-10-13 ≈ 10:30), already above the graded 100k
   run's final 0.425; 120k and 130k below 0.436 (no value printed); **0.445 at 140k** (2026-10-13 ≈ 15:30), above
@@ -234,3 +234,14 @@ PureSSM ≥ analog.
   tracking, so the **final best checkpoint must be picked across both dirs** (`x3nh6fb0` ≤ 180k + the new id).
 - Not stopped for the Stage-21 test evals (user let the chain continue): the 100k test evals, the bootstrap identity
   check and the captures run after this run, or in a planned stop just after a 10k checkpoint.
+- **Resumed 2026-10-14 17:44:59** (tmux `stage20`, console `results/stage20/graded_s234_400k/console_20261014_174459.log`,
+  new W&B offline id **`94t9he3c`**, checkpoint dir `94t9he3c/checkpoints/`). Log confirms `resume guard: checkpoint
+  schedule matches 400000 steps` and `Restored all states from …x3nh6fb0/…/last_epoch=003-step=180000.ckpt`;
+  2.29–2.32 it/s training, ≈ 82.7 min per 10k including validation (≈ 2.03 it/s effective).
+- val/AP after the resume (new dir; top-1 tracking restarted, so 190k counts as a "new best" here although it is below
+  the old dir's 0.456): **0.441 @ 190k**, **0.450 @ 200k**, 210k below, **0.455 @ 220k**, 230k below, **0.458 @ 240k**
+  (first value above the old dir's 0.456), 250k–260k below, **0.467 @ 270k**, **0.469 @ 280k**, 290k below,
+  **0.469 @ 300k** (0.46939 vs 0.46889). For reference, the PureSSM 400k (Stage 14, cloud) peaked at val 0.48 @ 310k.
+- **Cross-dir best settled for now:** the new dir's 0.469 @ 300k is above `x3nh6fb0`'s 0.456 @ 180k, so the old dir
+  can no longer supply the final best; the final pick is the best in `94t9he3c` at 400k.
+- 2026-10-15 10:58: step ≈ 305.8k, GPU 49 °C / 192 W / ≈ 9 GB; ≈ 94k steps left ⇒ finish ≈ 2026-10-15 ≈ 23:50.
