@@ -84,6 +84,11 @@ Order (Stage-20 plan): graded 100k (resumed) → analog 100k → PureSSM 100k an
        --ckpt <ckpt>` per arm → `results/stage22/firing/<tag>_<rec>.png` (events per frame vs per-stage firing rate,
        with the correlation r).
 8. [ ] Optional: capture EventSSM 400k for the paired EventSSM vs PureSSM interval (46.2 vs 46.4, AP_L +3.0).
+9. [ ] Optional, NumPy reference of the spiking block (added 2026-10-14; `docs/notes/Stage23_numpy_reference_notes.md` §4).
+       CPU, any time: `CUDA_VISIBLE_DEVICES="" pytest event_ssm/tests/models/spikingssm_np -q` → 43 pass.
+       Idle GPU (minutes): `pytest event_ssm/tests/models/spikingssm_np -m gpu -q` → 15 pass, then
+       `python event_ssm/scripts/stage23_np_parity.py --ckpt <ckpt>` for the spike and graded 100k checkpoints
+       → `results/stage23/np_parity/*.json`, `PARITY: PASS`.
 
 ## F. After each result
 
