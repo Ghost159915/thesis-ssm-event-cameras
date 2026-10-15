@@ -245,3 +245,5 @@ PureSSM ≥ analog.
 - **Cross-dir best settled for now:** the new dir's 0.469 @ 300k is above `x3nh6fb0`'s 0.456 @ 180k, so the old dir
   can no longer supply the final best; the final pick is the best in `94t9he3c` at 400k.
 - 2026-10-15 10:58: step ≈ 305.8k, GPU 49 °C / 192 W / ≈ 9 GB; ≈ 94k steps left ⇒ finish ≈ 2026-10-15 ≈ 23:50.
+- 310k below; **0.471 @ 320k** (0.47089, new best); 330k below. 2026-10-15 15:13: step ≈ 336.6k, 2.30 it/s, GPU 50 °C;
+  ≈ 63k steps left ⇒ finish still ≈ 2026-10-15 ≈ 23:55.
