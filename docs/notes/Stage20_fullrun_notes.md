@@ -254,3 +254,9 @@ PureSSM ≥ analog.
   command); ≈ 60k steps ≈ 8.3 h remain. The resume gets a third W&B offline id and checkpoint dir with top-1 tracking
   reset again ⇒ the final best is picked across `94t9he3c` (0.472 @ 340k) and the new dir. Same data-order deviation
   as before (now two restarts: 180k, 340k).
+- **Resumed (second time) 2026-10-15 19:02:14** (tmux `stage20`, console
+  `results/stage20/graded_s234_400k/console_20261015_190214.log`, third W&B offline id **`njlvhdpm`**, checkpoint dir
+  `njlvhdpm/checkpoints/`). The 350k validation had not finished before the stop, so the resume point is 340k. Log
+  confirms `resume guard: checkpoint schedule matches 400000 steps` and `Restored all states from
+  …94t9he3c/…/last_epoch=006-step=340000.ckpt`. ≈ 60k steps ≈ 8.3 h ⇒ finish ≈ 2026-10-16 ≈ 03:20. Final best =
+  max over `94t9he3c` (0.472 @ 340k) and `njlvhdpm` (its 350k "new best" may sit below 0.472, as at 190k).
