@@ -247,3 +247,10 @@ PureSSM ≥ analog.
 - 2026-10-15 10:58: step ≈ 305.8k, GPU 49 °C / 192 W / ≈ 9 GB; ≈ 94k steps left ⇒ finish ≈ 2026-10-15 ≈ 23:50.
 - 310k below; **0.471 @ 320k** (0.47089, new best); 330k below. 2026-10-15 15:13: step ≈ 336.6k, 2.30 it/s, GPU 50 °C;
   ≈ 63k steps left ⇒ finish still ≈ 2026-10-15 ≈ 23:55.
+- **0.472 @ 340k** (0.47199, new best; checkpoint `94t9he3c/checkpoints/last_epoch=006-step=340000.ckpt`, 15:48).
+- **Second interruption, 2026-10-15 ≈ 16:50 (Ctrl-C, user needed the GPU)** at step ≈ 348.1k. Newest checkpoint =
+  340k (unless the 350k validation finished as a new best before the stop, in which case it is 350k) ⇒ ≈ 8k steps
+  redone. Resume with the newest `last_*.ckpt` in `94t9he3c/checkpoints/` (CLAUDE.md "▶ CURRENT STATE" has the
+  command); ≈ 60k steps ≈ 8.3 h remain. The resume gets a third W&B offline id and checkpoint dir with top-1 tracking
+  reset again ⇒ the final best is picked across `94t9he3c` (0.472 @ 340k) and the new dir. Same data-order deviation
+  as before (now two restarts: 180k, 340k).
