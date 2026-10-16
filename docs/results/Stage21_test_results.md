@@ -47,3 +47,26 @@ Single seed per arm; all evaluations captured for the bootstrap (`results/stage2
 - Threshold-crossing rates diverge by arm: spike rises to 0.36–0.48, graded falls to 0.10–0.28 (100k) and settles at
   0.15–0.28 (400k); analog 0.18–0.51. The graded readout is the sparsest; the spike arm compensates for
   binarisation by firing more. Relevant to the SOP energy accounting (Stage 22).
+
+## 4. Firing pattern on a real test recording (Stage 22 item 5, 2026-10-16)
+
+`code/event_ssm/scripts/stage22_firing_pattern.py`, 100k checkpoints, recording `18-03-29_13-15-02_122500000_182500000`
+(1200 frames = 60 s, mean 48.7k events/frame); outputs `results/stage22/firing/{spike,graded}_s234_*.{json,png,svg}`.
+
+| Arm | stage | mean rate | min–max | r with events/frame |
+|---|---|---|---|---|
+| graded | 2 | 0.281 | 0.244–0.293 | **+0.64** |
+| graded | 3 | 0.123 | 0.015–0.158 | +0.13 |
+| graded | 4 | 0.100 | 0.091–0.131 | −0.00 |
+| spike | 2 | 0.480 | 0.399–0.495 | −0.32 |
+| spike | 3 | 0.356 | 0.323–0.364 | +0.22 |
+| spike | 4 | 0.391 | 0.349–0.393 | +0.13 |
+
+- Rates at inference match the training-time monitor (`fig_spiking_firing`), so the monitor is representative.
+- **The sparsity is structural, not event-driven.** Only graded stage 2 tracks scene activity (r = 0.64), and even
+  there the rate moves within 27–29 %; stages 3–4 and every spike stage are flat. The readout does not fall silent
+  when the scene is quiet, because the dense Mamba state upstream keeps driving it. Consequence for the energy
+  argument (Stage 22 SOP): savings come from a fixed low rate (graded ≈ 10–28 %), not from input-dependent activity;
+  the spike arm at 36–48 % saves little. Discussion point; also a design hint (event-gated input to the readout).
+- The figure from the tool is not yet in the report style (its stage colours reuse model colours; it has a title):
+  restyle before it goes into the report.
