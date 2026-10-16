@@ -1,0 +1,676 @@
+{
+  "schema": 1,
+  "meta": {
+    "date": "2026-10-16T13:42:15",
+    "torch": "2.11.0+cu128",
+    "cuda": "12.8",
+    "gpu": "NVIDIA GeForce RTX 5070 Ti",
+    "driver": "595.91.07",
+    "git_sha": "516710c",
+    "clip_src": "/home/ghost/Desktop/thesis-ssm-event-cameras/data/gen1_raw/gen1/test/17-04-04_11-00-13_cut_15_122500000_182500000/event_representations_v2/stacked_histogram_dt=50_nbins=10/event_representations.h5",
+    "ckpts": {
+      "eventssm": "/home/ghost/Desktop/thesis-ssm-event-cameras/external/ssms_event_cameras/RVT/RVT/8zotrwjw/checkpoints/epoch=003-step=320000-val_AP=0.46.ckpt",
+      "baseline": "/home/ghost/Desktop/thesis-ssm-event-cameras/checkpoints/gen1_base.ckpt",
+      "puressm": "/home/ghost/Desktop/thesis-ssm-event-cameras/results/stage14_cloud/ckpts/epoch=002-step=310000-val_AP=0.48.ckpt",
+      "spikingssm": "/home/ghost/Desktop/thesis-ssm-event-cameras/external/ssms_event_cameras/RVT/RVT/a43jctgx/checkpoints/epoch=006-step=350000-val_AP=0.47.ckpt"
+    },
+    "test_ap": {
+      "eventssm": 0.462,
+      "baseline": 0.477,
+      "puressm": 0.4643,
+      "spikingssm": 0.4624
+    },
+    "step_scale_env": {
+      "MAMBA_STEP_SCALE": null,
+      "S5_STEP_SCALE": null
+    },
+    "monitor_env": {
+      "SPIKING_MONITOR": null,
+      "PURESSM_MONITOR": null,
+      "SPIKING_ALLOW_ARM_OVERRIDE": null
+    },
+    "git_dirty": true,
+    "weights": "plain mdl.* (non-EMA); compute metrics weight-independent",
+    "clocks_sm_mhz": 195.0,
+    "temperature_gpu_c": 35.0,
+    "raw": "195, 35",
+    "clocks_after": {
+      "clocks_sm_mhz": 2895.0,
+      "temperature_gpu_c": 34.0,
+      "raw": "2895, 34"
+    }
+  },
+  "models": {
+    "eventssm": {
+      "params_m": {
+        "total": 19.184105,
+        "neck": 3.860992,
+        "head": 1.890709,
+        "backbone_spatial": 11.229824,
+        "backbone_temporal": 2.20258
+      },
+      "flops": {
+        "counted_gflops": 12.4850072,
+        "analytic_gflops": 0.22880256,
+        "total_gflops": 12.71380976,
+        "unsupported_ops": {
+          "trace_failed": 1,
+          "err": "at 31:23:\n    pid_h = tl.program_id(axis=2)\n    dt_ptr += pid_b * stride_dt_batch + pid_c * chunk_size * stride_dt_seqlen\n    dt_out_ptr += pid_b * stride_dt_out_batch + pid_c * stride_dt_out_chunk\n  "
+        },
+        "counted_incomplete": false,
+        "source": "torch.profiler",
+        "analytic_convention": "v2-unprofiled-only: SSM work inside custom kernels (causal conv, chunk scan, gated norm); projections/FF profiled; S5 complex products topped up from 1 to 4 real MACs"
+      },
+      "latency": {
+        "bf16": {
+          "full": {
+            "mean_ms": 12.098280629967727,
+            "std_ms": 0.02753063810134279,
+            "p50_ms": 12.094050995074213,
+            "p95_ms": 12.142553001467604,
+            "hz": 82.68528059020836,
+            "iters": 300
+          },
+          "network": {
+            "mean_ms": 11.48264574027659,
+            "std_ms": 0.03275334232551256,
+            "p50_ms": 11.478292995889205,
+            "p95_ms": 11.534589000802953,
+            "hz": 87.12096827970295,
+            "iters": 300
+          },
+          "components": {
+            "backbone": {
+              "mean_ms": 5.190679170045769,
+              "std_ms": 0.012633557736954152,
+              "p50_ms": 5.189142000745051,
+              "p95_ms": 5.213599004491698,
+              "hz": 192.71008576300693,
+              "iters": 100
+            },
+            "neck_head": {
+              "mean_ms": 6.268809829998645,
+              "std_ms": 0.016015979507111148,
+              "p50_ms": 6.265875999815762,
+              "p95_ms": 6.300941000517923,
+              "hz": 159.59460417496348,
+              "iters": 100
+            },
+            "postprocess": {
+              "mean_ms": 0.5981008998060133,
+              "std_ms": 0.004988613819374947,
+              "p50_ms": 0.5995469982735813,
+              "p95_ms": 0.6047869974281639,
+              "hz": 1667.9259555623473,
+              "iters": 100
+            }
+          },
+          "throughput": {
+            "b4_fps": 297.4996493832571,
+            "b8_fps": 341.60235928929046
+          }
+        },
+        "fp32": {
+          "full": {
+            "mean_ms": 9.67487402354891,
+            "std_ms": 0.02050777381801174,
+            "p50_ms": 9.672517000581138,
+            "p95_ms": 9.707473000162281,
+            "hz": 103.38570611350889,
+            "iters": 300
+          },
+          "network": {
+            "mean_ms": 9.058004236697647,
+            "std_ms": 0.019481453736557918,
+            "p50_ms": 9.056698996573687,
+            "p95_ms": 9.088088998396415,
+            "hz": 110.41550573540295,
+            "iters": 300
+          },
+          "components": {
+            "backbone": {
+              "mean_ms": 5.226361430177349,
+              "std_ms": 0.019368710890998987,
+              "p50_ms": 5.2316639994387515,
+              "p95_ms": 5.249136003840249,
+              "hz": 191.14377377967682,
+              "iters": 100
+            },
+            "neck_head": {
+              "mean_ms": 4.651542200153926,
+              "std_ms": 0.02494380167185166,
+              "p50_ms": 4.645932996936608,
+              "p95_ms": 4.707359003077727,
+              "hz": 215.24201934452577,
+              "iters": 100
+            },
+            "postprocess": {
+              "mean_ms": 0.5988660299772164,
+              "std_ms": 0.009912821960482997,
+              "p50_ms": 0.5988049961160868,
+              "p95_ms": 0.6119210011092946,
+              "hz": 1669.9927463633517,
+              "iters": 100
+            }
+          },
+          "throughput": {
+            "b4_fps": 247.44171551797868,
+            "b8_fps": 255.78707062035718
+          }
+        }
+      },
+      "vram": {
+        "inference_mb": 1314.97216796875,
+        "train_mb": 7261.00048828125,
+        "state_kb_per_stream": 147980.001953125
+      },
+      "energy": {
+        "idle_w": 52.300540540540545,
+        "idle_pre_w": 52.300540540540545,
+        "idle_post_w": 44.491351351351355,
+        "idle_drift_exceeded": true,
+        "load_w": 87.34040909090909,
+        "j_per_frame": 0.4251965953600062,
+        "frames": 4945,
+        "seconds": 60.005851934998645
+      }
+    },
+    "baseline": {
+      "params_m": {
+        "total": 18.192149,
+        "neck": 3.860992,
+        "head": 1.890709,
+        "backbone": 12.440448
+      },
+      "flops": {
+        "counted_gflops": 10.025546256,
+        "analytic_gflops": 1.02998016,
+        "total_gflops": 11.055526416,
+        "unsupported_ops": {
+          "trace_failed": 1,
+          "err": "Unsupported value kind: Tensor"
+        },
+        "counted_incomplete": false,
+        "source": "torch.profiler",
+        "analytic_convention": "v2-unprofiled-only: SSM work inside custom kernels (causal conv, chunk scan, gated norm); projections/FF profiled; S5 complex products topped up from 1 to 4 real MACs"
+      },
+      "latency": {
+        "bf16": {
+          "full": {
+            "mean_ms": 16.910847496643935,
+            "std_ms": 0.1633997995990052,
+            "p50_ms": 16.934295003011357,
+            "p95_ms": 17.084801002056338,
+            "hz": 59.051764470984715,
+            "iters": 300
+          },
+          "network": {
+            "mean_ms": 16.330734223374748,
+            "std_ms": 0.06512818120140995,
+            "p50_ms": 16.3339559949236,
+            "p95_ms": 16.46179000090342,
+            "hz": 61.222155876432396,
+            "iters": 300
+          },
+          "components": {
+            "backbone": {
+              "mean_ms": 10.431135700273444,
+              "std_ms": 0.052384662003353996,
+              "p50_ms": 10.41242700011935,
+              "p95_ms": 10.49640600103885,
+              "hz": 96.03908867630358,
+              "iters": 100
+            },
+            "neck_head": {
+              "mean_ms": 6.302090469980612,
+              "std_ms": 0.016963738870004547,
+              "p50_ms": 6.301690002146643,
+              "p95_ms": 6.328360999759752,
+              "hz": 158.68759010033094,
+              "iters": 100
+            },
+            "postprocess": {
+              "mean_ms": 0.6009775098937098,
+              "std_ms": 0.006639218682313695,
+              "p50_ms": 0.6013199963490479,
+              "p95_ms": 0.613734002399724,
+              "hz": 1663.0080590560149,
+              "iters": 100
+            }
+          },
+          "throughput": {
+            "b4_fps": 213.74967214286679,
+            "b8_fps": 229.25113852037
+          }
+        },
+        "fp32": {
+          "full": {
+            "mean_ms": 13.838752436640789,
+            "std_ms": 0.11581489374740417,
+            "p50_ms": 13.858370999514591,
+            "p95_ms": 13.978379000036512,
+            "hz": 72.15855312540171,
+            "iters": 300
+          },
+          "network": {
+            "mean_ms": 13.240559493375864,
+            "std_ms": 0.06574210993627616,
+            "p50_ms": 13.246480993984733,
+            "p95_ms": 13.363862999540288,
+            "hz": 75.49174761614825,
+            "iters": 300
+          },
+          "components": {
+            "backbone": {
+              "mean_ms": 9.053294699988328,
+              "std_ms": 0.04273120563476464,
+              "p50_ms": 9.044332000485156,
+              "p95_ms": 9.115255998040084,
+              "hz": 110.5664851695358,
+              "iters": 100
+            },
+            "neck_head": {
+              "mean_ms": 4.644508620258421,
+              "std_ms": 0.012945140851676373,
+              "p50_ms": 4.643566004233435,
+              "p95_ms": 4.6639840002171695,
+              "hz": 215.3517359478303,
+              "iters": 100
+            },
+            "postprocess": {
+              "mean_ms": 0.6003092001628829,
+              "std_ms": 0.007602102214232088,
+              "p50_ms": 0.5997879998176359,
+              "p95_ms": 0.6118099990999326,
+              "hz": 1667.2557642101003,
+              "iters": 100
+            }
+          },
+          "throughput": {
+            "b4_fps": 205.8232014574038,
+            "b8_fps": 215.40878841349416
+          }
+        }
+      },
+      "vram": {
+        "inference_mb": 901.63330078125,
+        "train_mb": 9550.6962890625,
+        "state_kb_per_stream": 4800.0
+      },
+      "energy": {
+        "idle_w": 50.84081081081081,
+        "idle_pre_w": 50.84081081081081,
+        "idle_post_w": 46.08162162162162,
+        "idle_drift_exceeded": false,
+        "load_w": 92.33172727272726,
+        "j_per_frame": 0.7014328442976173,
+        "frames": 3550,
+        "seconds": 60.01522283900704
+      }
+    },
+    "puressm": {
+      "params_m": {
+        "total": 16.334225,
+        "neck": 3.860992,
+        "head": 1.890709,
+        "backbone_spatial": 8.379944,
+        "backbone_temporal": 2.20258
+      },
+      "flops": {
+        "counted_gflops": 9.059932,
+        "analytic_gflops": 0.96616448,
+        "total_gflops": 10.02609648,
+        "unsupported_ops": {
+          "trace_failed": 1,
+          "err": "at 31:23:\n    pid_h = tl.program_id(axis=2)\n    dt_ptr += pid_b * stride_dt_batch + pid_c * chunk_size * stride_dt_seqlen\n    dt_out_ptr += pid_b * stride_dt_out_batch + pid_c * stride_dt_out_chunk\n  "
+        },
+        "counted_incomplete": false,
+        "source": "torch.profiler",
+        "analytic_convention": "v2-unprofiled-only: SSM work inside custom kernels (causal conv, chunk scan, gated norm); projections/FF profiled; S5 complex products topped up from 1 to 4 real MACs"
+      },
+      "latency": {
+        "bf16": {
+          "full": {
+            "mean_ms": 26.496427019834908,
+            "std_ms": 0.10327506534233163,
+            "p50_ms": 26.464360002137255,
+            "p95_ms": 26.703212002757937,
+            "hz": 37.78666855798667,
+            "iters": 300
+          },
+          "network": {
+            "mean_ms": 25.943067449819257,
+            "std_ms": 0.1445498885835232,
+            "p50_ms": 25.879270004224963,
+            "p95_ms": 26.149802994041238,
+            "hz": 38.64096629606412,
+            "iters": 300
+          },
+          "components": {
+            "backbone": {
+              "mean_ms": 19.616461860132404,
+              "std_ms": 0.07488826790030566,
+              "p50_ms": 19.64433799730614,
+              "p95_ms": 19.710593005584087,
+              "hz": 50.90525321530976,
+              "iters": 100
+            },
+            "neck_head": {
+              "mean_ms": 6.304212369868765,
+              "std_ms": 0.026861542507340703,
+              "p50_ms": 6.296358005783986,
+              "p95_ms": 6.3668220027466305,
+              "hz": 158.82197281053203,
+              "iters": 100
+            },
+            "postprocess": {
+              "mean_ms": 0.5996033502742648,
+              "std_ms": 0.005487318357032976,
+              "p50_ms": 0.600769002630841,
+              "p95_ms": 0.6079719969420694,
+              "hz": 1664.533282544335,
+              "iters": 100
+            }
+          },
+          "throughput": {
+            "b4_fps": 144.03854180873455,
+            "b8_fps": 212.02538547096546
+          }
+        },
+        "fp32": {
+          "full": {
+            "mean_ms": 23.572092113269417,
+            "std_ms": 0.04789398049765402,
+            "p50_ms": 23.565210998640396,
+            "p95_ms": 23.63811900431756,
+            "hz": 42.435435865933705,
+            "iters": 300
+          },
+          "network": {
+            "mean_ms": 22.95901878327034,
+            "std_ms": 0.0661370099146215,
+            "p50_ms": 22.946968994801864,
+            "p95_ms": 23.08430899574887,
+            "hz": 43.57874019120034,
+            "iters": 300
+          },
+          "components": {
+            "backbone": {
+              "mean_ms": 19.08290401021077,
+              "std_ms": 0.06042981611691235,
+              "p50_ms": 19.09834099933505,
+              "p95_ms": 19.149086998368148,
+              "hz": 52.36056891197079,
+              "iters": 100
+            },
+            "neck_head": {
+              "mean_ms": 4.7230454901000485,
+              "std_ms": 0.012397238693010475,
+              "p50_ms": 4.721151002740953,
+              "p95_ms": 4.748072002257686,
+              "hz": 211.8127548598702,
+              "iters": 100
+            },
+            "postprocess": {
+              "mean_ms": 0.5991484900732758,
+              "std_ms": 0.005311489449264033,
+              "p50_ms": 0.5998280030325986,
+              "p95_ms": 0.605768000241369,
+              "hz": 1667.1445730179646,
+              "iters": 100
+            }
+          },
+          "throughput": {
+            "b4_fps": 133.5085143115766,
+            "b8_fps": 184.18579817798215
+          }
+        }
+      },
+      "vram": {
+        "inference_mb": 1308.07958984375,
+        "train_mb": 10075.556640625,
+        "state_kb_per_stream": 147980.00390625
+      },
+      "energy": {
+        "idle_w": 44.60297297297297,
+        "idle_pre_w": 44.60297297297297,
+        "idle_post_w": 43.29837837837838,
+        "idle_drift_exceeded": false,
+        "load_w": 68.68704545454545,
+        "j_per_frame": 0.6405662601943042,
+        "frames": 2256,
+        "seconds": 60.00303661700309
+      }
+    },
+    "spikingssm": {
+      "params_m": {
+        "total": 16.335121,
+        "neck": 3.860992,
+        "head": 1.890709,
+        "backbone_spatial": 8.379944,
+        "backbone_temporal": 2.203476
+      },
+      "arm": {
+        "spiking_stages": [
+          2,
+          3,
+          4
+        ],
+        "residual": false,
+        "output_mode": "graded",
+        "reset": "subtract",
+        "alpha": 2.0,
+        "detach_reset": true,
+        "learn_beta": true,
+        "learn_threshold": false,
+        "threshold": 1.0
+      },
+      "arm_tag": "graded_s234",
+      "flops": {
+        "counted_gflops": 9.060794848,
+        "analytic_gflops": 0.96616448,
+        "total_gflops": 10.026959328,
+        "unsupported_ops": {
+          "trace_failed": 1,
+          "err": "at 31:23:\n    pid_h = tl.program_id(axis=2)\n    dt_ptr += pid_b * stride_dt_batch + pid_c * chunk_size * stride_dt_seqlen\n    dt_out_ptr += pid_b * stride_dt_out_batch + pid_c * stride_dt_out_chunk\n  "
+        },
+        "counted_incomplete": false,
+        "source": "torch.profiler",
+        "analytic_convention": "v2-unprofiled-only: SSM work inside custom kernels (causal conv, chunk scan, gated norm); projections/FF profiled; S5 complex products topped up from 1 to 4 real MACs",
+        "notes": "LIF readout: elementwise ops only partly counted by the profiler (negligible); synaptic operations (SOPs) are not accounted here (Stage-22 accounting)"
+      },
+      "latency": {
+        "bf16": {
+          "full": {
+            "mean_ms": 27.153008763489197,
+            "std_ms": 0.18683370819522244,
+            "p50_ms": 27.186682003957685,
+            "p95_ms": 27.48953599802917,
+            "hz": 36.782715884727146,
+            "iters": 300
+          },
+          "network": {
+            "mean_ms": 26.68217306675312,
+            "std_ms": 0.10412357837349316,
+            "p50_ms": 26.652246997400653,
+            "p95_ms": 26.91841199703049,
+            "hz": 37.52028863073077,
+            "iters": 300
+          },
+          "components": {
+            "backbone": {
+              "mean_ms": 20.311104679713026,
+              "std_ms": 0.06313255632562971,
+              "p50_ms": 20.297650000429712,
+              "p95_ms": 20.445791000383906,
+              "hz": 49.26678704080667,
+              "iters": 100
+            },
+            "neck_head": {
+              "mean_ms": 6.290226819910458,
+              "std_ms": 0.034645854967674146,
+              "p50_ms": 6.279504996200558,
+              "p95_ms": 6.377751000400167,
+              "hz": 159.248221094665,
+              "iters": 100
+            },
+            "postprocess": {
+              "mean_ms": 0.5921756000316236,
+              "std_ms": 0.005986513830071512,
+              "p50_ms": 0.5934750006417744,
+              "p95_ms": 0.5996170002617873,
+              "hz": 1684.9909413515581,
+              "iters": 100
+            }
+          },
+          "throughput": {
+            "b4_fps": 143.61573658145429,
+            "b8_fps": 211.25933006703872
+          }
+        },
+        "fp32": {
+          "full": {
+            "mean_ms": 24.097898480055544,
+            "std_ms": 0.16417748141232433,
+            "p50_ms": 24.147988995537162,
+            "p95_ms": 24.31161899585277,
+            "hz": 41.41131587333471,
+            "iters": 300
+          },
+          "network": {
+            "mean_ms": 23.643275513216697,
+            "std_ms": 0.08948719667854785,
+            "p50_ms": 23.61386599659454,
+            "p95_ms": 23.846306998166256,
+            "hz": 42.348000117567125,
+            "iters": 300
+          },
+          "components": {
+            "backbone": {
+              "mean_ms": 19.134647739920183,
+              "std_ms": 0.057940052038443636,
+              "p50_ms": 19.15110599657055,
+              "p95_ms": 19.198936002794653,
+              "hz": 52.21630542795143,
+              "iters": 100
+            },
+            "neck_head": {
+              "mean_ms": 4.667773530090926,
+              "std_ms": 0.02374329646937472,
+              "p50_ms": 4.661095998017117,
+              "p95_ms": 4.723605001345277,
+              "hz": 214.5418160075251,
+              "iters": 100
+            },
+            "postprocess": {
+              "mean_ms": 0.590989950360381,
+              "std_ms": 0.005399153720676039,
+              "p50_ms": 0.5921420015511103,
+              "p95_ms": 0.6006289986544289,
+              "hz": 1688.784104793292,
+              "iters": 100
+            }
+          },
+          "throughput": {
+            "b4_fps": 133.1791651361702,
+            "b8_fps": 183.88723077068857
+          }
+        }
+      },
+      "vram": {
+        "inference_mb": 1311.322265625,
+        "train_mb": 10079.58984375,
+        "state_kb_per_stream": 149100.00390625
+      },
+      "energy": {
+        "idle_w": 48.027297297297295,
+        "idle_pre_w": 48.027297297297295,
+        "idle_post_w": 43.075135135135135,
+        "idle_drift_exceeded": true,
+        "load_w": 68.32509090909092,
+        "j_per_frame": 0.5522438542232041,
+        "frames": 2206,
+        "seconds": 60.01883582600567
+      },
+      "sop": {
+        "constants": {
+          "e_mac_j": 4.6e-12,
+          "e_ac_j": 9e-13,
+          "source": "Horowitz, ISSCC 2014, 45 nm, 32-bit float: MAC 4.6 pJ (3.7 mult + 0.9 add), AC 0.9 pJ; operation-count estimate, memory traffic not modelled"
+        },
+        "dense": {
+          "profiled_macs": 4526520320,
+          "kernel_macs": {
+            "temporal": 113254400,
+            "spatial": 361799680
+          },
+          "total_macs": 5001574400,
+          "excluded_flops_by_op": {
+            "aten::add": 7172256,
+            "aten::mul": 581952
+          }
+        },
+        "spike_fed_macs": {
+          "2": 20971520,
+          "3": 20971520,
+          "4": 10485760
+        },
+        "rates": {
+          "stages": {
+            "2": {
+              "rate": 0.2631792962551117,
+              "rate_min_clip": 0.1767139434814453,
+              "rate_max_clip": 0.3131453514099121,
+              "drift": 0.005422556400299039,
+              "binary": false
+            },
+            "3": {
+              "rate": 0.13993457555770875,
+              "rate_min_clip": 0.11031913757324219,
+              "rate_max_clip": 0.158880615234375,
+              "drift": 0.002389883995056158,
+              "binary": false
+            },
+            "4": {
+              "rate": 0.15666253566741944,
+              "rate_min_clip": 0.1506061553955078,
+              "rate_max_clip": 0.16463241577148438,
+              "drift": -0.00028252601623535156,
+              "binary": false
+            }
+          },
+          "clips": [
+            "17-04-04_11-00-13_cut_15_122500000_182500000",
+            "17-04-13_15-05-43_1769500000_1829500000",
+            "17-04-13_15-05-43_3355500000_3415500000",
+            "17-04-13_15-05-43_500000_60500000",
+            "17-04-14_14-59-17_976500000_1036500000",
+            "17-04-21_06-54-28_2501500000_2561500000",
+            "17-04-21_09-48-10_122500000_182500000",
+            "17-04-21_09-48-10_2867500000_2927500000",
+            "17-06-97_12-14-33_244500000_304500000",
+            "17-08-23_17-07-20_854500000_914500000",
+            "17-08-23_17-50-46_183500000_243500000",
+            "17-10-06_13-18-33_244500000_304500000",
+            "17-10-12_16-10-47_427500000_487500000",
+            "17-10-12_16-51-41_2440500000_2500500000",
+            "17-10-18_15-47-17_1098500000_1158500000",
+            "17-10-18_17-12-44_122500000_182500000"
+          ],
+          "warmup": 32
+        },
+        "op_class": "MAC",
+        "spike_fed_total": 52428800,
+        "driven_ops": 10096636.375,
+        "neurons": 286720,
+        "macs": 4959528956.375,
+        "acs": 0,
+        "energy_j": 0.022813833199325,
+        "energy_dense_j": 0.02300724224,
+        "saving": 0.008406441704636003,
+        "ceiling": 0.010425133334015785,
+        "spike_fed_share": 0.0104824592832209
+      }
+    }
+  }
+}

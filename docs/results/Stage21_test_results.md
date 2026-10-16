@@ -70,3 +70,32 @@ Single seed per arm; all evaluations captured for the bootstrap (`results/stage2
   the spike arm at 36–48 % saves little. Discussion point; also a design hint (event-gated input to the readout).
 - The figure from the tool is not yet in the report style (its stage colours reuse model colours; it has a title):
   restyle before it goes into the report.
+
+## 5. Stage-22 benchmark + SOP energy accounting, graded 400k (2026-10-16)
+
+Run: `stage10_run_local.sh --models all+spikingssm --spikingssm-ckpt a43jctgx/…350000… --spikingssm-test-ap 0.4624`
+(VS Code closed for the idle guard; sha `516710c`, dirty tree = only the user's `draft_main.tex` edit). All four
+models re-measured in one session. Results `results/stage22/graded_400k_with_ann/` (renamed from the default
+`graded_s234_with_ann/` so a later graded-100k run cannot overwrite it): `bench_results.json`, `efficiency_table.md`,
+`sop_table.md`, figures.
+
+| | S5-RVT | EventSSM | PureSSM | SpikingSSM graded 400k |
+|---|---|---|---|---|
+| Params | 18.19 M | 19.18 M | 16.33 M | 16.34 M |
+| GFLOPs | 11.06 | 12.71 | 10.03 | 10.03 |
+| Latency p50 (eager, full) | 16.93 ms | 12.09 ms | 26.46 ms | 27.19 ms |
+| Backbone p50 | 10.41 | 5.19 | 19.64 | 20.30 |
+| Energy / frame (GPU, measured) | 0.701 J | 0.425 J* | 0.641 J | 0.552 J* |
+| State / stream | 4.7 MB | 144.5 MB | 144.5 MB | 145.6 MB |
+
+\* idle-power drift flagged (idle 48.0 → 43.1 W for SpikingSSM, 52.3 → 44.5 W for EventSSM): with the post-run idle
+the SpikingSSM figure would be 0.686 J, so the measured GPU energy is 0.55–0.69 J, overlapping PureSSM. **No GPU energy
+difference is claimed.** The ANN latencies are 1–4 % below the Stage-16 run (12.60 / 17.14 / 26.86 ms): session-to-
+session variation; compare models within one session only.
+
+- The spiking model costs **+0.73 ms** over PureSSM (the per-timestep LIF loop) and **+1.1 MB** of state (membrane).
+- **SOP accounting (operation-count estimate, Horowitz 45 nm constants):** spikes feed 52.4 M of 5.00 G MACs per frame
+  (**1.05 %**); at the measured nonzero rates (s2 0.263, s3 0.140, s4 0.157 over 16 test clips; graded ⇒ priced as
+  sparse MACs) the driven ops are 10.1 M ⇒ estimated **saving 0.84 %** (22.81 vs 23.01 mJ/frame; ceiling 1.04 %).
+  Confirms the pre-registered bound: the energy case for choice C is not an op-count saving on dense hardware; it is
+  neuromorphic deployment of the temporal readout (future work). Memory traffic is not modelled.
