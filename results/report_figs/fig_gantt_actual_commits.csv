@@ -1,0 +1,302 @@
+date,stream,subject
+2026-10-16,writing,fix(report-figs): redraw the Thesis-A Gantt chart (task labels no longer under the bars)
+2026-10-16,writing,"feat(report-figs): shared figure style and four results figures (accuracy by size, training curves, efficiency, robustness)"
+2026-10-16,spike_train,docs(stage21): bootstrap identity check MATCH; fix PYTHONPATH in runbook commands
+2026-10-16,spike_train,"docs(stage20): graded 400k finished, best val/AP 0.4728 at 350k (a43jctgx)"
+2026-10-15,spike_train,docs(stage20): graded 400k resumed from 340k as njlvhdpm
+2026-10-15,spike_train,docs(stage20): graded 400k paused at ~348k (best 0.472 at 340k); resume instructions
+2026-10-15,spike_train,docs(stage20): graded 400k new best val/AP 0.471 at 320k
+2026-10-15,spike_train,"docs(stage20): graded 400k resumed as 94t9he3c, best val/AP 0.469 at 300k"
+2026-10-14,spike_train,feat(spikingssm_np): NumPy reference of the spiking temporal block with parity tests
+2026-10-13,spike_train,docs: graded 400k paused at step 197k; resume instructions for the next session
+2026-10-13,spike_train,"docs(stage20): graded 400k stop at ~197k, resume from 180k; correct checkpoint-on-new-best fact"
+2026-10-13,spike_train,docs(stage20): graded 400k new best val/AP 0.445 at 140k
+2026-10-13,writing,"docs: record the hard limit, final report body no more than 50 pages"
+2026-10-13,writing,docs(admin): add the Thesis C marking rubrics (report and manuscript) and summarise the report rubric
+2026-10-13,writing,docs: describe the structured main.tex correctly in the README and report plan
+2026-10-13,writing,docs(thesis): switch to the standard report; new structured main.tex
+2026-10-13,,"docs: session handoff 2026-10-13, current state, next steps and timeline log"
+2026-10-13,writing,docs(report): add the built October supervisor report PDF
+2026-10-13,writing,docs(report): October supervisor progress report; beta-per-channel result on the 100k checkpoints
+2026-10-12,spike_train,docs(stage20): PureSSM 100k anchor finished (val/AP 0.442); 100k ladder complete; graded 400k running
+2026-10-12,spike_train,docs(stage21): bootstrap Part A built; runbook steps 1-3 done
+2026-10-12,spike_train,"feat(stage21): bootstrap Part A, capture the test evaluator's input per recording"
+2026-10-12,,docs: record the GhostMachine review of the 2026-10-11 Mac work and both fixes
+2026-10-12,spike_train,fix(stage22): threshold-sweep preflight passes --cfg job after the override
+2026-10-12,,fix(tests): gpu-mark every test that requests the CUDA device fixture
+2026-10-12,spike_train,docs(stage20): analog 100k finished (val/AP 0.438); 100k spiking ladder complete; PureSSM anchor running
+2026-10-12,spike_train,"docs(stage20): analog 100k interrupted at ~58k, resumed from the 50k checkpoint"
+2026-10-11,,docs: CLAUDE.md commit rules (no AI attribution) so they apply on every machine
+2026-10-11,,"chore(results): back up small Stage 7-16 result files (figures, JSON, CSV, test-eval text)"
+2026-10-11,spike_train,docs(stage20): graded 100k finished (val/AP 0.425) after a second resume; analog 100k running
+2026-10-11,writing,"docs(presentation): save the talk deck, presentation guide and model explainer to the repo"
+2026-10-11,,test: mark every CUDA-requiring test module as gpu
+2026-10-11,spike_train,feat(stage22): beta-per-channel report and firing-pattern figure (items 5-6)
+2026-10-11,writing,docs(thesis): write the spiking results scaffold and a conference-paper skeleton
+2026-10-11,spike_train,feat(stage21): run the true-rate study on spiking checkpoints (item 3)
+2026-10-11,writing,docs(thesis): state the 50-ms window's latency bound and the latency-accuracy trade-off
+2026-10-11,spike_train,feat(stage22): post-hoc firing-threshold sweep (item 2)
+2026-10-11,spike_train,feat(stage21): ladder figure from the bootstrap result
+2026-10-11,,chore(gitignore): track small result files (png/svg/json/csv/md/txt) under results/; checkpoints and logs stay ignored
+2026-10-11,research,"docs: bring README, docs index and roadmap index up to date (Thesis C, spiking model, current status)"
+2026-10-11,spike_train,"docs(runbooks): GhostMachine next-steps checklist (training, backup, bootstrap, Stage 21-22 evals)"
+2026-10-11,spike_train,feat(stage21): paired sequence-level bootstrap CIs for Gen1 test AP (Part B)
+2026-10-11,inrc,docs: finalise INRC proposal and record the post-training plan
+2026-10-11,spike_build,docs: CLAUDE.md records that Stage 18-20 work is now on main
+2026-10-11,spike_train,docs(stage20): graded 100k interrupted again at 84.6k; resume from the 80k checkpoint
+2026-10-10,spike_train,docs(stage20): graded 100k resumed 2026-10-10 14:30 from the 40k checkpoint as offline run uqhexctz
+2026-10-09,spike_train,docs(runbooks): how to resume the Stage-20 chain after the 2026-10-09 interruption
+2026-10-09,spike_train,docs(stage20): graded 100k interrupted at ~48.1k (GPU needed); resume from the 40k checkpoint
+2026-10-09,spike_train,"docs(stage20): spike 100k arm result (val/AP 0.418), firing-rate and beta observations"
+2026-10-09,spike_train,docs: CLAUDE.md run plan includes the PureSSM 100k anchor (Stage-20 D6)
+2026-10-09,spike_train,feat(stage20): PureSSM 100k anchor launcher for the first ladder rung (D6)
+2026-10-08,inrc,docs(inrc): refresh proposal against the verified SNN landscape and the built spiking model
+2026-10-08,spike_train,"docs(stage20): rung [2,3,4] decided (D5); full suite green on idle GPU before launch"
+2026-10-07,spike_train,"docs(stage19): [2,3,4] rung checks: analog 0.351 / graded 0.340 / spike 0.305; pre-registered ordering holds"
+2026-10-07,writing,"docs: fact-check tracker: D1 plan, D5 done"
+2026-10-07,writing,feat(d1): evaluate RVT's ConvLSTM on the true-rate test set (fact-check decision D1)
+2026-10-07,writing,docs: fact-check tracker statuses and decisions D1-D4
+2026-10-07,writing,"thesis: fact-check fixes, Ch.6-7, limitations, risk register, appendices"
+2026-10-07,writing,"thesis: fact-check fixes, Ch.1-5 and bibliography"
+2026-10-07,writing,"docs: thesis fact-check report (4 high, 25 medium, low/stale items; own numbers all verified)"
+2026-10-07,efficiency,fix(stage10): FLOP add-on counts only unprofiled kernel work; corrected FLOPs in Ch. 5
+2026-10-07,spike_train,"docs(stage22): correct the S5-RVT FLOP total in finding D6 (11.06, not 11.39); review record"
+2026-10-07,spike_train,docs(stage22): SOP accounting records; FLOP-total double count found
+2026-10-07,spike_train,feat(stage22): SOP block in the benchmark JSON and a sop_table.md report
+2026-10-07,spike_train,feat(stage22): nonzero-rate measurement over 16 test sequences; sop block
+2026-10-07,spike_train,"feat(stage22): SOP accounting core (spike-fed MACs, kernel MACs, energy model)"
+2026-10-07,spike_train,docs(plan): Stage 22 SOP and energy accounting implementation plan (spec Revision 2)
+2026-10-07,spike_train,docs(spec): Stage 22 SOP and energy accounting design (draft for review)
+2026-10-07,spike_train,docs: Stage 21-22 tooling decision record; CLAUDE.md and Stage-18 launcher status updated
+2026-10-07,spike_train,fix(stage22): protect the citable benchmark JSON; record the spiking arm
+2026-10-07,spike_train,fix(stage21): allow-list eval args; post-hoc sweeps filed separately
+2026-10-07,spike_train,feat(stage22): spikingssm in the Stage-10/16 benchmark
+2026-10-07,spike_train,feat(stage21): SpikingSSM test-set eval that reads the arm from the checkpoint
+2026-10-07,spike_train,fix(stage20): resume guard refuses a checkpoint from another schedule length
+2026-10-07,spike_train,docs: Stage 20 plan and decisions; correct the timeline's 'free 100k' ablation step
+2026-10-07,spike_train,feat(scripts): Stage-20 full-run wrapper (100k ladder / 400k headline)
+2026-10-07,spike_build,docs: Stage 19 D6 — why the LIF leak beta does not move (and a corrected explanation)
+2026-10-07,spike_build,"docs: Stage 19 decision — 25k checks on rung [2,3,4] for all three arms first"
+2026-10-07,spike_build,docs: Stage 19 25k results and kill-switch verdict (PASS)
+2026-10-06,spike_build,"docs: record Stage-19 run status, thesis-writing state, SNN landscape correction"
+2026-10-06,writing,"thesis: write Ch.2 SNN detectors, spiking SSMs, neuromorphic HW, gaps (9 -> 5 markers)"
+2026-10-06,writing,"thesis: write appendices (event representation, reproducibility, risk) (12 -> 9)"
+2026-10-06,writing,thesis: write Ch.7 summary and future work (17 -> 12 markers)
+2026-10-06,writing,thesis: write §6.1 what the models show and §6.2 neuromorphic case (19 -> 17)
+2026-10-06,writing,thesis: write §6.3 Aim-4 scope change (20 -> 19 markers)
+2026-10-06,writing,thesis: write Ch.5 §5.6 qualitative results (21 -> 20)
+2026-10-06,writing,"thesis: §5.4.3 Δt-rescaling reproduction, soft framing (22 -> 21)"
+2026-10-06,writing,thesis: write Ch.5 §5.2-5.3 interpretation and ERF mechanism (24 -> 22)
+2026-10-06,writing,"docs: temporal blocks are per-scale taps, not RVT-style interleaving"
+2026-10-06,writing,thesis: write Ch.3 EventSSM and PureSSM methodology (26 -> 24 markers)
+2026-10-06,writing,docs: correct Gen1 label provenance and the unsourced per-class pair
+2026-10-06,writing,"thesis: write Ch.4 Experimental Setup (5 markers, 31 -> 26)"
+2026-10-06,spike_build,"docs: Stage 19 notes — spike-smoke spread (systematic FAIL at 150, PASS at 300)"
+2026-10-06,spike_build,"docs: Stage 19 notes — smoke results, spike-gate diagnosis, review fixes"
+2026-10-06,spike_build,"fix(stage19): review fixes; wrapper allow-lists args, pins all recipe knobs"
+2026-10-06,spike_build,test(spikingssm): stage-4-only gradient check; smoke reruns never overwrite
+2026-10-06,spike_build,feat(scripts): Stage-19 25k short-run wrapper with arm-derived labels
+2026-10-06,spike_build,feat(spikingssm): Stage-19 overfit smoke with firing-rate gate
+2026-10-06,writing,docs: supervisor report
+2026-10-06,spike_build,"docs: Stage 18 status — final-review fixes, updated test counts"
+2026-10-06,spike_build,"docs: Stage 18 notes — final-review fixes D13-D15, launcher status, triage"
+2026-10-06,spike_build,style(spikingssm): wrap long lines added in the final-review fixes
+2026-10-06,spike_build,docs(spikingssm): wrap __init__ docstring; SpikingSSMBackbone needs mamba_ssm
+2026-10-06,spike_build,test(integration): pin the copied PureSSM construction in the SpikingSSM branch
+2026-10-06,spike_build,feat(spikingssm): checkpoints carry their ablation arm
+2026-10-06,spike_build,"fix(spikingssm): return the carried membrane detached, like the Mamba state"
+2026-10-06,spike_build,"perf(spikingssm): reduce the firing rate once per forward, not per timestep"
+2026-10-06,spike_build,fix(spikingssm): run the LIF recurrence in fp32 under bf16 autocast
+2026-10-06,spike_build,"docs: Stage 18 notes — accuracy fixes (D3/D5), stale analog wording"
+2026-10-06,spike_build,"docs: Stage 18 notes — D12, analog-arm comments, updated counts"
+2026-10-06,spike_build,fix(integration): reject unknown spiking keys; full LIF-key and monitor-env test coverage
+2026-10-06,spike_build,"docs: Stage 18 integration notes, decision record, analog-arm reframing"
+2026-10-06,spike_build,feat(integration): SpikingSSM selectable via +experiment/gen1=spikingssm
+2026-10-06,spike_train,test(spikingssm): NaN guard + mixed-ladder (spiking_stages=[4]) parity and reset coverage
+2026-10-06,spike_build,feat(monitors): spiking firing-rate monitor with silence/saturation alerts
+2026-10-06,spike_build,test(spikingssm): fraction-based streaming parity + strict no-spike carry check
+2026-10-06,spike_build,feat(spikingssm): SpikingSSMBackbone with spiking-aware state carry
+2026-10-06,spike_build,"fix(spikingssm): lazy firing-rate tensor, reject beta at the eps boundary"
+2026-10-06,spike_build,docs(plan): Stage 18 SpikingSSM integration implementation plan
+2026-10-06,spike_build,docs(spec): Stage 18 SpikingSSM backbone integration design
+2026-09-08,research,docs: correct the SNN target framing; record hybrid-vs-full-spike positioning
+2026-09-08,inrc,"docs(plan): Thesis C timeline, NIR-first INRC proposal, verified SNN citations"
+2026-09-08,writing,docs(thesis): restructure main.tex into the final dissertation
+2026-09-08,spike_build,feat(spikingssm): Stage 17 spiking SSM cell — LIF readout + arctan surrogate
+2026-07-16,writing,docs(notes): supervisor update 2026-07-16 — progress + two forward decisions
+2026-07-16,inrc,docs(inrc): cite Perot et al. 2020 (1Mpx/RED) as [4] in the Loihi rationale
+2026-07-16,inrc,docs(inrc): add 2-page Loihi 2 project proposal (LaTeX source)
+2026-07-16,puressm,docs(roadmap): add PureSSM Stages 11-16 to the roadmap narrative
+2026-07-16,puressm,"Merge repo-restructure: repo cleanup (root/env/thesis/docs) + models/{eventssm,puressm} code split"
+2026-07-16,puressm,"refactor(code): separate models into models/{eventssm,puressm}/ + tests/models/"
+2026-07-16,,refactor(repo): update all path references + add README/docs indexes + INRC notes
+2026-07-16,,refactor(repo): reorganize docs/ into roadmap/results/plans/specs/research/runbooks/notes
+2026-07-16,,chore: gitignore PLAN_FIXES_FOR_CLAUDE.md (never-commit scratch)
+2026-07-16,,"refactor(repo): consolidate dissertation artifacts under thesis/{latex,diagrams,admin}"
+2026-07-16,,"refactor(repo): move env lockfiles to env/, fix cloud-script LOCK_FILE path"
+2026-07-16,,refactor(repo): remove superseded ssm_event_detection standalone sketch
+2026-07-16,puressm,Merge Stage 16: PureSSM pillars + visuals (efficiency/robustness/cuda-graph/EventCV)
+2026-07-16,puressm,docs(stage16): Stage-16 implementation plan + repo restructure proposal
+2026-07-16,puressm,feat(stage16): --label overlay burns the model name into rendered videos (self-identifying)
+2026-07-16,puressm,refactor(stage16): share the Gen1 240x304->256x320 pad step (DRY)
+2026-07-16,puressm,fix(stage16): pad montage rows to 4 columns before vstack + drop unused loop vars
+2026-07-16,puressm,fix(stage16): guard stage9 degradation table/CSV/aggregate on missing logs
+2026-07-16,puressm,fix(stage16): report every non-baseline model's ratio vs baseline
+2026-07-16,puressm,test(stage16): strengthen graph-capture state-carry test to check every step
+2026-07-16,puressm,fix(stage16): free captured CUDA graph before VRAM measurement in stage10 benchmark
+2026-07-16,puressm,"fix(stage16): timestamps_us is (n,2) [start,end] — take window-start column for per-frame pred timestamp"
+2026-07-16,puressm,fix(stage16): stream prediction dump frame-by-frame (was OOM: eager ~16GB/rec load) + correct 4D full_step input shape
+2026-07-16,puressm,feat(stage16): per-frame prediction dump + GT-vs-pred render driver
+2026-07-16,puressm,feat(stage16): shared EventCV event-frame renderer + GT-vs-pred overlay support
+2026-07-16,puressm,docs(stage16): fill efficiency + verified graph-replay — PureSSM leanest FLOPs/best mAP-per-GFLOP but launch-bound; graph 5.3x -> 181Hz (EventSSM still faster both modes)
+2026-07-16,puressm,"docs(stage16): PureSSM true-10x retention 69.7% — MOST rate-robust (beats EventSSM 63%, S5-RVT 62%)"
+2026-07-15,puressm,docs(stage16): note dense-window AP_L robustness sub-finding (PureSSM overtakes S5-RVT @0.25x)
+2026-07-15,puressm,fix(stage16): 3-model true-rate table + retention line; fill validated Regime-1 PureSSM
+2026-07-15,puressm,feat(stage16): optional labeled cuda-graph-replay latency column in the benchmark
+2026-07-15,puressm,feat(stage16): state-carrying CUDAGraph capture for streaming replay
+2026-07-15,puressm,fix(stage16): clone carried conv-state in _scan (unblocks cudagraph replay; byte-parity preserved)
+2026-07-15,puressm,"docs(stage16): scaffold results doc (sizes+accuracy filled, efficiency/robustness/graph/visuals pending)"
+2026-07-15,puressm,feat(stage16): rank test recordings by large-car area for qualitative viz
+2026-07-15,puressm,feat(stage9-plots): add puressm series to degradation and truerate figures
+2026-07-15,puressm,"refactor(stage16): parameterize Stage-9 sweeps for model reuse (DRY, no clones)"
+2026-07-15,puressm,feat(stage16): benchmark --models all (eventssm+baseline+puressm) + report row
+2026-07-15,puressm,feat(stage16): add puressm kind to the Stage-10 benchmark model builder
+2026-07-15,puressm,docs(stage15): trained-weights ERF figure — BiMamba receptive field wider than ResNet (AP_L mechanism)
+2026-07-15,puressm,"docs(stage15): PureSSM Gen1 test eval — 46.43 mAP, AP_L +2.95 vs EventSSM (receptive-field hypothesis confirmed)"
+2026-07-13,puressm,"docs(stage13): log cloud-run execution — 25k val/AP 0.351, 6 setup self-heals, 400k launched"
+2026-07-13,puressm,fix(stage13): cloud setup_env self-heals lock/transformers/wandb bootstrap gremlins
+2026-07-13,puressm,"docs(stage13): log local-prep completion — upload 9435/9435 Hub-verified, runbook 1.3 marked done, status updated"
+2026-07-12,,chore(docs): remap commit anchors after pre-push history rewrite (trailer scrub)
+2026-07-12,puressm,"docs(stage13): real upload-OOM recovery guidance + resume/hf-version/bootstrap-order corrections (final-review I-3, M-1, M-2, M-3, M-5)"
+2026-07-12,puressm,"fix(stage13): launcher respects env overrides + resume shim works online (final-review I-1, I-2, M-4)"
+2026-07-12,puressm,"docs(stage13): build-phase notes + CLAUDE.md status (tasks 1-3 complete, suite 97 green)"
+2026-07-12,puressm,"docs(stage13): runbook round-4 polish — merged-to-main pre-check in 1.4, pre-flight before dataset pull, pinned-commit sample line"
+2026-07-12,puressm,fix(stage13): external/ RVT bootstrap on fresh clones + pre-flight dry-run step (round-3 review showstopper)
+2026-07-12,puressm,fix(stage13): instance HF auth (read token + pull guard) + shell activation in runbook flow (re-review findings)
+2026-07-12,puressm,fix(stage13): instance hf install + cloud CONDA_SH default + runbook main-branch/beginner fixes (review findings)
+2026-07-12,puressm,"docs(stage13): cloud runbook — one-sweep setup checklist (upload, rental, train, retrieve)"
+2026-07-12,puressm,fix(stage13): WANDB_MODE respects wrapper pre-set (cloud online logging) + upload workers knob (review findings)
+2026-07-12,puressm,"feat(stage13): cloud scripts — one-time HF upload, 5090 env bootstrap, dataset pull, short-run launcher (REPO/CONDA parameterized)"
+2026-07-12,puressm,fix(stage13): monitor cadence default 200 + uniform hook crash-guard + cadence test (review findings)
+2026-07-12,puressm,"feat(stage13): env-gated spatial feature-norm + NaN monitor (forward hook, wandb+stdout)"
+2026-07-12,puressm,"docs(stage12): final-review polish — restore smoke docstring/usage line, update expected startup print"
+2026-07-12,puressm,"docs(stage12): close-out — suite 92 green, status updated"
+2026-07-12,puressm,"feat(stage12): PureSSM overfit smoke PASS — 6.0x loss reduction (26.54->4.39, 300 ep) on one real Gen1 batch + integration notes"
+2026-07-12,puressm,"docs(stage13): cloud short-run plan — one-sweep setup (HF upload, 5090 bootstrap, launcher, runbook) + training monitors"
+2026-07-12,puressm,fix(stage12): disable DropPath in overfit smoke — stochastic depth fights single-batch memorization (gate calibrated on DropPath-free baseline)
+2026-07-11,puressm,"feat(stage12): PureSSM overfit smoke (Stage-5 harness, experiment=puressm, checkpointed)"
+2026-07-11,puressm,feat(stage12): PureSSM Hydra config pair + RVT-tree symlinks + smoke-harness experiment kwarg
+2026-07-11,puressm,feat(stage12): PureSSM branch in RVT registration (builder dispatch + config modifier)
+2026-07-11,puressm,"docs(stage12): implementation plan — PureSSM registration, Hydra config pair + symlinks, overfit smoke (4 tasks)"
+2026-07-11,puressm,"fix(stage11): final-review fixes — CLAUDE.md test count, smoke exit code, TF32 flag restore, polish"
+2026-07-11,puressm,"docs(stage11): close-out — suite green, proofs inventory, build-notes verified, status updated"
+2026-07-11,puressm,"docs(stage11): build notes (probe numbers, decisions, review-loop findings, carried minors) + roadmap Stage-16 graph-capture deployment mode"
+2026-07-11,puressm,"feat(stage11): official U3 probe artifacts — eager 18.09ms/39.5Hz, ckpt-train 8.55GB PASS, CUDA-graph replay 3.77ms (4.8x, launch-overhead diagnosis confirmed)"
+2026-07-11,puressm,fix(stage11): ERF probe at averaged random inputs — zeros input silenced ResNet via dead ReLU gradients
+2026-07-11,puressm,feat(stage11): U5 untrained ERF figure — BiMamba global support vs ResNet local blob
+2026-07-11,puressm,fix(stage11): checkpoint engagement spy test + probe display/JSON polish (review findings)
+2026-07-11,puressm,feat(stage11): checkpoint_blocks local-fallback flag + definitive U3 probe with compiled-mode datapoint
+2026-07-11,puressm,docs(puressm): roadmap amendment — Stages 13/14 training moves to rented RTX 5090 32GB cloud (eval + efficiency benchmark stay local)
+2026-07-11,puressm,"perf(stage11): batched bidirectional scan — one conv + one 2-group chunk-scan per block (gate fallback, math-identical)"
+2026-07-11,puressm,feat(stage11): optional spatial-module injection in ResNetMambaBackbone (default path unchanged)
+2026-07-11,puressm,"feat(stage11): BiMambaSpatialStages 4-stage pyramid (depths 2/2/8/2, duck-type of ResNetSpatialStages, param gate test)"
+2026-07-11,puressm,fix(stage11): col-axis mixing test — single-channel perturbation (uniform shift is LayerNorm-invariant)
+2026-07-11,puressm,"feat(stage11): BiMamba2DBlock with axis-alternating scan, zero-init DWConv local mix, vendored DropPath/LayerNorm2d"
+2026-07-11,puressm,fix(stage11): IEEE-forced U1 proof figure + ragged-chunk equivalence coverage (review findings)
+2026-07-11,puressm,"fix(stage11): restore kernel-vs-reference equivalence gate — Triton TF32 tl.dot, not torch's flag"
+2026-07-11,puressm,"test(stage11): scan correctness battery (reference equivalence, flip equivariance, direction liveness, bf16) + U1 proof figure"
+2026-07-11,puressm,"feat(stage11): BiMamba1DScan bidirectional spatial scan core (shared proj/gate, per-direction conv/A/dt/D)"
+2026-07-11,puressm,docs(puressm): Stage 11-16 roadmap with milestone gates + detailed Stage-11 TDD implementation plan
+2026-07-11,puressm,docs(puressm): Stage 11-16 design spec (BiMamba spatial backbone) + EventCV assessment
+2026-07-11,puressm,"docs(status): EventSSMDetector investigation complete — stages 0-10 results, next steps (PureSSM fork)"
+2026-07-11,efficiency,"fix(stage10): final-review fixes — provenance, env guards, sampler timeout, energy drift check, incremental dump"
+2026-07-11,temporal,docs(stage9): two-regime results chapter draft + methodology verdict with falsification addenda
+2026-07-11,temporal,"feat(stage9): two-regime tooling — true-rate renders, eval grids, degradation figures"
+2026-07-11,temporal,"feat(stage9): dt-rescaling hooks (S5 step_scale env, Mamba delta-scaling) + parity tests + falsification probes + persisted patches"
+2026-07-11,efficiency,feat(stage10): run checklist for the benchmark re-run + report
+2026-07-11,efficiency,fix(stage10): runtime-profiler FLOP counting fallback (fvcore untraceable on SSM kernels)
+2026-07-11,efficiency,"fix(stage10): fvcore tracing (freeze grads, fp32) + surface incomplete-FLOPs caveat in report"
+2026-07-11,efficiency,"feat(stage10): reporter — efficiency table, Pareto, component bars"
+2026-07-11,efficiency,fix(stage10): launcher guard fails closed on unparseable nvidia-smi output
+2026-07-11,efficiency,feat(stage10): guarded launcher (refuses non-idle GPU)
+2026-07-11,efficiency,feat(stage10): GPU orchestrator with schema validation and smoke mode
+2026-07-10,efficiency,feat(stage10): real Gen1 bench clip extraction with cache
+2026-07-10,efficiency,"feat(stage10): model construction + BenchModel wrapper (real ckpts, uniform interface)"
+2026-07-10,efficiency,feat(stage10): analytic Mamba-2/S5 FLOP formulas + fvcore wrapper
+2026-07-10,efficiency,"feat(stage10): measurement primitives (timing, VRAM, power sampling, state bytes)"
+2026-07-10,efficiency,docs(stage10): implementation plan — 8 TDD tasks for the efficiency benchmark harness
+2026-07-10,efficiency,"docs(stage10): efficiency-benchmark design spec (measure/report split, 5 metrics, real ckpts+data)"
+2026-06-19,temporal,feat(stage9): raw .dat->.dat.h5 converter + event-video tooling + dataset notes
+2026-06-19,temporal,docs(stage9): temporal-generalisation rationale + raw-data sourcing findings
+2026-06-19,eventssm,feat(stage8): per-class car/ped AP read-out + S5-RVT baseline eval
+2026-06-19,,chore(thesis): update project status doc and Stage-3 visual proofs
+2026-06-19,inrc,"docs(spiking-ssm): Loihi/INRC opportunity, deep-dive lit review, reference library"
+2026-06-19,eventssm,feat(stage7-8): full 400k-run launcher + Gen1 test-eval tooling
+2026-06-17,eventssm,"fix(stage7): correct checkpoint/resume path (hydra chdir=False, Hydra 1.3)"
+2026-06-17,eventssm,fix(stage7): full val (1.0) instead of fractional limit_val_batches (IterableDataset)
+2026-06-17,eventssm,Merge Stage 7a: local overnight mid-run launcher (full-Gen1 100k-step OneCycle)
+2026-06-17,eventssm,"docs(stage7): flag legacy Stage-7 doc, point at as-built drop-in path"
+2026-06-17,eventssm,docs(stage7): local mid-run launch + resume + monitoring checklist
+2026-06-17,eventssm,feat(stage7): add local overnight mid-run launcher
+2026-06-17,eventssm,feat(stage7): generalise stage6_overrides.sh with backward-compatible run knobs
+2026-06-17,eventssm,plan(stage7): local mid-run implementation plan (overrides + launcher + docs)
+2026-06-17,eventssm,docs(stage7): local mid-run design spec (overnight 100k-step full-data signal)
+2026-06-16,eventssm,Merge Stage 6: Mamba-2 unified TBPTT backbone + short-training artifacts
+2026-06-16,eventssm,"refactor(stage6): apply code-review cleanups (shared gen1_paths + run overrides, wandb idempotency guard, not-loaded config header, robust curve-plotter)"
+2026-06-16,eventssm,proof(stage6): recover short-run training curves + val/AP=0.125 (report Phase B complete)
+2026-06-16,eventssm,fix(stage6): disable wandb checkpoint-artifact logging when offline (_entity AttributeError)
+2026-06-16,eventssm,fix(stage6): batch 4 + expandable_segments for seq_len=21 VRAM (bs8 OOM on 16GB)
+2026-06-16,eventssm,fix(stage6): supply mandatory wandb.group_name; sync run-fix tables (5 launcher fixes)
+2026-06-16,eventssm,fix(stage6): guard conda activation from set -u (NVCC_PREPEND_FLAGS unbound)
+2026-06-16,eventssm,"docs(stage6): stage report (Mamba-2 unified TBPTT; Phase A complete, Phase B pending run)"
+2026-06-16,eventssm,feat(stage6): short-training launcher + run scripts (local + Katana SLURM) + monitoring/fixes doc
+2026-06-16,eventssm,feat(stage6): fixed-seed 10%-recording train-subset builder (ISSUE-10)
+2026-06-16,eventssm,proof(stage6): health re-run (no dead temporal) + param-count delta
+2026-06-16,eventssm,proof(stage6): overfit smoke re-passes on Mamba-2 backbone (>=3x)
+2026-06-16,eventssm,proof(stage6): TBPTT carried-state equivalence (visual)
+2026-06-16,eventssm,feat(stage6): config d_state=64 + backbone.in_stages mirror of fpn.in_stages
+2026-06-16,eventssm,feat(stage6): builder threads temporal_stages (Finding §8) + d_state=64 default
+2026-06-12,eventssm,fix(stage6): correct conv-state carry for L<d_conv-1 (L=1 streaming inference)
+2026-06-12,eventssm,feat(stage6): backbone temporal on FPN stages only + unified state threading
+2026-06-12,eventssm,harden(stage6): symbolic state-shape asserts + headdim/state-length guards (temporal block)
+2026-06-12,eventssm,test(stage6): bf16 autocast coverage for Mamba-2 temporal block
+2026-06-12,eventssm,feat(stage6): Mamba-2 temporal block (unified stateful path)
+2026-06-12,eventssm,harden(stage6): d_ssm/L asserts + clarify detach + grad-flow test for mamba2 scan
+2026-06-12,eventssm,feat(stage6): unified Mamba-2 stateful scan + TBPTT equivalence test
+2026-06-12,eventssm,docs(stage6): implementation plan (12 tasks: Mamba-2 unified TBPTT + short-training artifacts)
+2026-06-12,eventssm,docs(stage6): design spec (Mamba-2 unified TBPTT parity + short training)
+2026-06-12,eventssm,"docs(stage5): stage report (overfit + health results, findings, Stage-6 prereqs)"
+2026-06-12,eventssm,"fix(stage5): address code-review (config-modifier test, tighter grad gate, SLURM bookkeeping)"
+2026-06-12,eventssm,"docs(stage5): reconcile smoke-testing doc to the drop-in design (20-ch, LstmStates, SimOTA)"
+2026-06-12,eventssm,feat(stage5): health probes (grad-flow + VRAM sweep + eval-step latency)
+2026-06-12,eventssm,feat(stage5): overfit smoke on real Gen1 batch (loss reduction + curve)
+2026-06-12,eventssm,"feat(stage5): experiment config + register patches config-modifier (in_res_hw, num_classes) for ResNetMamba; smoke harness composes real train config"
+2026-06-12,eventssm,feat(stage5): smoke dataset builder (symlink real test seqs into train/val/test)
+2026-06-12,eventssm,docs(stage5): smoke-testing implementation plan (6 tasks)
+2026-06-12,eventssm,docs(stage5): smoke-testing design spec (overfit real data + health probes; reconcile stale doc)
+2026-06-12,research,docs(research): UAV event-dataset augmentation exploration + open questions
+2026-06-12,eventssm,docs(stage4): stage report (added/changed/findings; stage-1 temporal finding)
+2026-06-12,eventssm,test(stage4): numeric state round-trip + bool-mask reset + carried-state tests; tighten grad-coverage guard
+2026-06-12,eventssm,docs(stage4): mark integration complete; backbone is RVT-contract-compatible
+2026-06-12,eventssm,feat(stage4): synthetic full-model integration smoke + proof table
+2026-06-12,eventssm,feat(stage4): tracked resnet_mamba_yolox Hydra config (symlinked into gitignored RVT tree)
+2026-06-12,eventssm,feat(stage4): register also patches the detector module's bound builder
+2026-06-12,eventssm,"feat(stage4): RVT-compatible backbone state (dim0=B, None-free; train zero placeholder)"
+2026-06-12,eventssm,"feat(stage4): backbone returns (L,B,c,h,w) features for RVT v[tidx] contract"
+2026-06-12,eventssm,docs(stage4): drop-in integration design spec
+2026-06-12,eventssm,fix+docs(stage3): channels 10->20 + reconcile stage plans to as-built design
+2026-06-06,eventssm,"docs(stage0-3): design spec, blueprint, audit, head interface, stage plans, figures, superpowers specs/plans; CLAUDE.md status -> Stage 3 complete"
+2026-06-06,eventssm,"refactor(stage3): code-review cleanups (single-source dims, derived stage count, doc contract params) + proof artifacts"
+2026-06-06,eventssm,feat(stage3): register ResNetMamba backbone (monkeypatch) + Hydra reference config
+2026-06-06,eventssm,feat(stage3): Unit 3 ResNetMambaBackbone + PAFPN/head integration smoke
+2026-06-06,eventssm,"feat(stage3): Unit 2 MambaTemporalBlock (time-axis, dual-path stateful) + tests + proof"
+2026-06-06,eventssm,feat(stage3): Unit 1 ResNetSpatialStages (10-ch avg-proj) + tests + proof
+2026-06-06,eventssm,spike(stage3): validate cross-clip Mamba-1 state; dual-path scan (train parallel / eval step)
+2026-06-06,eventssm,feat(stage3): scaffold event_ssm package + pytest conftest
+2026-06-05,mvp,"Update project status: S5-RVT baseline reproduced (47.7 mAP),   Linux/5070 Ti primary"
+2026-06-05,mvp,Port MVP to RTX 5070 Ti (Blackwell); consolidate thesis tree
+2026-06-05,,added new
+2026-06-05,mvp,"Refactor: replace papers directory, update tex files, and clean up MVP markdown notes"
+2026-04-17,mvp,Add MVP status tracker and fix requirements.txt path in setup guide
+2026-04-15,mvp,"Add complete MVP setup guides, references audit, and report planning docs"
+2026-04-15,mvp,"Initial commit: thesis LaTeX, SSM codebase, MVP guides"

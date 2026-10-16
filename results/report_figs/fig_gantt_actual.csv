@@ -1,0 +1,52 @@
+row,week_monday,kind
+mvp,2026-04-13,commit week
+mvp,2026-06-01,commit week
+eventssm,2026-06-01,commit week
+eventssm,2026-06-08,commit week
+eventssm,2026-06-15,commit week
+temporal,2026-06-15,commit week
+temporal,2026-07-06,commit week
+efficiency,2026-07-06,commit week
+efficiency,2026-10-05,commit week
+puressm,2026-07-06,commit week
+puressm,2026-07-13,commit week
+spike_build,2026-09-07,commit week
+spike_build,2026-10-05,commit week
+spike_train,2026-10-05,commit week
+spike_train,2026-10-12,commit week
+research,2026-06-08,commit week
+research,2026-09-07,commit week
+research,2026-10-05,commit week
+inrc,2026-06-15,commit week
+inrc,2026-07-13,commit week
+inrc,2026-09-07,commit week
+inrc,2026-10-05,commit week
+writing,2026-07-13,commit week
+writing,2026-09-07,commit week
+writing,2026-10-05,commit week
+writing,2026-10-12,commit week
+gpu,2026-06-16T15:36,run to 2026-06-16T22:09: Stage 6 short runs
+gpu,2026-06-17T11:34,run to 2026-06-18T04:45: Stage 7 mid-run
+gpu,2026-06-18T07:46,run to 2026-06-19T12:26: EventSSM 400k
+gpu,2026-07-13T00:00,"run to 2026-07-15T23:59: PureSSM 25k + 400k (cloud RTX 5090, day-level)"
+gpu,2026-10-06T21:53,run to 2026-10-07T21:48: Stage 19 25k pilots
+gpu,2026-10-08T22:41,"run to 2026-10-09T19:02: spike 100k, graded 100k (stopped)"
+gpu,2026-10-10T14:30,"run to 2026-10-10T20:36: graded 100k (resumed, stopped)"
+gpu,2026-10-11T11:14,"run to 2026-10-12T07:05: graded 100k, analog 100k"
+gpu,2026-10-12T07:05,run to 2026-10-12T20:31: PureSSM 100k anchor
+gpu,2026-10-12T20:31,run to 2026-10-13T23:52: graded 400k (stopped)
+gpu,2026-10-14T17:45,"run to 2026-10-15T16:48: graded 400k (resumed, stopped)"
+gpu,2026-10-15T19:02,"run to 2026-10-15T20:15: graded 400k (resumed, stopped)"
+gpu,2026-10-16T01:52,run to 2026-10-16T10:06: graded 400k (finished)
+mvp,2026-06-05,milestone: S5-RVT reproduced (47.7)
+eventssm,2026-06-19,milestone: EventSSM test 46.2
+temporal,2026-07-11,milestone: Δt rescaling not reproducible
+efficiency,2026-07-11,milestone: first efficiency results
+puressm,2026-07-15,"milestone: PureSSM test 46.4, AP$_L$ +3.0"
+research,2026-09-07,milestone: Thesis-C plan
+spike_build,2026-10-07,milestone: kill-switch passed
+spike_train,2026-10-12,milestone: see next
+spike_train,2026-10-16,"milestone: 100k ladder (12 Oct), 400k (16 Oct)"
+inrc,2026-07-16,milestone: proposal drafted
+inrc,2026-10-11,milestone: finalised
+writing,2026-10-13,milestone: restructured

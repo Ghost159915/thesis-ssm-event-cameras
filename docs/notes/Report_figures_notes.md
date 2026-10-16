@@ -27,6 +27,7 @@ Data collectors: `extract_val_histories.py` (W&B offline files → `val_historie
 | 12 | LIF membrane panel | Methodology | exists (`thesis/supervisor_report/figs/fig_lif_panel.png`) |
 | 13 | β per channel | Appendix | exists (`results/stage22/beta/beta_100k.png`) |
 | 14 | `fig_gantt`: the Thesis-A plan, redrawn (task names were under the first bar in the old PNG) | Appendix C | **done**; bars/milestones measured from the old PNG's pixels; bars split and shaded by term (ordinal sequential blue); `main.tex` + `draft_main.tex` now include `images/fig_gantt.pdf` (old `Ghantt Chart.png` kept for `LitReview_ThesisA.tex`) |
+| 15 | `fig_gantt_actual`: the timeline as executed (user request 2026-10-16) | Appendix C, after `fig_gantt` | **done**; see §4 |
 
 Not made, on purpose: a plot of our models against the SNN detectors (the pre-registration rules out leaderboard
 framing; `tab:snn_landscape` already gives the context).
@@ -66,3 +67,23 @@ framing; `tab:snn_landscape` already gives the context).
 - **PureSSM 400k training curve is not available locally** (cloud run, W&B online `honest-violet-3`; no W&B login
   on GhostMachine), so `fig_training_curves` (b) shows its best checkpoint as a point. A CSV export of `val/AP`
   from the W&B web UI would let it be drawn as a curve.
+
+## 4. How `fig_gantt_actual` is built (evidence, not recollection)
+
+- **Work-stream rows:** a calendar week is filled when at least one commit of that stream was authored in it. Each
+  commit subject is mapped by ordered regex rules (`STREAM_RULES`, first match wins; `chore*` and `refactor(repo)`
+  are housekeeping and dropped). 285 of 301 commits map to a stream; the remaining 16 are housekeeping. Every
+  commit's mapping is in `results/report_figs/fig_gantt_actual_commits.csv`, so the chart can be audited and the
+  rules corrected. Two rule pitfalls found and fixed while building it: "100k/400k" also matched the EventSSM and
+  PureSSM 400k-run commits, and "bootstrap" matched the Stage-13 cloud *environment* bootstrap.
+- **GPU-training row:** exact spans of every run from the W&B offline folders (folder timestamp = start, newest file
+  = end), coloured by model (the PureSSM 100k anchor inside the October ladder is orange); the two cloud PureSSM
+  runs (13–15 Jul) only to day precision (no local W&B files).
+- **Milestones:** dated results from CLAUDE.md and the stage notes; labels sit in free space beside the week block.
+- **Not captured:** work outside the repository, and Thesis-A work before the first commit (15 Apr 2026). Only T3
+  is shaded: the T1/T2 2026 term dates are not recorded in the repo, and a web search (2026-10-16) found only
+  aggregator sites that contradict the known T3 dates, so they were not used. Add them to `fig_gantt_actual.py`
+  if the user supplies them.
+- Visible pattern: bursts in early June, mid June, mid July, early September and October; nothing committed
+  20 Jul – 6 Sep and 14 Sep – 4 Oct.
+
