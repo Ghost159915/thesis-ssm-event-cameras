@@ -14,12 +14,14 @@ finish before morning on the PC.
 ## 1. GPU chain — `tmux new -s night` (≈ 12–13 h)
 
 Separate terminal (Ctrl+Alt+T), not VS Code. Paste, then `Ctrl-b d`. Independent jobs are joined with `;` so one
-failure does not stop the night; the `until` loop waits for VS Code to close (idle guard < 1500 MiB, see memory
-note on VS Code's 526 MiB).
+failure does not stop the night; the first loop waits for the VS Code process (`pgrep -x code`) to exit, the second
+for the idle guard (< 1500 MiB). Memory alone is not a reliable signal: after the 2026-10-17 01:05 reboot the GPU
+showed 1404 MiB with VS Code open, so a memory-only wait would have started the benchmarks with VS Code running.
+**Started 2026-10-17 ≈ 01:15** (the 16th's plan slipped; machine rebooted 01:05, earlier tmux sessions gone).
 
 ```bash
 cd ~/Desktop/thesis-ssm-event-cameras; S=$PWD/code/event_ssm/scripts; R=$PWD/external/ssms_event_cameras/RVT/RVT; rm -f ~/bench_done.flag; \
-echo "waiting for VS Code to close..."; until [ "$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits)" -lt 1450 ]; do sleep 5; done; sleep 20; \
+echo "waiting for VS Code to close..."; while pgrep -x code >/dev/null; do sleep 5; done; until [ "$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits)" -lt 1450 ]; do sleep 5; done; sleep 20; \
 bash $S/stage10_run_local.sh --models spikingssm --spikingssm-ckpt $R/5ykgl80y/checkpoints/last_epoch=002-step=100000.ckpt --spikingssm-test-ap 0.4018 --out $PWD/results/stage22/spike_100k; \
 bash $S/stage10_run_local.sh --models spikingssm --spikingssm-ckpt $R/rnak3sms/checkpoints/last_epoch=000-step=100000.ckpt --spikingssm-test-ap 0.4072 --out $PWD/results/stage22/graded_100k; \
 bash $S/stage10_run_local.sh --models spikingssm --spikingssm-ckpt $R/sx14rpo8/checkpoints/last_epoch=002-step=100000.ckpt --spikingssm-test-ap 0.4225 --out $PWD/results/stage22/analog_100k; \
