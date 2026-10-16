@@ -1,0 +1,9 @@
+task,first_week,last_week,milestone,milestone_week
+Literature review & foundations,1,12,,
+MVP reproduction (S5-RVT),8,16,M1,16
+Architecture design,13,18,M2,19
+Dataset preparation,14,18,,
+Model training & benchmarking,18,24,M3,24
+Temporal generalisation eval.,23,26,,
+Simulation integration,25,31,M4,31
+Thesis writing,28,40,M5,40

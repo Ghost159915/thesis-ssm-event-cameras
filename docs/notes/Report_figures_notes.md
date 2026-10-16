@@ -26,6 +26,7 @@ Data collectors: `extract_val_histories.py` (W&B offline files → `val_historie
 | 11 | spike vs graded on the same frames | Discussion | needs SpikingSSM support in `stage16_dump_predictions.py` |
 | 12 | LIF membrane panel | Methodology | exists (`thesis/supervisor_report/figs/fig_lif_panel.png`) |
 | 13 | β per channel | Appendix | exists (`results/stage22/beta/beta_100k.png`) |
+| 14 | `fig_gantt`: the Thesis-A plan, redrawn (task names were under the first bar in the old PNG) | Appendix C | **done**; bars/milestones measured from the old PNG's pixels; bars split and shaded by term (ordinal sequential blue); `main.tex` + `draft_main.tex` now include `images/fig_gantt.pdf` (old `Ghantt Chart.png` kept for `LitReview_ThesisA.tex`) |
 
 Not made, on purpose: a plot of our models against the SNN detectors (the pre-registration rules out leaderboard
 framing; `tab:snn_landscape` already gives the context).
