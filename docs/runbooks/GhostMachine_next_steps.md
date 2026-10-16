@@ -47,7 +47,7 @@ Follow `docs/runbooks/Stage21_bootstrap_ghostmachine.md` steps 2–3:
 Order (Stage-20 plan): graded 100k (resumed) → analog 100k → PureSSM 100k anchor → graded 400k.
 
 - [x] graded 100k (resumed twice) → analog 100k (resumed once) → PureSSM 100k anchor: **all done 2026-10-12** (val 0.425 / 0.438 / 0.442; spike 0.418).
-- [x] **Graded 400k: the chain continued into it** (started 2026-10-12 20:31, W&B `x3nh6fb0`, ends ≈ Thu 15 Oct). Section E starts when it ends.
+- [x] **Graded 400k: done 2026-10-16 10:06** (started 2026-10-12 20:31; three interruptions, W&B `x3nh6fb0` → `94t9he3c` → `njlvhdpm` → `a43jctgx`). Best val/AP 0.4728 @ 350k: `a43jctgx/checkpoints/epoch=006-step=350000-val_AP=0.47.ckpt` (use this one in E2). Section E can start.
 - [ ] ~~Decide on the graded 400k run~~ (decided: running) (≈ 56 h). It is the pre-registered headline, but the ladder and §5.7 only
       need the 100k runs. Recommendation: let the three 100k runs + anchor finish, do section E, and start the 400k
       run only if the calendar allows.

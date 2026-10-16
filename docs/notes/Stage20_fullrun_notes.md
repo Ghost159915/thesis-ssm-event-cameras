@@ -217,7 +217,7 @@ PureSSM ≥ analog.
 - Best = last = step 100k: `igk6myyb/checkpoints/epoch=002-step=100000-val_AP=0.44.ckpt`. The `&&` chain started
   graded 400k.
 
-### 3.6 Graded arm, `[2,3,4]`, 400k (W&B offline `x3nh6fb0` → `94t9he3c`, started 2026-10-12 20:31:11; one interruption, resumed 2026-10-14 17:45)
+### 3.6 Graded arm, `[2,3,4]`, 400k (W&B offline `x3nh6fb0` → `94t9he3c` → `njlvhdpm` → `a43jctgx`, started 2026-10-12 20:31:11, finished 2026-10-16 10:06:57, exit 0; three interruptions, all resumed)
 - val/AP 0.212 / 0.304 / 0.328 / 0.355 / 0.374 / 0.379 / 0.394 / 0.411 / 0.420 at 10k–90k; at 100k below 0.420 (not a
   new best, so Lightning printed no value); **0.436 at 110k** (2026-10-13 ≈ 10:30), already above the graded 100k
   run's final 0.425; 120k and 130k below 0.436 (no value printed); **0.445 at 140k** (2026-10-13 ≈ 15:30), above
@@ -260,3 +260,34 @@ PureSSM ≥ analog.
   confirms `resume guard: checkpoint schedule matches 400000 steps` and `Restored all states from
   …94t9he3c/…/last_epoch=006-step=340000.ckpt`. ≈ 60k steps ≈ 8.3 h ⇒ finish ≈ 2026-10-16 ≈ 03:20. Final best =
   max over `94t9he3c` (0.472 @ 340k) and `njlvhdpm` (its 350k "new best" may sit below 0.472, as at 190k).
+- **Third interruption, 2026-10-15 20:15:06 (Ctrl-C, exit 1)**, 73 min after the second resume, at step ≈ 349.9k: the
+  350k validation had not started, so `njlvhdpm` wrote no checkpoint (its checkpoint dir was never created) and the
+  resume point stayed at 340k (≈ 10k steps redone). `njlvhdpm` contributes no checkpoint and no val/AP.
+- **Resumed (third time) 2026-10-16 01:52:50** (tmux `stage20`, console
+  `results/stage20/graded_s234_400k/console_20261016_015250.log`, fourth W&B offline id **`a43jctgx`**, checkpoint dir
+  `a43jctgx/checkpoints/`). Log confirms `resume guard: checkpoint schedule matches 400000 steps` and `Restored all
+  states from …94t9he3c/…/last_epoch=006-step=340000.ckpt`; 2.29–2.32 it/s. Same data-order deviation as before
+  (three restarts: 180k, 340k, 340k).
+- val/AP after the third resume (exact values from the W&B offline history; Lightning printed only the 350k value):
+
+  | step | val/AP | AP_50 | AP_S | AP_M | AP_L |
+  |---|---|---|---|---|---|
+  | **350k** | **0.4728** | 0.7207 | 0.3993 | 0.5370 | 0.3819 |
+  | 360k | 0.4701 | 0.7200 | 0.3988 | 0.5332 | 0.3781 |
+  | 370k | 0.4679 | 0.7142 | 0.3959 | 0.5334 | 0.4622 |
+  | 380k | 0.4718 | 0.7177 | 0.4015 | 0.5353 | 0.4135 |
+  | 390k | 0.4701 | 0.7173 | 0.3958 | 0.5352 | 0.4297 |
+  | 400k | 0.4714 | 0.7197 | 0.4000 | 0.5346 | 0.3848 |
+
+  Overall AP is flat at 0.468–0.473 over the last 60k steps (converged). Val AP_L swings by 8 points between
+  neighbouring checkpoints (0.378–0.462) while overall AP moves 0.5, so val AP_L of a single checkpoint is not a
+  usable signal; the test set (and its bootstrap CI) decides any AP_L claim.
+- **Finished 2026-10-16 10:06:57** (`Trainer.fit` stopped: `max_steps=400000` reached, exit 0); 60k steps in 8 h 14 min
+  including validation.
+- **Final best across all four dirs = `a43jctgx/checkpoints/epoch=006-step=350000-val_AP=0.47.ckpt` (0.47284)**, above
+  `94t9he3c` 0.47199 @ 340k (by 0.0009, i.e. a tie within the wobble) and `x3nh6fb0` 0.456 @ 180k. This is the
+  Stage-21 test-eval checkpoint. No 400k checkpoint exists (checkpoints are written only on a new best, see above);
+  evaluating the best-val checkpoint is the same protocol as EventSSM (320k) and PureSSM (310k).
+- Context (not a ladder gap, D1): graded 100k val 0.425 → graded 400k 0.473 (+4.8 from schedule length); PureSSM 400k
+  (Stage 14, cloud RTX 5090) val 0.48 @ 310k (two-decimal value from the checkpoint name, so 0.475–0.485) ⇒ graded 400k
+  sits 0.2–1.2 points below it on val. The test eval gives the comparable number.
