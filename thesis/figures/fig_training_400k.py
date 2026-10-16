@@ -30,6 +30,10 @@ RUNS_400K = [("eventssm_400k", "eventssm", "EventSSM"), ("puressm_400k", "puress
              ("graded_400k", "graded", "SpikingSSM (graded)")]
 RESTORES = {"graded_400k": (180_000, 340_000)}
 SMOOTH = 15                                             # logged steps (~8k training steps) in the moving average
+# where each run's best-validation label sits relative to its point in (a): offset (pt), ha, va. EventSSM's curve is
+# the lowest at the end, so its label goes below; the two upper runs peak 40k apart, so they split left/right.
+BEST_LABEL = {"eventssm": ((0, -5), "center", "top"), "puressm": ((-2, 4), "right", "bottom"),
+              "graded": ((2, 4), "left", "bottom")}
 
 
 def smooth(y: list[float], n: int = SMOOTH) -> np.ndarray:
@@ -44,6 +48,19 @@ def series(data, run, key, scale=1.0):
     if not s:
         return None, None, None
     return (np.asarray(s["step"]) / 1000, np.asarray(s["value"]) * scale, np.asarray(s["hours"]))
+
+
+def repel(ys: list[float], gap: float) -> list[float]:
+    """End-label positions: the values in order, pushed apart to at least `gap`, centred on the original block."""
+    order = sorted(range(len(ys)), key=lambda i: ys[i])
+    pos = [ys[i] for i in order]
+    for k in range(1, len(pos)):
+        pos[k] = max(pos[k], pos[k - 1] + gap)
+    shift = (sum(ys[i] for i in order) - sum(pos)) / len(pos)     # keep the block centred on the data
+    out = [0.0] * len(ys)
+    for k, i in enumerate(order):
+        out[i] = pos[k] + shift
+    return out
 
 
 def legend_top(fig, handles, labels, y=1.0):
@@ -63,8 +80,9 @@ def fig_main(data, runs) -> None:
                     linewidth=1.4, label=name)
             if key == "val/AP":
                 b = int(np.argmax(y))
-                ax.annotate(f"{y[b]:.1f}", (x[b], y[b]), xytext=(0, 4), textcoords="offset points", ha="center",
-                            va="bottom", fontsize=7, color=rs.INK)
+                off, ha, va = BEST_LABEL[style]
+                ax.annotate(f"{y[b]:.1f}", (x[b], y[b]), xytext=off, textcoords="offset points", ha=ha,
+                            va=va, fontsize=7, color=rs.INK)
             rows += [{"panel": tag, "run": run, "metric": key, "step_k": float(a), "value": round(float(b_), 3)}
                      for a, b_ in zip(x, y)]
         ax.set_ylabel(title, fontsize=8)
@@ -130,14 +148,18 @@ def fig_firing(data) -> None:
     fig, axes = plt.subplots(1, 3, figsize=(rs.TEXT_WIDTH, 2.4), sharey=True, gridspec_kw={"wspace": 0.12})
     rows = []
     for ax, stage, tag in zip(axes, (2, 3, 4), "abc"):
+        ends = []
         for run, style, name, ls in arms:
             x, y, _ = series(data, run, f"monitor/spk_rate_s{stage}")
             frac = x / x.max() * 100
             ax.plot(frac, smooth(y, 9), ls, color=rs.colour(style), linewidth=1.5, label=name)
-            ax.annotate(f"{y[-1]:.2f}", (100, smooth(y, 9)[-1]), xytext=(3, 0), textcoords="offset points",
-                        va="center", fontsize=6.5, color=rs.INK)
+            ends.append((smooth(y, 9)[-1], f"{y[-1]:.2f}"))
             rows += [{"stage": stage, "run": run, "schedule_pct": round(float(a), 2), "rate": round(float(b), 4)}
                      for a, b in zip(frac, y)]
+        # end labels, pushed apart where two arms finish at the same rate (graded 100k/400k, analog/spike)
+        for (y_end, text), y_lab in zip(ends, repel([e[0] for e in ends], 0.034)):
+            ax.annotate(text, (100, y_end), xytext=(103, y_lab), textcoords="data", va="center", fontsize=6.5,
+                        color=rs.INK)
         ax.set_xlim(0, 112)
         ax.set_xticks([0, 25, 50, 75, 100])
         ax.set_xlabel("Schedule completed (%)", fontsize=8)

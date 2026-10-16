@@ -65,14 +65,20 @@ Single seed per arm; all evaluations captured for the bootstrap (`results/stage2
 | spike | 3 | 0.356 | 0.323–0.364 | +0.22 |
 | spike | 4 | 0.391 | 0.349–0.393 | +0.13 |
 
+After the first 32 frames (state warm-up from zero, the SOP benchmark's convention; used by the report figure
+`fig_firing_pattern` and the thesis text, 2026-10-16): graded 0.281 / 0.125 / 0.100, range 0.268–0.293 / 0.095–0.158 /
+0.097–0.102, r **+0.65** / +0.00 / +0.01; spike 0.480 / 0.357 / 0.391, range 0.467–0.495 / 0.350–0.364 / 0.389–0.393,
+r −0.41 / +0.21 / +0.15. The warm-up transient caused graded stage 3's r = 0.13 above; excluding it strengthens the
+finding.
+
 - Rates at inference match the training-time monitor (`fig_spiking_firing`), so the monitor is representative.
 - **The sparsity is structural, not event-driven.** Only graded stage 2 tracks scene activity (r = 0.64), and even
   there the rate moves within 27–29 %; stages 3–4 and every spike stage are flat. The readout does not fall silent
   when the scene is quiet, because the dense Mamba state upstream keeps driving it. Consequence for the energy
   argument (Stage 22 SOP): savings come from a fixed low rate (graded ≈ 10–28 %), not from input-dependent activity;
   the spike arm at 36–48 % saves little. Discussion point; also a design hint (event-gated input to the readout).
-- The figure from the tool is not yet in the report style (its stage colours reuse model colours; it has a title):
-  restyle before it goes into the report.
+- Report-style figure: `thesis/figures/fig_firing_pattern.py` → `fig_firing_pattern.{pdf,png}` (colour = arm, one panel
+  per stage, warm-up shaded).
 
 ## 5. Stage-22 benchmark + SOP energy accounting, graded 400k (2026-10-16)
 

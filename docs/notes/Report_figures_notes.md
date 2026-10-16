@@ -13,7 +13,7 @@ Data collectors: `extract_val_histories.py` (W&B offline files → `val_historie
 
 | # | Figure | Section | Status |
 |---|---|---|---|
-| 1 | `fig_accuracy_by_size`: test AP minus S5-RVT, overall / S / M / L | Results, accuracy | **done**; graded 400k added automatically after its Stage-21 eval; bootstrap error bars once an S5-RVT capture exists |
+| 1 | `fig_accuracy_by_size`: test AP minus S5-RVT, overall / S / M / L | Results, accuracy | **done**, graded 400k included (2026-10-16, legend "SpikingSSM (graded)"); bootstrap error bars once the `models_400k` bootstrap exists |
 | 2 | trained ERF | Results | in report |
 | 3 | large-car qualitative | Results | in report |
 | 4 | `fig_robustness`: retention, regime 1 + regime 2 (± Δt comp., published points) | Results, robustness | **done**; panel (c) spiking arms appears when the Stage-22 true-rate logs exist |
@@ -21,8 +21,8 @@ Data collectors: `extract_val_histories.py` (W&B offline files → `val_historie
 | 6 | ladder (test AP per arm + paired gaps with CIs) | §5.7 | tool built (`eval/ladder_plot.py`); needs captures + bootstrap |
 | 7 | `fig_training_curves`: (a) 100k arms minus PureSSM, (b) 400k curves | §5.7 / Discussion | **done** |
 | 8 | threshold Pareto | §5.7 | tool built; needs the sweep |
-| 9 | firing pattern vs event density | §5.7 / Discussion | tool built; needs a GPU run |
-| 10 | dense ops vs spike-fed ops (≈ 1 %) | Discussion | to build after the Stage-22 benchmark |
+| 9 | `fig_firing_pattern`: firing rate vs events per frame, one test recording | §5.7 / Discussion | **done** 2026-10-16 (`fig_firing_pattern.py`, report-style redraw of the Stage-22 tool output): (a) events, (b)–(d) one panel per stage, colour = arm, shared rate axis; the 32-frame warm-up is shaded and excluded from r and ranges (it caused graded stage 3's r = 0.13; after it r = 0.00) |
+| 10 | `fig_spike_fed_ops`: dense vs spike-fed MACs (1.05 %), and the driven share per arm | Discussion | **done** 2026-10-16 (`fig_spike_fed_ops.py`): graded 400k now; rows for analog/graded/spike 100k appear automatically from `results/stage22/<arm>_100k/bench_results.json` (layout tested with four rows) |
 | 11 | spike vs graded on the same frames | Discussion | needs SpikingSSM support in `stage16_dump_predictions.py` |
 | 12 | LIF membrane panel | Methodology | exists (`thesis/supervisor_report/figs/fig_lif_panel.png`) |
 | 13 | β per channel | Appendix | exists (`results/stage22/beta/beta_100k.png`) |
@@ -31,6 +31,9 @@ Data collectors: `extract_val_histories.py` (W&B offline files → `val_historie
 
 Not made, on purpose: a plot of our models against the SNN detectors (the pre-registration rules out leaderboard
 framing; `tab:snn_landscape` already gives the context).
+
+Label tidying 2026-10-16: `fig_training_400k` (a) best-value labels have fixed sides per run (`BEST_LABEL`);
+`fig_spiking_firing` end labels are pushed apart where two arms end at the same rate (`repel`).
 
 ## 2. Decisions
 

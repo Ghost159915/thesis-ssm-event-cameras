@@ -849,9 +849,10 @@ Car / Pedestrian        & 63.88 / 31.56 & 61.67 / 30.78 & 62.83 / 30.02 \\
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{images/fig_accuracy_by_size.pdf}
-    \caption{Gen1 test AP of the two own models minus that of S5-RVT, over all objects and by object size
-    (COCO mAP@[0.50:0.95]); S5-RVT's own AP is given under each group. The two models are within 0.3 of each
-    other on small and medium objects; on large objects PureSSM's gap ($-3.0$) is half of EventSSM's ($-6.0$).}
+    \caption{Gen1 test AP of the own 400k-step models minus that of S5-RVT, over all objects and by object size
+    (COCO mAP@[0.50:0.95]); S5-RVT's own AP is given under each group. The three models are within 0.5 of each
+    other on small and medium objects; on large objects PureSSM's gap ($-3.0$) is half of EventSSM's ($-6.0$), and
+    the graded SpikingSSM's ($-1.0$) is the smallest (Section~\ref{subsec:spk_full}).}
     \label{fig:acc_by_size}
 \end{figure}
 
@@ -1126,8 +1127,8 @@ Checkpoint (step)       & published & 320k & 310k & 350k \\
 \label{subsec:spk_firing}
 \begin{itemize}
   \item Training-time rates (Figure~\ref{fig:spiking_firing}): binary rates rise at every stage (stage 2: 0.25 to 0.48); graded rates at stages 3--4 fall (0.12 and 0.10 at 100k, 0.15 and 0.16 at 400k); analog 0.18--0.51.
-  \item On one 60-s test recording the 100k rates match the end of training: graded 0.28 / 0.12 / 0.10, binary 0.48 / 0.36 / 0.39 (stages 2 / 3 / 4).
-  \item The sparsity is structural, not event-driven: only graded stage 2 follows the events per frame ($r = 0.64$, rate 0.24--0.29); every other stage is flat (Figure~\ref{fig:firing_pattern}).
+  \item On one 60-s test recording (statistics after a 32-frame warm-up) the 100k rates match the end of training: graded 0.28 / 0.12 / 0.10, binary 0.48 / 0.36 / 0.39 (stages 2 / 3 / 4).
+  \item The sparsity is structural, not event-driven: only graded stage 2 follows the events per frame ($r = 0.65$, rate 0.27--0.29); every other stage stays within a range of 0.07 or less (Figure~\ref{fig:firing_pattern}).
   \item Post-hoc threshold sweep: accuracy against spike-weighted firing rate, graded and binary \res{after the threshold sweeps}.
 \end{itemize}
 \begin{figure}[htbp]
@@ -1140,11 +1141,11 @@ Checkpoint (step)       & published & 320k & 310k & 350k \\
 \end{figure}
 \begin{figure}[htbp]
 \centering
-\fbox{\parbox{0.9\textwidth}{\centering\vspace{2em}\res{Figure: per-stage firing rate of the graded and binary
-readouts against events per frame over one 60-s test recording (\texttt{results/stage22/firing/}, to be redrawn in
-the report style)}\vspace{2em}}}
-\caption{Firing rate of the 100k-step graded and binary readouts over test recording
-\texttt{18-03-29\_13-15-02} (1{,}200 frames), with the number of events per frame.}
+\includegraphics[width=\textwidth]{images/fig_firing_pattern.pdf}
+\caption{The readouts' activity over one 60-s test recording (\texttt{18-03-29\_13-15-02}, 1{,}200 frames of
+50\,ms), 100k-step graded and binary checkpoints. (a) Events per frame. (b)--(d) Share of nonzero readout outputs
+at spiking stages 2, 3 and 4, on one shared scale; $r$ is the Pearson correlation with the events per frame. The
+shaded first 32 frames, in which the recurrent state warms up from zero, are excluded from $r$.}
 \label{fig:firing_pattern}
 \end{figure}
 \begin{figure}[htbp]
@@ -1259,8 +1260,19 @@ Streaming state         & 4.7\,MB & 144.5\,MB & 144.5\,MB & 145.6\,MB \\
 \begin{itemize}
   \item Why Loihi~2 fits: diagonal recurrence as neurons, event-driven energy, graded spikes.
   \item Gaps to silicon: input-dependent decay, non-spiking spatial backbone, toolchain (Lava archived; NIR as the export boundary).
-  \item What this hybrid can save (about 1\,\% of operations) and why the decomposition, not energy, is the contribution.
+  \item What this hybrid can save (about 1\,\% of operations, Figure~\ref{fig:spike_fed_ops}) and why the decomposition, not energy, is the contribution.
 \end{itemize}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{images/fig_spike_fed_ops.pdf}
+    \caption{How much of the detector's arithmetic the spikes reach. (a) Dense multiply--accumulates (MACs) per
+    frame: the readout feeds only the first $1\times1$ convolutions of the neck, 1.05\,\% of the total. (b) Zoom
+    on the spike-fed MACs: the share driven at each readout's measured nonzero rate (16 test clips, 32-frame
+    warm-up) and the estimated saving of Equation~\eqref{eq:sop_energy} (operation counts with 45-nm constants;
+    memory traffic not modelled). Even a silent readout would save at most 1.04\,\%. \res{rows for the 100k readouts
+    after the per-arm benchmarks}}
+    \label{fig:spike_fed_ops}
+\end{figure}
 
 \section{Scope Change: the Obstacle-Avoidance Aim}
 \label{sec:scope_change}

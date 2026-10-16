@@ -1443,7 +1443,8 @@ the two runs overlap within their noise throughout, with no instability after an
 
 \subsection{Firing activity and the threshold trade-off}
 \label{subsec:spk_firing}
-On one 60-s test recording (\texttt{18-03-29\_13-15-02}, 1{,}200 frames, a mean of 48.7k events per frame) the
+On one 60-s test recording (\texttt{18-03-29\_13-15-02}, 1{,}200 frames, a mean of 48.7k events per frame;
+statistics exclude the first 32 frames, in which the recurrent state warms up from zero) the
 final 100k checkpoints fire at mean rates of 0.28, 0.12 and 0.10 at stages 2, 3 and 4 (graded) and 0.48,
 0.36 and 0.39 (binary), the rates the training-time monitor showed at the end of training. Activity rose
 during training: in the binary arm the training-time rates roughly doubled, from 0.25 to 0.48 at stage~2,
@@ -1453,9 +1454,9 @@ and 4 fell during training, while the binary rates rose at every stage, as if th
 for its one-bit output by firing more.
 
 The sparsity is structural rather than event-driven. Over the recording only graded stage~2 follows the
-scene activity (Pearson $r = 0.64$ between its rate and the events per frame), and even there its rate stays
-between 0.24 and 0.29. Graded stages 3 and 4 ($r = 0.13$ and $0.00$) and every binary stage ($r = -0.32$, $0.22$
-and $0.13$) fire at an almost constant rate. The readout does not fall silent when the scene goes quiet,
+scene activity (Pearson $r = 0.65$ between its rate and the events per frame), and even there its rate stays
+between 0.27 and 0.29. Graded stages 3 and 4 ($r = 0.00$ and $0.01$) and every binary stage ($r = -0.41$, $0.21$
+and $0.15$) fire at an almost constant rate. The readout does not fall silent when the scene goes quiet,
 consistent with the dense Mamba state upstream continuing to drive it, so any saving comes from a fixed low
 rate rather than from input-dependent activity.
 

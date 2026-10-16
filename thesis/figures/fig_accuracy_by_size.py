@@ -36,7 +36,7 @@ def main() -> None:
     for i, (key, style) in enumerate(series):
         deltas = [test[key][m] - base[m] for m, _ in METRICS]
         pos = x - 0.4 + width * (i + 0.5)
-        name = rs.label(style) + (" 400k" if key == "graded_400k" else "")
+        name = "SpikingSSM (graded)" if key == "graded_400k" else rs.label(style)
         ax.bar(pos, deltas, width * 0.92, color=rs.colour(style), label=name, zorder=2)
         for p, d, (m, _) in zip(pos, deltas, METRICS):
             rows.append({"model": name, "metric": m, "model_AP": round(test[key][m], 2),

@@ -1,0 +1,2 @@
+arm,op_class,total_macs,spike_fed_macs,driven_ops,energy_mj,energy_dense_mj,saving_pct,ceiling_pct,rate_s2,rate_s3,rate_s4
+Graded 400k,MAC,5001574400,52428800,10096636,22.814,23.007,0.841,1.043,0.2632,0.1399,0.1567
