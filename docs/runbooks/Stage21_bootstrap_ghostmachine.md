@@ -75,6 +75,7 @@ Re-run the PureSSM 400k test eval with recording on, then re-score the capture w
 cd ~/Desktop/thesis-ssm-event-cameras
 BOOTSTRAP_CAPTURE=$PWD/results/stage21_bootstrap/captures/puressm_400k.pkl \
   bash code/event_ssm/scripts/stage14_puressm_test_eval_local.sh
+export PYTHONPATH="$HOME/Desktop/thesis-ssm-event-cameras/code:$HOME/Desktop/thesis-ssm-event-cameras/external/ssms_event_cameras/RVT"   # RVT evaluator (utils.*) must be importable
 cd code && python -m event_ssm.eval.bootstrap \
   --capture puressm=../results/stage21_bootstrap/captures/puressm_400k.pkl \
   --identity --expect puressm=0.4643
@@ -101,6 +102,7 @@ Check each `BOOTSTRAP_CAPTURE` value reaches the python process (the launchers `
 if one strips the environment, export it first). Then, on CPU:
 
 ```bash
+export PYTHONPATH="$HOME/Desktop/thesis-ssm-event-cameras/code:$HOME/Desktop/thesis-ssm-event-cameras/external/ssms_event_cameras/RVT"   # RVT evaluator (utils.*) must be importable
 cd code && python -m event_ssm.eval.bootstrap \
   --capture puressm=$CAP/puressm_100k.pkl --capture analog=$CAP/analog_100k.pkl \
   --capture graded=$CAP/graded_100k.pkl --capture binary=$CAP/spike_100k.pkl \

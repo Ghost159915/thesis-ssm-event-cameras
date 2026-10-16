@@ -203,3 +203,20 @@ and `scripts/stage8_baseline_eval.py` (S5-RVT). Nothing in `external/` is edited
   real with `--cfg job`, install the capture only when the variable is set. Full CPU suite: 398 pass.
 - **Not yet verified (needs the idle GPU):** the identity check on a real test eval (runbook step 4). If the capture
   turns out large, the bootstrap's `--workers` must be chosen against free RAM (each worker holds every capture).
+
+## 6. Identity check on the real test eval (2026-10-16)
+
+- PureSSM 400k test eval with `BOOTSTRAP_CAPTURE` (`stage14_puressm_test_eval_local.sh`, default checkpoint, 13 min 41 s):
+  test/AP **0.46427503795692004**, same as the Stage-15 value ⇒ the capture hook changes nothing. Capture
+  `results/stage21_bootstrap/captures/puressm_400k.pkl`: 30,605 detections from 470 recordings.
+- Re-scoring the capture with `--identity --expect puressm=0.4643`: **MATCH**, exit 0, on all six metrics (AP 0.4643,
+  AP_50 0.7409, AP_75 0.4825, AP_S 0.3750, AP_M 0.5396, AP_L 0.4765), 16 s on the CPU.
+- **Runbook bug fixed:** the first re-score failed with `ModuleNotFoundError: No module named 'utils'`. The
+  eval launchers put RVT on `PYTHONPATH`, the bare `python -m event_ssm.eval.bootstrap` does not, and the RVT
+  scorer imports `utils.evaluation.prophesee.evaluator` lazily. Both bootstrap commands in
+  `docs/runbooks/Stage21_bootstrap_ghostmachine.md` now export `PYTHONPATH` first.
+- **Timing (sets `--n-boot`):** 1 worker, 5 replicates of one arm: 92 s (≈ 18 s each). 8 workers, 16 replicates:
+  69 s ⇒ ≈ 4.3 s per replicate per arm. The four-arm ladder at B = 1000 ≈ 4,000 scorings ≈ 4.8 h on 8 of the 12
+  cores, so it runs overnight, after the GPU evals (their data loaders need the CPU). RAM was not a limit with one
+  capture loaded (15 GB machine); check `free -g` with four.
+

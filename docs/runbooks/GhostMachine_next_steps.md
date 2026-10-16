@@ -54,7 +54,7 @@ Order (Stage-20 plan): graded 100k (resumed) → analog 100k → PureSSM 100k an
 
 ## E. When the GPU is free (one job at a time)
 
-1. [ ] **Identity check** (≈ 14 min): PureSSM 400k test eval with `BOOTSTRAP_CAPTURE` set, then
+1. [x] **Identity check — MATCH 2026-10-16** (≈ 14 min): PureSSM 400k test eval with `BOOTSTRAP_CAPTURE` set, then
        `--identity --expect puressm=0.4643` (bootstrap runbook step 4). **Must match before any interval is used.**
 2. [ ] **Stage 21 test evals with capture**, one per 100k arm (spike, graded, analog via
        `stage21_spikingssm_test_eval_local.sh <ckpt>`; PureSSM anchor via `stage14_puressm_test_eval_local.sh <ckpt>`),
