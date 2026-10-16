@@ -111,7 +111,7 @@ def save(fig, name: str, rows: list[dict] | None = None) -> None:
     if rows:
         DATA.mkdir(parents=True, exist_ok=True)
         with open(DATA / f"{name}.csv", "w", newline="") as f:
-            w = csv.DictWriter(f, fieldnames=list(rows[0]))
+            w = csv.DictWriter(f, fieldnames=list(dict.fromkeys(k for r in rows for k in r)))  # union, in order
             w.writeheader()
             w.writerows(rows)
     plt.close(fig)
