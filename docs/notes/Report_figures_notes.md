@@ -70,20 +70,25 @@ framing; `tab:snn_landscape` already gives the context).
 
 ## 4. How `fig_gantt_actual` is built (evidence, not recollection)
 
-- **Work-stream rows:** a calendar week is filled when at least one commit of that stream was authored in it. Each
-  commit subject is mapped by ordered regex rules (`STREAM_RULES`, first match wins; `chore*` and `refactor(repo)`
-  are housekeeping and dropped). 285 of 301 commits map to a stream; the remaining 16 are housekeeping. Every
-  commit's mapping is in `results/report_figs/fig_gantt_actual_commits.csv`, so the chart can be audited and the
-  rules corrected. Two rule pitfalls found and fixed while building it: "100k/400k" also matched the EventSSM and
-  PureSSM 400k-run commits, and "bootstrap" matched the Stage-13 cloud *environment* bootstrap.
-- **GPU-training row:** exact spans of every run from the W&B offline folders (folder timestamp = start, newest file
-  = end), coloured by model (the PureSSM 100k anchor inside the October ladder is orange); the two cloud PureSSM
-  runs (13–15 Jul) only to day precision (no local W&B files).
-- **Milestones:** dated results from CLAUDE.md and the stage notes; labels sit in free space beside the week block.
-- **Not captured:** work outside the repository, and Thesis-A work before the first commit (15 Apr 2026). Only T3
-  is shaded: the T1/T2 2026 term dates are not recorded in the repo, and a web search (2026-10-16) found only
-  aggregator sites that contradict the known T3 dates, so they were not used. Add them to `fig_gantt_actual.py`
-  if the user supplies them.
-- Visible pattern: bursts in early June, mid June, mid July, early September and October; nothing committed
-  20 Jul – 6 Sep and 14 Sep – 4 Oct.
+Revised 2026-10-16 (user: "the entire year, Thesis A, B, C, February to end of November; more uniform, less
+discretised, more fluid"). The first version drew one block per active calendar week; it read as scattered squares.
 
+- **Work periods, not weeks:** each commit subject is mapped to a stream by ordered regex rules (`STREAM_RULES`,
+  first match wins; `chore*` and `refactor(repo)` are housekeeping and dropped; 286 of 302 commits map). A stream's
+  commit days are grouped into periods that continue through quiet spells of up to 4 weeks (`BRIDGE_DAYS = 28`) and
+  run from the first to the last commit day; a short burst is drawn at least 10 days long (`MIN_DAYS`), and no bar
+  extends past today. Drawn as rounded bars. Every commit's mapping is in
+  `results/report_figs/fig_gantt_actual_commits.csv`; the periods are in `fig_gantt_actual.csv`.
+- **Rule pitfalls fixed:** "100k/400k" also matched the EventSSM/PureSSM 400k-run commits, and "bootstrap" matched
+  the Stage-13 cloud environment bootstrap.
+- **Rendering pitfall fixed:** with round caps inset into the span, a short bar's straight segment shrank below a
+  pixel and Agg silently dropped it (bars vanished at random); the segment is now kept ≥ 1.5 days.
+- **Inferred period (light tint):** literature review and Thesis-A report from the start of T1 (16 Feb) to the first
+  commit (15 Apr); no repository record exists. The user should confirm it.
+- **Terms (shaded):** UNSW 2026 T1 16 Feb – 14 May (Thesis A), T2 1 Jun – 27 Aug (Thesis B), T3 14 Sep – 10 Dec
+  (Thesis C; teaching ends 20 Nov, matching the repo's record), from UNSW's "About UNSW 3+" trimester page and the
+  2026 timetable (unsw.edu.au search, 2026-10-16). The main academic-calendar page carries inconsistent versions
+  (e.g. T1 16 Feb – 24 Apr = the teaching period); the term spans were used.
+- **GPU-training row:** exact spans from the W&B offline folders, coloured by model; the two cloud PureSSM runs
+  (13–15 Jul) to day precision.
+- **Milestones:** dated results from CLAUDE.md and the stage notes, labelled just beyond the bar that holds them.

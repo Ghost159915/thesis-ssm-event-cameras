@@ -1,4 +1,5 @@
 date,stream,subject
+2026-10-16,writing,"feat(report-figs): as-executed Gantt chart from the repository history, beside the Thesis-A plan"
 2026-10-16,writing,fix(report-figs): redraw the Thesis-A Gantt chart (task labels no longer under the bars)
 2026-10-16,writing,"feat(report-figs): shared figure style and four results figures (accuracy by size, training curves, efficiency, robustness)"
 2026-10-16,spike_train,docs(stage21): bootstrap identity check MATCH; fix PYTHONPATH in runbook commands
