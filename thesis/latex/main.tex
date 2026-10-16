@@ -825,6 +825,7 @@ Hardware                    & 1$\times$ A100              & RTX~5070~Ti (EventSS
   \item EventSSM 46.2, PureSSM 46.4, S5-RVT 47.7: the two own models tie overall within single-seed noise.
   \item Large objects: PureSSM $\mathrm{AP}_L$ 47.65 vs EventSSM 44.70 (+2.95), about half the gap to the baseline (50.66).
   \item Per class; validation-to-test consistency.
+  \item Figure~\ref{fig:acc_by_size}: the gap to the baseline by object size; bootstrap error bars \res{after the bootstrap}.
 \end{itemize}
 \begin{table}[htbp]
 \centering
@@ -845,6 +846,14 @@ Car / Pedestrian        & 63.88 / 31.56 & 61.67 / 30.78 & 62.83 / 30.02 \\
 \bottomrule
 \end{tabular}
 \end{table}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{images/fig_accuracy_by_size.pdf}
+    \caption{Gen1 test AP of the two own models minus that of S5-RVT, over all objects and by object size
+    (COCO mAP@[0.50:0.95]); S5-RVT's own AP is given under each group. The two models are within 0.3 of each
+    other on small and medium objects; on large objects PureSSM's gap ($-3.0$) is half of EventSSM's ($-6.0$).}
+    \label{fig:acc_by_size}
+\end{figure}
 
 \section{Effective Receptive Field}
 \label{sec:erf}
@@ -905,6 +914,7 @@ $4\times$    & 12.5\,ms & 38.4 & 35.4 & 35.68 \\
 \begin{itemize}
   \item Retention at true 10$\times$: PureSSM 69.7\,\%, EventSSM 63.0\,\%, S5-RVT 62.2\,\%; at 2$\times$ all keep 95--96\,\%.
   \item PureSSM is the most rate-robust and has the highest absolute mAP at 10$\times$ (32.4); its temporal path equals EventSSM's, so the extra robustness comes from the spatial backbone.
+  \item Figure~\ref{fig:robustness} draws both regimes as retention; a panel (c) for the spiking readouts is added when their true-rate runs exist (Section~\ref{subsec:spk_rate}).
 \end{itemize}
 \begin{table}[htbp]
 \centering
@@ -922,6 +932,17 @@ true-$2\times$ retention   & 95.1\% & 95.5\% & --- & \textbf{95.9\%} \\
 \bottomrule
 \end{tabular}
 \end{table}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{images/fig_robustness.pdf}
+    \caption{Temporal robustness as retention, the mAP at each operating point as a percentage of the model's
+    own $1\times$ mAP. (a) Fixed 50-ms cadence with a shortened or lengthened accumulation window
+    (Table~\ref{tab:regime1}). (b) True event-rate change (Tables~\ref{tab:regime2} and~\ref{tab:dt_comp}):
+    solid lines without and dashed lines with inference-time $\Delta t$ compensation; stars are published
+    values not measured on this test set, S5 with compensation at 200\,Hz (83.5\,\%) and RVT's ConvLSTM
+    (17.7\,\%)~\cite{zubic2024state}.}
+    \label{fig:robustness}
+\end{figure}
 
 \subsection{Reproducing Inference-Time \texorpdfstring{$\Delta t$}{Delta t}-Rescaling}
 \label{subsec:f2}
@@ -976,6 +997,15 @@ Streaming state        & \textbf{4.7\,MB} & 144\,MB & 144\,MB \\
 \bottomrule
 \end{tabular}
 \end{table}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{images/fig_efficiency.pdf}
+    \caption{Efficiency of the three non-spiking models (values of Table~\ref{tab:efficiency}; parameters and
+    GFLOPs per frame in the row labels). (a) Eager p50 latency per frame, split into backbone, neck and head,
+    and post-processing; the marker is the latency with CUDA-graph replay of the network plus eager
+    post-processing. (b) Measured GPU energy per frame. (c) Streaming state carried per stream.}
+    \label{fig:efficiency}
+\end{figure}
 
 \section{Qualitative Results}
 \begin{itemize}
@@ -996,9 +1026,12 @@ Streaming state        & \textbf{4.7\,MB} & 144\,MB & 144\,MB \\
 \section{Spiking SSM Detector}
 \label{sec:spiking_results}
 \subsection{Accuracy of the Readouts}
+\label{subsec:spk_accuracy}
 \begin{itemize}
   \item Hybrid model: report accuracy as context, not as a position against fully spiking detectors (Table~\ref{tab:snn_landscape}).
-  \item 100k-step validation mAP: PureSSM anchor 44.2, analog 43.8, graded 42.5, binary 41.8; test mAP with bootstrap intervals \res{after Stage 21}.
+  \item 100k-step test mAP (Table~\ref{tab:spiking_ablation}): PureSSM anchor 42.52, analog 42.25, graded 40.72, binary 40.18, a total cost of 2.34; bootstrap intervals \res{after the bootstrap}.
+  \item The cost falls mainly on pedestrians: PureSSM to binary, car $-1.61$, pedestrian $-3.07$.
+  \item Every arm loses 1.6--1.7 from validation (44.2 / 43.8 / 42.5 / 41.8) to test, so the validation ordering carries over.
 \end{itemize}
 \begin{table}[htbp]
 \centering
@@ -1006,21 +1039,23 @@ Streaming state        & \textbf{4.7\,MB} & 144\,MB & 144\,MB \\
 paired bootstrap over the 470 test recordings. Firing rate: share of nonzero readout outputs, weighted by the
 neck operations each stage feeds, on the final checkpoint.}
 \label{tab:spiking_ablation}
-\begin{tabular}{lcccc}
+\begin{tabular}{lccccc}
 \toprule
-\textbf{Model (100k steps)} & \textbf{mAP [95\,\% CI]} & \textbf{AP\textsubscript{50}} & \textbf{AP\textsubscript{L}} & \textbf{Firing rate} \\
+\textbf{Model (100k steps)} & \textbf{mAP [95\,\% CI]} & \textbf{AP\textsubscript{50}} & \textbf{AP\textsubscript{L}} & \textbf{Car / Ped.} & \textbf{Firing rate} \\
 \midrule
-PureSSM (no LIF)   & \res{mAP [lo, hi]} & \res{} & \res{} & n/a \\
-analog (dense LIF) & \res{mAP [lo, hi]} & \res{} & \res{} & n/a (dense) \\
-graded             & \res{mAP [lo, hi]} & \res{} & \res{} & \res{} \\
-spike (binary)     & \res{mAP [lo, hi]} & \res{} & \res{} & \res{} \\
+PureSSM (no LIF)   & 42.52 \res{[lo, hi]} & 69.40 & 42.62 & 60.43 / 24.62 & n/a \\
+analog (dense LIF) & 42.25 \res{[lo, hi]} & 69.55 & 42.41 & 59.72 / 24.77 & n/a (dense) \\
+graded             & 40.72 \res{[lo, hi]} & 67.57 & 38.41 & 59.09 / 22.36 & \res{} \\
+spike (binary)     & 40.18 \res{[lo, hi]} & 66.40 & 41.14 & 58.82 / 21.55 & \res{} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \subsection{The Readout Ladder}
+\label{subsec:spk_ladder}
 \begin{itemize}
-  \item Step costs (validation, 100k): dynamics $-0.4$, sparsity $-1.4$, binarisation $-0.7$; pre-registered ordering holds on validation; test-set steps with paired intervals \res{after Stage 21}.
+  \item Test-set steps (Equation~\eqref{eq:ladder}): dynamics $-0.28$, sparsity $-1.52$, binarisation $-0.54$ \res{paired intervals}; validation $-0.4$ / $-1.4$ / $-0.7$. The pre-registered ordering holds in the point estimates \res{and in the intervals?}.
+  \item Sparsity, not binarisation, is the largest step. The binarisation cost fell from 3.5 (25k pilot, validation) to 0.5--0.7 at 100k: mostly a cost in convergence speed (Figure~\ref{fig:training_curves}a).
   \item 25k pilot for comparison; graded run resumed twice (data-order caveat).
 \end{itemize}
 \begin{figure}[htbp]
@@ -1031,12 +1066,87 @@ and the paired cost of each step about zero (\texttt{event\_ssm.eval.ladder\_plo
 the ladder; whiskers are 95\,\% bootstrap intervals over test recordings.}
 \label{fig:spiking_ladder}
 \end{figure}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{images/fig_training_curves.pdf}
+    \caption{Validation mAP during training. (a) The three 100k-step readouts minus the PureSSM anchor trained
+    on the same schedule, at every 10k-step validation; end labels are the final differences. (b) The
+    400k-step runs of EventSSM and the graded readout. PureSSM's 400k-step run was logged online on a rented
+    GPU and is shown by its best checkpoint only \res{full curve once its W\&B history is downloaded}.}
+    \label{fig:training_curves}
+\end{figure}
+
+\subsection{The Graded Readout on the Full Schedule}
+\label{subsec:spk_full}
+\begin{itemize}
+  \item Graded readout retrained for 400k steps with the recipe of the other models; resumed three times (from 180k, then twice from 340k; data-order caveat); validation flat at 46.8--47.3 from 350k; best checkpoint 350k (validation 47.28) evaluated.
+  \item Test mAP 46.24 (Table~\ref{tab:spiking_400k}): 0.19 below PureSSM, level with EventSSM. At 100k the gap to PureSSM was 1.80, so most of the 100k-step cost is slower convergence, not lost capacity \res{paired interval}.
+  \item $\mathrm{AP}_L$ 49.63, the highest of the own models ($+1.98$ over PureSSM, $+4.93$ over EventSSM, $-1.03$ to S5-RVT). Validation $\mathrm{AP}_L$ above EventSSM's at 16 of the 20 shared points and at every one from 240k (Figure~\ref{fig:training_400k}b); the PureSSM comparison rests on the test set \res{paired interval}.
+  \item Training cost: 55.5\,h against EventSSM's 27.9\,h on the same GPU (Figure~\ref{fig:training_400k_time}); loss curves overlap, no instability after the resumes.
+\end{itemize}
+\begin{table}[htbp]
+\centering
+\caption{The graded readout trained on the full 400k-step schedule, against the 400k-step models of
+Table~\ref{tab:accuracy} (Gen1 test set, best-validation checkpoint of each run).}
+\label{tab:spiking_400k}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Metric} & \textbf{S5-RVT} & \textbf{EventSSM} & \textbf{PureSSM} & \textbf{SpikingSSM, graded} \\
+\midrule
+mAP @[0.50:0.95]        & 47.72 & 46.22 & 46.43 & 46.24 \\
+$\mathrm{AP}_{50}$      & 75.28 & 74.54 & 74.09 & 73.86 \\
+$\mathrm{AP}_{75}$      & 49.76 & 48.08 & 48.25 & 48.42 \\
+$\mathrm{AP}_S$ (small) & 38.81 & 37.42 & 37.50 & 37.38 \\
+$\mathrm{AP}_M$ (medium)& 54.92 & 53.68 & 53.96 & 53.54 \\
+$\mathrm{AP}_L$ (large) & 50.66 & 44.70 & 47.65 & 49.63 \\
+\midrule
+Car / Pedestrian        & 63.88 / 31.56 & 61.67 / 30.78 & 62.83 / 30.02 & 61.93 / 30.54 \\
+Checkpoint (step)       & published & 320k & 310k & 350k \\
+\bottomrule
+\end{tabular}
+\end{table}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{images/fig_training_400k.pdf}
+    \caption{The 400k-step runs of EventSSM and the graded readout against training step: validation (a) mAP,
+    (b) large-object and (c) small-object AP; training (d) total, (e) IoU and (f) objectness loss, raw (faint)
+    and smoothed. Triangles in (d) mark the steps from which the graded run was resumed (180k and 340k).}
+    \label{fig:training_400k}
+\end{figure}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{images/fig_training_400k_time.pdf}
+    \caption{(a) Validation mAP of the same two runs against training wall-clock time on the RTX~5070~Ti; the
+    steps repeated after each resume are excluded. (b) The learning-rate schedule (OneCycle over 400k steps),
+    identical for both runs.}
+    \label{fig:training_400k_time}
+\end{figure}
 
 \subsection{Firing Activity and the Threshold Trade-off}
+\label{subsec:spk_firing}
 \begin{itemize}
-  \item Per-stage firing rates on the final checkpoints; rates rose during training.
-  \item Post-hoc threshold sweep: accuracy against spike-weighted firing rate, graded and binary.
+  \item Training-time rates (Figure~\ref{fig:spiking_firing}): binary rates rise at every stage (stage 2: 0.25 to 0.48); graded rates at stages 3--4 fall (0.12 and 0.10 at 100k, 0.15 and 0.16 at 400k); analog 0.18--0.51.
+  \item On one 60-s test recording the 100k rates match the end of training: graded 0.28 / 0.12 / 0.10, binary 0.48 / 0.36 / 0.39 (stages 2 / 3 / 4).
+  \item The sparsity is structural, not event-driven: only graded stage 2 follows the events per frame ($r = 0.64$, rate 0.24--0.29); every other stage is flat (Figure~\ref{fig:firing_pattern}).
+  \item Post-hoc threshold sweep: accuracy against spike-weighted firing rate, graded and binary \res{after the threshold sweeps}.
 \end{itemize}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{images/fig_spiking_firing.pdf}
+    \caption{Threshold-crossing rate of the LIF readout during training at spiking stages (a) 2, (b) 3 and (c) 4,
+    from the training-time monitor, against the share of the schedule completed; 100k-step readouts solid,
+    graded 400k-step run dashed. End labels are the final rates.}
+    \label{fig:spiking_firing}
+\end{figure}
+\begin{figure}[htbp]
+\centering
+\fbox{\parbox{0.9\textwidth}{\centering\vspace{2em}\res{Figure: per-stage firing rate of the graded and binary
+readouts against events per frame over one 60-s test recording (\texttt{results/stage22/firing/}, to be redrawn in
+the report style)}\vspace{2em}}}
+\caption{Firing rate of the 100k-step graded and binary readouts over test recording
+\texttt{18-03-29\_13-15-02} (1{,}200 frames), with the number of events per frame.}
+\label{fig:firing_pattern}
+\end{figure}
 \begin{figure}[htbp]
 \centering
 \fbox{\parbox{0.9\textwidth}{\centering\vspace{2em}\res{Figure: post-hoc threshold sweep --- test mAP against
@@ -1047,16 +1157,63 @@ threshold; the ringed point is the training threshold $\vartheta = 1$.}
 \end{figure}
 
 \subsection{Rate Robustness of the Spiking Readouts}
+\label{subsec:spk_rate}
 \begin{itemize}
-  \item True-10$\times$ retention of graded and binary against the PureSSM 100k anchor under the same protocol \res{after Stage 21}.
+  \item True-10$\times$ retention of the graded and binary 100k readouts and of graded 400k, same uncompensated protocol \res{after the true-rate sweeps}; Figure~\ref{fig:robustness} gains a panel (c).
+  \item Graded 400k against PureSSM 400k's 69.7\,\% is the like-for-like comparison; the 100k readouts need the PureSSM 100k anchor on the true-rate set \res{not yet run}.
 \end{itemize}
 
 \subsection{Synaptic Operations and Estimated Energy}
+\label{subsec:spk_energy}
 \begin{itemize}
-  \item Synaptic operations and estimated energy per frame per readout (Equation~\eqref{eq:sop_energy}); the 1.04\,\% ceiling.
+  \item Spikes feed 52.4\,M of the 5.00\,G MACs per frame (1.05\,\%), so the saving cannot exceed 1.04\,\% (Equation~\eqref{eq:sop_energy}).
+  \item Graded 400k (Table~\ref{tab:sop}): nonzero rates 0.263 / 0.140 / 0.157, 10.1\,M driven operations, 22.81 against 23.01\,mJ per frame dense, a 0.84\,\% saving; the 100k readouts \res{after the per-arm benchmarks}.
+  \item On the GPU (Table~\ref{tab:spiking_bench}): $+0.73$\,ms over PureSSM (the per-timestep LIF loop) and $+1.1$\,MB of state (the membrane); the measured energy overlaps PureSSM's, so no GPU energy difference is claimed.
 \end{itemize}
+\begin{table}[htbp]
+\centering
+\caption{Operation-count energy estimate per frame (Equation~\eqref{eq:sop_energy}; 45-nm constants,
+$E_{\mathrm{MAC}} = 4.6$\,pJ, $E_{\mathrm{AC}} = 0.9$\,pJ~\cite{horowitz2014computing}). Rates: share of nonzero
+readout outputs over 16 test clips after a 32-frame warm-up. Every arm has 52.4\,M spike-fed of 5.00\,G MACs
+per frame, so the saving is capped at 1.04\,\%. Active inputs of a graded or analog readout carry a value and
+are priced as multiply--accumulates (MAC), binary spikes as accumulates (AC). Memory traffic is not modelled.}
+\label{tab:sop}
+\small
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Readout (priced as)} & \textbf{Nonzero rate, s2 / s3 / s4} & \textbf{Driven ops} & \textbf{mJ/frame} & \textbf{Dense} & \textbf{Saving} \\
+\midrule
+graded, 400k (MAC) & 0.263 / 0.140 / 0.157 & 10.1\,M & 22.81 & 23.01 & 0.84\,\% \\
+analog, 100k (MAC) & \res{} & \res{} & \res{} & \res{} & \res{} \\
+graded, 100k (MAC) & \res{} & \res{} & \res{} & \res{} & \res{} \\
+binary, 100k (AC)  & \res{} & \res{} & \res{} & \res{} & \res{} \\
+\bottomrule
+\end{tabular}
+\end{table}
+\begin{table}[htbp]
+\centering
+\caption{The graded 400k-step SpikingSSM and the non-spiking models measured in one benchmark session
+(harness of Table~\ref{tab:efficiency}, whose session gave 1--4\,\% higher latencies; models are compared within
+a session only). $^{*}$The idle power drifted during these runs; the range spans subtraction of the idle power
+measured before and after the run.}
+\label{tab:spiking_bench}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Metric} & \textbf{S5-RVT} & \textbf{EventSSM} & \textbf{PureSSM} & \textbf{SpikingSSM, graded} \\
+\midrule
+Parameters              & 18.19\,M & 19.18\,M & 16.33\,M & 16.34\,M \\
+FLOPs                   & 11.06\,G & 12.71\,G & 10.03\,G & 10.03\,G \\
+Latency p50, full       & 16.93\,ms & 12.09\,ms & 26.46\,ms & 27.19\,ms \\
+Latency p50, backbone   & 10.41\,ms & 5.19\,ms & 19.64\,ms & 20.30\,ms \\
+Energy per frame (GPU)  & 0.701\,J & 0.43--0.52\,J$^{*}$ & 0.641\,J & 0.55--0.69\,J$^{*}$ \\
+Streaming state         & 4.7\,MB & 144.5\,MB & 144.5\,MB & 145.6\,MB \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \subsection{Training Dynamics}
+\label{subsec:spk_dynamics}
 \begin{itemize}
   \item Binarisation slows learning: overfit check, gradient passed back at stage 4 (binary 0.31$\times$, graded 0.51$\times$ the analog readout).
   \item The learned leak barely moves: every channel within 0.044 of 0.9 after 100k steps.
@@ -1143,7 +1300,7 @@ threshold; the ringed point is the training threshold $\vartheta = 1$.}
 \begin{itemize}
   \item Single seed per model; one dataset (Gen1); label noise; fixed representation; window-bounded latency.
   \item Baseline-comparison caveats: batch 4 vs 8, bf16 vs 32-bit, pretrained CNN vs from-scratch SSM.
-  \item Spiking model: estimated (not measured) energy, 100k schedule, graded resumes, binary bottleneck, fixed surrogate and threshold, leak barely used.
+  \item Spiking model: estimated (not measured) energy, 100k ladder (only graded also at 400k), graded resumes (100k and 400k), binary bottleneck, fixed surrogate and threshold, leak barely used, twice EventSSM's training time.
 \end{itemize}
 
 \section{Future Research Opportunities}

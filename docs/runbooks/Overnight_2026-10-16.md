@@ -74,3 +74,18 @@ Reopen VS Code, `claude --continue`, say "update". Expected outputs:
 - Still open: `! wandb login` → PureSSM 400k training curves; restyle the firing-pattern figure; tidy label
   overlaps in `fig_training_400k` / `fig_spiking_firing`; fill §5.7 `\res{}` in `draft_main.tex`; the user's
   `draft_main.tex` has an accidental edit (`\usepackage{arra` on line 15) to fix.
+
+## 5. Add-on: PureSSM 100k anchor on the true-rate set (added 2026-10-16, Mac session)
+
+The chain in §1 runs the true-rate sweep for graded 100k, spike 100k and graded 400k only. §5.7.5 of `draft_main.tex`
+compares the 100k readouts' true-10× retention with **the PureSSM 100k anchor under the same protocol**, and that run
+is not in the chain (PureSSM 400k's 69.7 % is the reference for graded 400k only). After the chain has finished (or
+appended to it), in the same tmux window (≈ 3 h, GPU idle):
+
+```bash
+cd ~/Desktop/thesis-ssm-event-cameras; S=$PWD/code/event_ssm/scripts; R=$PWD/external/ssms_event_cameras/RVT/RVT; \
+OURS_WRAP=$S/stage14_puressm_test_eval_local.sh OURS_CKPT=$R/igk6myyb/checkpoints/last_epoch=002-step=100000.ckpt OURS_KEY=puressm_100k RUN_BASELINE=0 RUN_COMP=0 bash $S/stage9_truerate_sweep.sh
+```
+
+Output: `results/stage9/sweep_tr/puressm_100k_dt{25,5}_nc.log`; its 1× reference is the canonical Stage-21 test AP
+42.52. `fig_robustness` panel (c) does not plot it yet (it uses PureSSM 400k as the reference line).

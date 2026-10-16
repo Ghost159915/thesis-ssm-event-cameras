@@ -11,10 +11,12 @@ Single seed per arm; all evaluations captured for the bootstrap (`results/stage2
 | Arm | AP | AP_50 | AP_S | AP_M | AP_L | car | ped | step cost |
 |---|---|---|---|---|---|---|---|---|
 | PureSSM anchor (`igk6myyb`) | **42.52** | — | 34.03 | 49.68 | 42.62 | 60.4 | 24.6 | — |
-| analog (`sx14rpo8`) | 42.25 | — | 33.24 | 49.72 | 42.41 | 59.7 | 24.8 | **−0.27** LIF dynamics |
-| graded (`rnak3sms`) | 40.72 | — | 31.36 | 48.48 | 38.41 | 59.1 | 22.4 | **−1.53** sparsity |
+| analog (`sx14rpo8`) | 42.25 | — | 33.24 | 49.72 | 42.41 | 59.7 | 24.8 | **−0.28** LIF dynamics |
+| graded (`rnak3sms`) | 40.72 | — | 31.36 | 48.48 | 38.41 | 59.1 | 22.4 | **−1.52** sparsity |
 | spike (`5ykgl80y`) | 40.18 | — | 31.30 | 47.42 | 41.14 | 58.8 | 21.6 | **−0.54** binarisation |
 
+- Step costs are differences of the unrounded APs (42.522 → 42.246 → 40.725 → 40.185), so they can differ by 0.01
+  from differences of the rounded table values.
 - Total spiking cost at 100k: −2.34. Pre-registered ordering analog ≥ graded > spike **holds on test**.
 - Same pattern as validation (−0.4 / −1.4 / −0.7): the largest step is **sparsity**, not binarisation. The
   binarisation cost was 3.5 at 25k (validation, Stage 19) and 0.5–0.7 at 100k ⇒ mostly a convergence-speed cost.
@@ -34,8 +36,9 @@ Single seed per arm; all evaluations captured for the bootstrap (`results/stage2
   The graded-vs-PureSSM gap shrinks from −1.80 at 100k to −0.19 at 400k ⇒ most of the 100k spiking cost is slower
   convergence, not a capacity limit (to be confirmed by the paired bootstrap interval).
 - **AP_L 49.63** is the highest of our models (+1.98 over PureSSM, +4.93 over EventSSM) and 1.03 below S5-RVT.
-  Validation AP_L is noisy (±4 between neighbouring checkpoints), but graded's validation AP_L stayed above
-  EventSSM's for the whole 400k run (`fig_training_400k` (b)), so the EventSSM comparison is systematic; the
+  Validation AP_L is noisy (±4 between neighbouring checkpoints), but graded's validation AP_L was above
+  EventSSM's at 16 of the 20 shared validation points and at every one from 240k (`fig_training_400k` (b); corrected
+  2026-10-16, it is not above at 40k, 100k, 120k and 220k), so the EventSSM comparison is systematic; the
   PureSSM comparison needs the bootstrap (and PureSSM's curve, W&B login pending).
 - Val → test: graded 47.28 → 46.24 (−1.0), PureSSM 47.53 → 46.43 (−1.1).
 
