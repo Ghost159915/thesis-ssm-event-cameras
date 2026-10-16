@@ -1,0 +1,4 @@
+model,params_M,gflops,backbone_p50_ms,neck_head_p50_ms,postprocess_p50_ms,full_p50_ms,graph_deploy_p50_ms,energy_J_per_frame,state_MB_per_stream
+S5-RVT,18.19,11.06,10.59,6.4,0.61,17.14,,0.723,4.7
+EventSSM,19.18,12.71,5.21,6.32,0.61,12.6,4.77,0.438,144.5
+PureSSM,16.33,10.03,19.79,6.46,0.62,26.86,5.54,0.652,144.5

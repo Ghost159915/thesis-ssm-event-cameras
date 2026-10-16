@@ -1,0 +1,9 @@
+model,metric,model_AP,s5rvt_AP,delta
+EventSSM,AP,46.22,47.72,-1.49
+EventSSM,AP_S,37.42,38.81,-1.38
+EventSSM,AP_M,53.68,54.92,-1.24
+EventSSM,AP_L,44.7,50.66,-5.95
+PureSSM,AP,46.43,47.72,-1.29
+PureSSM,AP_S,37.5,38.81,-1.31
+PureSSM,AP_M,53.96,54.92,-0.96
+PureSSM,AP_L,47.65,50.66,-3.01

@@ -289,5 +289,6 @@ PureSSM ≥ analog.
   Stage-21 test-eval checkpoint. No 400k checkpoint exists (checkpoints are written only on a new best, see above);
   evaluating the best-val checkpoint is the same protocol as EventSSM (320k) and PureSSM (310k).
 - Context (not a ladder gap, D1): graded 100k val 0.425 → graded 400k 0.473 (+4.8 from schedule length); PureSSM 400k
-  (Stage 14, cloud RTX 5090) val 0.48 @ 310k (two-decimal value from the checkpoint name, so 0.475–0.485) ⇒ graded 400k
-  sits 0.2–1.2 points below it on val. The test eval gives the comparable number.
+  (Stage 14, cloud RTX 5090) best val **0.4753** @ 310k (exact `best_model_score` read from the checkpoint's
+  ModelCheckpoint state on 2026-10-16; the "0.48" quoted elsewhere is the filename's two-decimal rounding) ⇒ graded
+  400k sits **0.25 points** below it on val. The test eval gives the comparable number.
