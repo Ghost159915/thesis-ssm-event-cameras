@@ -11,6 +11,17 @@ roughly 2× faster on the M4 (Ryzen 5 5600X = 6 cores, 2020) and would free the 
 (≈ 135 MB, not in git), RVT's evaluator and an identity check on the Mac first; not worth the setup when both jobs
 finish before morning on the PC.
 
+## 0. As run on 2026-10-17 (use these, not the paste blocks)
+
+Pasting the two multi-line blocks into one terminal garbled them (block 2 landed in the `night` window and the end
+of block 1 was lost), so both live in script files with the same commands (+ the §5 PureSSM-100k add-on):
+
+```bash
+tmux kill-session -t night 2>/dev/null
+tmux new -d -s night "bash ~/Desktop/thesis-ssm-event-cameras/code/event_ssm/scripts/overnight_2026-10-17_gpu.sh; bash"
+tmux new -d -s boot  "bash ~/Desktop/thesis-ssm-event-cameras/code/event_ssm/scripts/overnight_2026-10-17_bootstrap.sh; bash"
+```
+
 ## 1. GPU chain — `tmux new -s night` (≈ 12–13 h)
 
 Separate terminal (Ctrl+Alt+T), not VS Code. Paste, then `Ctrl-b d`. Independent jobs are joined with `;` so one
