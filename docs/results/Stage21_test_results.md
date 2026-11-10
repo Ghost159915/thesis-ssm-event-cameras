@@ -187,3 +187,57 @@ Spiking model only, one session, VS Code closed, no idle-drift flag. Tables `eff
    full-sample AP by ≈ 1e-5 (COCO breaks score ties by list order), so PureSSM goes first as the reference: the own
    models keep their exact official values and S5-RVT gives 47.7155 / AP_L 50.66 (same to 2 dp). Redo:
    `code/event_ssm/scripts/overnight_2026-11-10_bootstrap.sh`.
+
+## 7. Final-results chain 2026-11-10 (`code/event_ssm/scripts/overnight_2026-11-10_{gpu,bootstrap}.sh`, logs `results/overnight_2026-11-10/`)
+
+Read 2026-11-10 22:20. The true-rate test set was rebuilt first (raw test events re-extracted and converted, then
+true 10× = 5 ms and true 2× = 25 ms windows rendered, 469/469 recordings each; `data/gen1_stage9/preproc_tr/`).
+Still running at the time of writing: spike 100k and PureSSM 100k true-rate sweeps (≈ 2 h 20 min each: 2× ≈ 27 min,
+10× ≈ 1 h 51 min) ⇒ chain ends ≈ 03:00 on 11 Nov.
+
+### 7.1 Bootstrap CIs on the four 400k models (`results/stage21_bootstrap/models_400k/bootstrap.{md,json}`)
+
+Same method as §6.1 (paired, sequence-level, B = 1000, seed 0, 470 recordings, 95 % percentile; `--align-by-labels`,
+PureSSM as the layout reference). Point estimates reproduce §2.
+
+| Gap (b − a) | ΔAP [95 % CI] | ΔAP_L [95 % CI] |
+|---|---|---|
+| S5-RVT → EventSSM | **−1.49 [−2.59, −0.59]** | **−5.95 [−9.33, −1.94]** |
+| S5-RVT → PureSSM | **−1.29 [−2.30, −0.23]** | −3.01 [−7.72, +2.38] |
+| S5-RVT → graded 400k | **−1.48 [−2.54, −0.53]** | −1.03 [−5.43, +3.64] |
+| EventSSM → PureSSM | +0.20 [−0.12, +0.72] | +2.94 [−0.09, +6.35] |
+| PureSSM → graded 400k | −0.19 [−0.66, +0.09] | +1.98 [−0.40, +3.59] |
+
+- **S5-RVT is better overall than each of our three models** (≈ 1.3–1.5 AP, every interval excludes zero).
+- **EventSSM, PureSSM and graded 400k are tied overall** (both intervals include zero) ⇒ at the full schedule the
+  graded spiking readout costs nothing measurable relative to PureSSM.
+- **AP_L:** EventSSM's large-object deficit to S5-RVT is significant; PureSSM's and graded's are not (intervals
+  include zero). The EventSSM → PureSSM AP_L gain +2.94 has an interval that just touches zero (−0.09) ⇒ the
+  receptive-field result is **suggestive, not significant at 95 %** on this test set. ⚠️ Wording "hypothesis CONFIRMED"
+  (Stage 15 notes, draft) must be softened to "consistent with / closes the gap to within test-set noise".
+
+### 7.2 True-rate robustness incl. ConvLSTM (uncompensated; retention = AP at rate ÷ the model's own 1× AP)
+
+| Model | 1× | true 2× (25 ms) | ret. 2× | true 10× (5 ms) | ret. 10× |
+|---|---|---|---|---|---|
+| RVT ConvLSTM (published ckpt) | 47.14 | **46.08** | **97.7 %** | **37.84** | **80.3 %** |
+| S5-RVT (Stage 9) | 47.72 | 45.37 | 95.1 % | 29.67 | 62.2 % |
+| EventSSM (Stage 9) | 46.22 | 44.13 | 95.5 % | 29.09 | 63.0 % |
+| PureSSM 400k (Stage 16) | 46.43 | 44.53 | 95.9 % | 32.38 | 69.7 % |
+| graded 400k | 46.24 | 43.88 | 94.9 % | 30.16 | 65.2 % |
+| graded 100k | 40.72 | 38.81 | 95.3 % | 25.73 | 63.2 % |
+| spike 100k / PureSSM 100k | — | running | | running | |
+
+Logs: ConvLSTM `results/stage9_rvt_lstm/rvt_lstm_{gen1,preproc_tr_dt=25,preproc_tr_dt=5}_20261110_*.log`;
+spiking arms `results/stage21_test_eval/graded_s234_dt{25,5}/`; sweep summaries `results/stage9/sweep_tr/`.
+
+- ⚠️ **The ConvLSTM is the most rate-robust model at both rates**, in retention *and* in absolute AP at 10×
+  (37.84 vs 32.38 for PureSSM, the best SSM). Its 1× score reproduces the RVT paper (47.14 vs 47.2), and it ran on
+  the same rendered test set as every SSM. **The Zubić et al. ConvLSTM figure (8.35 AP, 17.7 %) is not reproduced** —
+  the second of their 10× numbers that does not reproduce under the published artefacts (after S5-RVT 39.84).
+- ⇒ The claim "SSM recurrence is more rate-robust than a ConvLSTM" is **false on our measurements** and must be
+  removed wherever it relies on the 17.7 % figure (draft abstract/§5.4, report Ch.4–6, INRC proposal already dropped
+  it). What survives: (a) Δt compensation is not reproducible (`tab:dt_comp`); (b) among the SSMs, PureSSM is the most
+  robust; (c) the spiking readout keeps the SSM-level robustness (graded 400k 65.2 % vs PureSSM 69.7 %, graded 100k
+  63.2 %).
+- Note ConvLSTM AP_L rises at 2× (49.14 → 49.62) and falls only to 40.14 at 10×.
