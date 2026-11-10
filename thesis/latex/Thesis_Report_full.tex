@@ -312,7 +312,7 @@ rather than system-level.
 \label{sec:organisation}
 Chapter~\ref{ch:lit} reviews event-based sensing, event representations, detection architectures,
 state space models, spiking networks and neuromorphic hardware, and identifies the research gaps.
-Chapter~\ref{ch:method} describes the event representation, the frozen detection pipeline, the four models
+Chapter~\ref{ch:method} describes the event representation, the frozen detection pipeline, the models
 and the spiking readout, together with the dataset, metrics, training protocol and evaluation protocol.
 Chapter~\ref{ch:results} reports the baseline reproduction, accuracy, the receptive-field mechanism, temporal
 robustness, efficiency and the results of the spiking variant.
@@ -828,7 +828,7 @@ convolutional mixer with a state space one. SpikingSSM adds a spiking output to 
 
 \begin{table}[htbp]
 \centering
-\caption[The four models compared]{The four models. For the own models, the component in bold is what changes relative to the row
+\caption[The five models compared]{The five models. For the own models, the component in bold is what changes relative to the row
 above; S5-RVT and EventSSM differ in both mixers.}
 \label{tab:four_models}
 \begin{tabularx}{\textwidth}{@{}lXXX@{}}
@@ -839,7 +839,7 @@ RVT & MaxViT (local + grid attention) & ConvLSTM & Literature baseline \\
 S5-RVT & MaxViT & S5 (diagonal SSM) & Reproduced reference \\
 EventSSM (this work) & ResNet-18 conv, 3$\to$20-ch adapted, ImageNet-init & Mamba-2 (causal, per-pixel) & CNN--SSM hybrid \\
 PureSSM (this work) & \textbf{BiMamba} (bidirectional scan) & Mamba-2 (identical) & Pure state-space detector \\
-Spiking-SSM (this work) & BiMamba (identical) & Mamba-2 $+$ \textbf{LIF readout} & Spiking detector \\
+SpikingSSM (this work) & BiMamba (identical) & Mamba-2 $+$ \textbf{LIF readout} & Spiking detector \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -869,7 +869,8 @@ used exactly as released, without retraining, and reproducing their result
 }
 EventSSM uses ResNet-18~\cite{he2016deep} as its spatial mixer. ResNet-18 is a widely used convolutional
 network, and here it starts from weights pre-trained on the ImageNet photo dataset. It consists of a first
-layer followed by four stages, each of which halves the size of the feature map. The pre-trained first
+layer and a pooling step, which together shrink the image four times, followed by four stages; the first
+stage keeps the size of the feature map and each later stage halves it. The pre-trained first
 layer expects the three colour channels of a photograph, whereas the input here has 20 channels. The
 first layer is therefore adapted by averaging its weights over the three colour channels and copying the
 result to all 20 channels, scaled so that the overall response stays the same:
@@ -1113,7 +1114,7 @@ Sequence length (frames)    & 21                          & 21 \\
 Batching                    & mixed (stream + random)     & mixed (stream + random) \\
 Batch size$^{\dagger}$      & 8                           & 4 \\
 Precision$^{\dagger}$       & 32-bit                      & bf16 mixed \\
-Hardware                    & 1$\times$ A100              & RTX~5070~Ti (EventSSM), RTX~5090 (PureSSM) \\
+Hardware                    & 1$\times$ A100              & RTX~5070~Ti (EventSSM, SpikingSSM, PureSSM 100k), RTX~5090 (PureSSM 400k) \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -1165,18 +1166,18 @@ actually uses (Section~\ref{sec:erf}).
 \subsection{Temporal Robustness}
 \label{subsec:eval_rob}
 \guide{140}{
-  \item Setting 1: the model still sees a new frame every 50\,ms, but each frame collects events over a longer or shorter time (200 to 12.5\,ms).
+  \item Setting 1: the model still sees a new frame every 50\,ms, but each frame collects events over a longer or shorter time (200 to 12\,ms).
   \item Setting 2: frames really arrive faster, every 25\,ms (2 times) or 5\,ms (10 times); the test data had to be rebuilt.
   \item Retention = accuracy at the new rate divided by accuracy at the normal rate.
   \item The published correction: adjust the step size to the new rate~\cite{zubic2024state}; tested with and without it.
 }
 Robustness to the event rate was tested in two settings. In the first, the model still receives a new frame
-every 50~ms, but each frame collects events over a shorter or longer period, from 200 down to 12.5~ms. Only
+every 50~ms, but each frame collects events over a shorter or longer period, from 200 down to 12~ms. Only
 the number of events in each frame changes. In the second setting, the frames really arrive faster: every
 25~ms, which is twice the normal rate, or every 5~ms, which is ten times the normal rate. This is the
 experiment of Zubi\'{c} et al.~\cite{zubic2024state}, and it required rebuilding the test data at each rate.
 Robustness is reported as retention: the accuracy at the new rate divided by the accuracy at the normal
-rate. Each test was run with and without the correction proposed by Zubi\'{c} et al., which adjusts the
+rate. S5-RVT, EventSSM and PureSSM were also tested with the correction proposed by Zubi\'{c} et al., which adjusts the
 model's step size $\Delta_t$ to match the new rate.
 
 \subsection{Efficiency}
@@ -1293,7 +1294,7 @@ appear large.
 
 \begin{table}[htbp]
 \centering
-\caption[Gen1 test accuracy of the four models]{Gen1 test-set accuracy. Best own-model per row in bold.}
+\caption[Gen1 test accuracy of S5-RVT, EventSSM and PureSSM]{Gen1 test-set accuracy. Best own-model per row in bold.}
 \label{tab:accuracy}
 \begin{tabular}{lccc}
 \toprule
@@ -1424,7 +1425,7 @@ $0.25\times$ & 200\,ms & 41.0 & 40.9 & \textbf{41.65} \\
 $0.5\times$  & 100\,ms & 46.5 & 45.5 & 45.67 \\
 $1\times$    & 50\,ms  & 47.7 & 46.2 & 46.45 \\
 $2\times$    & 25\,ms  & 45.0 & 43.5 & 44.09 \\
-$4\times$    & 12.5\,ms & 38.4 & 35.4 & 35.68 \\
+$4\times$    & 12\,ms   & 38.4 & 35.4 & 35.68 \\
 \bottomrule
 \end{tabular}
 \end{table}

@@ -144,7 +144,7 @@ rows = [
     ("S5-RVT  (reproduced baseline)", "MaxViT attention", False, "S5 diagonal SSM", False, "47.7", ""),
     ("EventSSM  (Thesis B)",          "ResNet-18 conv",   False, "Mamba-2",         False, "46.2", ""),
     ("PureSSM  (Thesis B)",           "BiMamba scan",     True,  "Mamba-2",         False, "46.4", ""),
-    ("Spiking-SSM  (Thesis C)",       "BiMamba scan",     False, "Mamba-2  +  LIF", True,  "?",    "3 readout arms"),
+    ("SpikingSSM  (Thesis C)",       "BiMamba scan",     False, "Mamba-2  +  LIF", True,  "?",    "3 readout arms"),
 ]
 cx = [56, 430, 760, 1032]
 hy = GY + 34
@@ -174,9 +174,9 @@ for i, (name, sp, sp_new, tp, tp_new, ap, note) in enumerate(rows):
         txt(cx[3] + 168, ry + 5, note, 11.5, "middle", "italic", SPK)
 
 fy = hy + 40 + 4 * 48 + 14
-txt(56, fy, "PureSSM moved the SPATIAL axis; Spiking-SSM moves the TEMPORAL one - so the spiking block is "
+txt(56, fy, "PureSSM moved the SPATIAL axis; SpikingSSM moves the TEMPORAL one - so the spiking block is "
     "spatial-agnostic and pairs with either backbone.", 12, "start", "italic", MUTE)
-txt(56, fy + 20, "The caret marks the changed box. S5-RVT is the reproduced published baseline; EventSSM / PureSSM / Spiking-SSM are drop-in "
+txt(56, fy + 20, "The caret marks the changed box. S5-RVT is the reproduced published baseline; EventSSM / PureSSM / SpikingSSM are drop-in "
     "backbone swaps into its pipeline. mAP is COCO 0.50:0.95, Gen1 test split.", 11.5, "start", "italic", MUTE)
 
 # ============================== (c) LIF mechanism ======================================
