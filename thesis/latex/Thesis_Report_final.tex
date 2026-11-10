@@ -253,14 +253,17 @@ rather than system-level.
 
 \section{Thesis Organisation}
 \label{sec:organisation}
-% TODO-Thesis Organisation: revise to the new chapter order (fixes the "Chapter ??" reference)
 Chapter~\ref{ch:lit} reviews event-based sensing, event representations, detection architectures,
 state space models, spiking networks and neuromorphic hardware, and identifies the research gaps.
-Chapter~\ref{ch:method} describes the frozen pipeline, the four models and the spiking block.
-Chapter~\ref{ch:setup} gives the dataset, metrics, hardware and training protocol.
-Chapter~\ref{ch:results} reports accuracy, mechanism, temporal robustness and efficiency.
-Chapter~\ref{ch:discussion} interprets those results and states the limitations.
-Chapter~\ref{ch:conclusion} concludes and sets out future work.
+Chapter~\ref{ch:method} describes the event representation, the frozen detection pipeline, the four models
+and the spiking readout, together with the dataset, metrics, training protocol and evaluation protocol.
+Chapter~\ref{ch:results} reports the baseline reproduction, accuracy, the receptive-field mechanism, temporal
+robustness, efficiency and the results of the spiking variant.
+Chapter~\ref{ch:discussion} answers the research question, interprets the results, justifies the scope change,
+and states the limitations and the opportunities for future research.
+Chapter~\ref{ch:conclusion} concludes.
+Appendices~\ref{app:maths} to~\ref{app:risk} give the mathematical formulations, the details needed to
+reproduce the results, the project timeline and the risk assessment.
 
 % ===================================================================== CHAPTER 2 (full text)
 \chapter{Literature Review}
@@ -1404,6 +1407,7 @@ PureSSM & run \texttt{aekvsalq}, rented RTX~5090 & 310k (best val.) & \texttt{a0
 \end{table}
 
 \chapter{Project Timeline}
+\label{app:timeline}
 % TODO-Project Timeline
 
 \begin{table}[htbp]
@@ -1440,6 +1444,7 @@ PureSSM & run \texttt{aekvsalq}, rented RTX~5090 & 310k (best val.) & \texttt{a0
 \end{figure}
 
 \chapter{Risk Assessment}
+\label{app:risk}
 % TODO-Risk Assessment
 
 \begin{table}[htbp]
