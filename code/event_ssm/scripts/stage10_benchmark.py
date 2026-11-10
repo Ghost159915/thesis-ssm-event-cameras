@@ -18,7 +18,8 @@ for p in (REPO / "code", REPO / "external/ssms_event_cameras/RVT"):
 import torch  # noqa: E402
 
 REQUIRED_MODEL_KEYS = {"params_m", "flops", "latency", "vram", "energy"}
-TEST_AP = {"eventssm": 0.462, "baseline": 0.477, "puressm": 0.4643}   # Stage-8/15 one-shot test results
+TEST_AP = {"eventssm": 0.462, "baseline": 0.477, "puressm": 0.4643,   # Stage-8/15 one-shot test results
+           "rvt_lstm": 0.4714}                                          # RVT-B ConvLSTM, measured 2026-11-10 (D1)
 
 
 def validate_results(d: dict) -> list:
@@ -242,10 +243,7 @@ def measure_model(kind: str, device, clip, smoke: bool, graph: bool = False, ckp
             torch.cuda.empty_cache()
             torch.cuda.reset_peak_memory_stats(device)
         else:
-            reason = ("graph replay of the LIF time loop not validated (Stage-18 deferred item)"
-                      if kind == "spikingssm" else
-                      "S5 baseline uses stock-RVT state machinery; not covered by the ours state-carry contract")
-            out["latency"]["graph"] = {"captured": False, "reason": reason}
+            out["latency"]["graph"] = {"captured": False, "reason": graph_skip_reason(kind)}
 
     # ---- VRAM ----
     model.autocast_bf16 = True
@@ -305,6 +303,16 @@ def measure_model(kind: str, device, clip, smoke: bool, graph: bool = False, ckp
     return out
 
 
+def graph_skip_reason(kind: str) -> str:
+    """Why --graph records no cuda-graph-replay latency for this model (only the ours backbones honour the
+    state-carry contract of graph_capture.py)."""
+    if kind == "spikingssm":
+        return "graph replay of the LIF time loop not validated (Stage-18 deferred item)"
+    if kind == "rvt_lstm":
+        return "RVT ConvLSTM uses stock-RVT per-frame state machinery; not covered by the ours state-carry contract"
+    return "S5 baseline uses stock-RVT state machinery; not covered by the ours state-carry contract"
+
+
 def kinds_for(args) -> list:
     if args.models == "both":
         return ["eventssm", "baseline"]
@@ -312,6 +320,8 @@ def kinds_for(args) -> list:
         return ["eventssm", "baseline", "puressm"]
     if args.models == "all+spikingssm":         # same session, so thermal state and ratios are comparable
         return ["eventssm", "baseline", "puressm", "spikingssm"]
+    if args.models == "all+rvt_lstm":           # the three ANN models + RVT's ConvLSTM, one session (D1, 2026-11-11)
+        return ["eventssm", "baseline", "puressm", "rvt_lstm"]
     return [args.models]
 
 
@@ -323,6 +333,8 @@ def resolve_out(args, spiking_tag):
     kinds = kinds_for(args)
     if "spikingssm" in kinds:
         return REPO / "results/stage22" / (spiking_tag + ("_with_ann" if len(kinds) > 1 else ""))
+    if "rvt_lstm" in kinds:                     # never next to the citable results/stage10 JSON
+        return REPO / "results/stage10_rvt_lstm"
     return REPO / "results/stage10"
 
 
@@ -369,7 +381,8 @@ def check_env() -> None:
 def parse_args(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--models", default="both",
-                    choices=["both", "all", "eventssm", "baseline", "puressm", "spikingssm", "all+spikingssm"])
+                    choices=["both", "all", "eventssm", "baseline", "puressm", "spikingssm", "all+spikingssm",
+                             "rvt_lstm", "all+rvt_lstm"])
     ap.add_argument("--spikingssm-ckpt", default=None,
                     help="checkpoint for --models spikingssm (required; its ablation arm is read from it)")
     ap.add_argument("--spikingssm-test-ap", type=float, default=None,
@@ -379,7 +392,8 @@ def parse_args(argv=None):
                     help="also measure the state-carrying cuda-graph-replay latency as a separate "
                          "labeled latency.graph column (ours backbones only; eager numbers untouched)")
     ap.add_argument("--out", default=None,
-                    help="default: results/stage10, or results/stage22/<arm tag>[_with_ann] when spikingssm runs")
+                    help="default: results/stage10, results/stage22/<arm tag>[_with_ann] when spikingssm runs, "
+                         "results/stage10_rvt_lstm when rvt_lstm runs")
     args = ap.parse_args(argv)
     if "spikingssm" in kinds_for(args):
         if not args.spikingssm_ckpt:

@@ -7,10 +7,11 @@ import json
 import pathlib
 
 REPO = pathlib.Path(__file__).resolve().parents[3]
-HUE = {"eventssm": "#2a78d6", "baseline": "#1baf7a", "puressm": "#d67a2a", "spikingssm": "#4a3aa7"}
+HUE = {"eventssm": "#2a78d6", "baseline": "#1baf7a", "puressm": "#d67a2a", "spikingssm": "#4a3aa7",
+       "rvt_lstm": "#1f1e1c"}
 LABEL = {"eventssm": "EventSSM (ours, Mamba)", "baseline": "S5-RVT (baseline)",
          "spikingssm": "SpikingSSM (ours, BiMamba + LIF)",
-         "puressm": "PureSSM (ours, BiMamba)"}
+         "puressm": "PureSSM (ours, BiMamba)", "rvt_lstm": "RVT (ConvLSTM, published ckpt)"}
 INK, INK2, MUTED, GRID = "#0b0b0b", "#52514e", "#898781", "#e1e0d9"
 
 

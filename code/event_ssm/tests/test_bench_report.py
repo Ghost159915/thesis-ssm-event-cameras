@@ -127,3 +127,11 @@ def test_sop_table_shows_an_error_row(tmp_path):
 def test_no_sop_table_without_spiking_rows(tmp_path):
     rep.generate(FIXTURE, tmp_path)
     assert not (tmp_path / "sop_table.md").exists()
+
+
+def test_report_labels_the_rvt_lstm_model(tmp_path):
+    d = json.loads(FIXTURE.read_text())
+    d["models"]["rvt_lstm"] = json.loads(json.dumps(d["models"]["baseline"]))
+    j = tmp_path / "with_rvt_lstm.json"; j.write_text(json.dumps(d))
+    rep.generate(json_path=j, out_dir=tmp_path)
+    assert rep.LABEL["rvt_lstm"].startswith("RVT") and "rvt_lstm" in rep.HUE

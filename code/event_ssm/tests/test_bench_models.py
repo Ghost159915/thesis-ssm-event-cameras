@@ -106,3 +106,44 @@ def test_flop_addon_agrees_with_the_sop_kernel_count():
     norms = sum(t["tokens"] * 2 * t["expand"] * t["d_model"] for t in m.temporal_hparams() + m.spatial_hparams())
     assert bm.analytic_unprofiled_gflops(m.temporal_hparams(), m.spatial_hparams()) == pytest.approx(
         2 * (k["temporal"] + k["spatial"] + norms) / 1e9)
+
+
+# ---- RVT ConvLSTM entry (2026-11-11): the measured rate-robustness baseline (D1) also gets the efficiency
+# benchmark. The backbone is the vendored original RVT code (event_ssm/baselines/rvt_lstm.py), routed in only
+# while the rvt_lstm detector is constructed. ----------------------------------------------------------------
+RVTB_CKPT = REPO / "checkpoints/rvt-b-gen1.ckpt"
+
+
+@pytest.mark.skipif(not RVTB_CKPT.exists(), reason="RVT-B Gen1 checkpoint not downloaded")
+def test_build_rvt_lstm_cpu_construct_and_load():
+    from event_ssm.baselines.rvt_lstm import RVTLSTMBackbone
+    bm = build_model("rvt_lstm", device=torch.device("cpu"), load_ckpt=True)   # strict load inside
+    assert isinstance(bm.detector.backbone, RVTLSTMBackbone)
+    pb = bm.param_breakdown()
+    assert 17 < pb["total"] < 20                      # RVT-B: 18.5 M (Gehrig & Scaramuzza, CVPR 2023)
+    assert "backbone" in pb
+    assert bm.temporal_hparams() == []                # ConvLSTM = conv2d + pointwise ops: all profiled, no add-on
+    assert bm.spatial_hparams() == []
+    assert bm.num_classes == 2
+
+
+def test_rvt_lstm_routing_does_not_leak_into_the_s5_baseline():
+    # the benchmark builds every model of a session in one process: after the ConvLSTM, "baseline" must again be S5
+    from event_ssm.baselines.rvt_lstm import RVTLSTMBackbone
+    import models.detection.yolox_extension.models.detector as det
+    before = det.build_recurrent_backbone
+    assert isinstance(build_model("rvt_lstm", device=torch.device("cpu"), load_ckpt=False).detector.backbone,
+                      RVTLSTMBackbone)
+    assert det.build_recurrent_backbone is before
+    bm = build_model("baseline", device=torch.device("cpu"), load_ckpt=False)
+    assert not isinstance(bm.detector.backbone, RVTLSTMBackbone)
+    assert [t["kind"] for t in bm.temporal_hparams()] == ["s5"] * 4
+
+
+def test_rvt_lstm_state_size_is_one_h_and_c_per_stage():
+    bm = build_model("rvt_lstm", device=torch.device("cpu"), load_ckpt=False)
+    b = bm.cfg.model.backbone
+    dims = [b.embed_dim * m for m in b.dim_multiplier]
+    assert dims == [64, 128, 256, 512]                # RVT-B
+    fp32 = 4                                          # CPU: no bf16 autocast
+    assert bm.state_bytes_per_stream() == sum(2 * d * h * w * fp32 for d, (h, w) in zip(dims, STAGE_TOKENS))

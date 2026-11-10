@@ -164,3 +164,25 @@ def test_sop_section_records_an_error_instead_of_aborting(monkeypatch):
     monkeypatch.setattr(sop_mod, "measure_nonzero_rates", boom)
     out = s10.sop_section(model=None, arm={"spiking_stages": [4]}, by_op={"aten::conv2d": 2}, smoke=True)
     assert out == {"error": "non-binary"}
+
+
+# ---- RVT ConvLSTM in the benchmark CLI (2026-11-11) ------------------------------------------------------------
+def test_test_ap_has_rvt_lstm():
+    assert s10.TEST_AP["rvt_lstm"] == pytest.approx(0.4714, abs=1e-4)   # measured 1x Gen1 test AP (D1)
+
+
+def test_all_plus_rvt_lstm_selection():
+    assert s10.kinds_for(s10.parse_args(["--models", "all+rvt_lstm"])) == ["eventssm", "baseline", "puressm",
+                                                                           "rvt_lstm"]
+    assert s10.kinds_for(s10.parse_args(["--models", "rvt_lstm"])) == ["rvt_lstm"]
+
+
+@pytest.mark.parametrize("models", ["rvt_lstm", "all+rvt_lstm"])
+def test_default_out_dir_keeps_rvt_lstm_runs_away_from_stage10(models):
+    assert s10.resolve_out(s10.parse_args(["--models", models]), None) == s10.REPO / "results/stage10_rvt_lstm"
+
+
+@pytest.mark.parametrize("kind, needle", [("rvt_lstm", "ConvLSTM"), ("baseline", "S5 baseline"),
+                                          ("spikingssm", "LIF")])
+def test_graph_skip_reason_names_the_model(kind, needle):
+    assert needle in s10.graph_skip_reason(kind)

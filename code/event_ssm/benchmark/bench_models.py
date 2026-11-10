@@ -33,9 +33,14 @@ CKPTS = {
     "eventssm": RVT / "RVT/8zotrwjw/checkpoints/epoch=003-step=320000-val_AP=0.46.ckpt",
     "baseline": REPO / "checkpoints/gen1_base.ckpt",
     "puressm": REPO / "results/stage14_cloud/ckpts/epoch=002-step=310000-val_AP=0.48.ckpt",
+    "rvt_lstm": REPO / "checkpoints/rvt-b-gen1.ckpt",
 }
+# rvt_lstm = RVT-B with its original ConvLSTM (Gehrig & Scaramuzza 2023; fact-check D1, 2026-11-11). It composes the
+# same base experiment as the S5 baseline (the fork's MaxViTRNN config); only the recurrent backbone differs, routed
+# to the vendored original code by _rvt_lstm_backbone() while this one detector is constructed.
 EXPERIMENT = {"eventssm": "+experiment/gen1=resnet_mamba", "baseline": "+experiment/gen1=base.yaml",
-              "puressm": "+experiment/gen1=puressm", "spikingssm": "+experiment/gen1=spikingssm"}
+              "puressm": "+experiment/gen1=puressm", "spikingssm": "+experiment/gen1=spikingssm",
+              "rvt_lstm": "+experiment/gen1=base.yaml"}
 # SpikingSSM has no fixed checkpoint (one per ablation arm): build_model() takes ckpt_path and reads the arm
 # (output mode, spiking stages, residual, readout settings) FROM it -- event_ssm/integration/spiking_ckpt.py.
 # fixed 256x320 input, strides 4/8/16/32 -> per-stage token grids (asserted against the backbone)
@@ -56,6 +61,22 @@ def compose_cfg(kind: str, extra_overrides=()):
     # none of which val.yaml sets statically.
     dynamically_modify_train_config(cfg)
     return cfg
+
+
+@contextlib.contextmanager
+def _rvt_lstm_backbone():
+    """Route MaxViTRNN to RVT's original ConvLSTM backbone for the duration of one construction, then restore the
+    previous builders: a benchmark session builds every model in one process, and a "baseline" built after the
+    ConvLSTM must again get the S5 backbone (register_rvt_lstm() alone patches for the rest of the process)."""
+    import models.detection.recurrent_backbone as rb
+    import models.detection.yolox_extension.models.detector as det
+    from event_ssm.baselines.rvt_lstm import register_rvt_lstm
+    saved = rb.build_recurrent_backbone, det.build_recurrent_backbone
+    register_rvt_lstm()
+    try:
+        yield
+    finally:
+        rb.build_recurrent_backbone, det.build_recurrent_backbone = saved
 
 
 def strip_prefix(sd: dict, prefix: str = "mdl.") -> dict:
@@ -154,6 +175,8 @@ class BenchModel:
                     out.append({"kind": "mamba2", "tokens": h * w, "d_model": layer.d_model,
                                 "d_state": layer.d_state, "d_conv": layer.d_conv,
                                 "expand": layer.expand, "headdim": layer.headdim, "lif": spiking})
+        elif type(bb).__name__ == "RVTLSTMBackbone":   # ConvLSTM: conv2d + pointwise only, all profiled -> no add-on
+            return []
         else:                          # baseline: one S5Block per RNNDetectorStage
             from models.layers.s5.s5_model import S5Block
             stage_idx = 0
@@ -201,8 +224,9 @@ def build_model(kind: str, device: torch.device, load_ckpt: bool = True, ckpt_pa
         register_resnet_mamba()
     cfg = compose_cfg(kind, extra)
     from models.detection.yolox_extension.models.detector import YoloXDetector
-    detector = YoloXDetector(OmegaConf.create(cfg.model)) if not OmegaConf.is_config(cfg.model) \
-        else YoloXDetector(cfg.model)
+    with (_rvt_lstm_backbone() if kind == "rvt_lstm" else contextlib.nullcontext()):
+        detector = YoloXDetector(OmegaConf.create(cfg.model)) if not OmegaConf.is_config(cfg.model) \
+            else YoloXDetector(cfg.model)
     if load_ckpt:
         load_weights(detector, ckpt)
     detector = detector.to(device).eval()
