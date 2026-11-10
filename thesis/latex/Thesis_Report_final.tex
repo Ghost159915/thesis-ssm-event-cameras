@@ -674,30 +674,134 @@ in return?}
 \section{Model Architectures}
 % TODO-Model Architectures
 
+\begin{table}[htbp]
+\centering
+\caption[The four models compared]{The four models. For the own models, the component in bold is what changes relative to the row
+above; S5-RVT and EventSSM differ in both mixers.}
+\label{tab:four_models}
+\begin{tabularx}{\textwidth}{@{}lXXX@{}}
+\toprule
+\textbf{Model} & \textbf{Spatial mixer} & \textbf{Temporal mixer} & \textbf{Role} \\
+\midrule
+RVT & MaxViT (local + grid attention) & ConvLSTM & Literature baseline \\
+S5-RVT & MaxViT & S5 (diagonal SSM) & Reproduced reference \\
+EventSSM (this work) & ResNet-18 conv, 3$\to$20-ch adapted, ImageNet-init & Mamba-2 (causal, per-pixel) & CNN--SSM hybrid \\
+PureSSM (this work) & \textbf{BiMamba} (bidirectional scan) & Mamba-2 (identical) & Pure state-space detector \\
+Spiking-SSM (this work) & BiMamba (identical) & Mamba-2 $+$ \textbf{LIF readout} & Spiking detector \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
 \subsection{Baseline: S5-RVT}
 % TODO-Baseline: S5-RVT
 
 \subsection{EventSSM: Convolutional Spatial, State-Space Temporal}
 % TODO-EventSSM: Convolutional Spatial, State-Space Temporal
 
+\begin{equation}
+  W'_{:,c} \;=\; \frac{3}{20}\cdot\frac{1}{3}\sum_{k=1}^{3} W_{:,k}, \qquad c = 1,\dots,20,
+  \label{eq:avg_projection}
+\end{equation}
+
+\begin{align}
+  H^{(j)}_t &= \exp\!\big(\Delta^{(j)}_t a^{(j)}\big)\, H^{(j)}_{t-1} + \Delta^{(j)}_t\, x^{(j)}_t B_t^{\top},
+  \label{eq:mamba2_state}\\
+  y^{(j)}_t &= H^{(j)}_t C_t + D^{(j)} x^{(j)}_t,
+  \label{eq:mamba2_out}
+\end{align}
+
 \subsection{PureSSM: State-Space Spatial and Temporal}
 % TODO-PureSSM: State-Space Spatial and Temporal
+
+\begin{align}
+  X' &= X + \mathrm{DWConv}_{3\times3}(X), \label{eq:bimamba_local}\\
+  X_{\mathrm{out}} &= X' + \mathrm{DropPath}\big(\mathrm{BiScan}(\mathrm{LN}(X'))\big). \label{eq:bimamba_block}
+\end{align}
+
+\begin{equation}
+  \mathrm{BiScan}(u) \;=\; W_{\mathrm{out}}\,\mathrm{RMSNorm}\Big(\big[\,\overrightarrow{\mathrm{SSM}}(u)
+  + \mathrm{flip}\big(\overleftarrow{\mathrm{SSM}}(\mathrm{flip}(u))\big)\big]\odot\mathrm{SiLU}(z)\Big),
+  \label{eq:biscan}
+\end{equation}
 
 \subsection{SpikingSSM: A Spiking Temporal Readout}
 \label{subsec:spiking_method}
 % TODO-SpikingSSM: A Spiking Temporal Readout
 
+\begin{align}
+  m_t &= \beta\, m_{t-1} + y_t \label{eq:lif_integrate}\\
+  s_t &= \Theta(m_t - \vartheta) \label{eq:lif_fire}\\
+  m_t &\leftarrow m_t - s_t\,\vartheta \label{eq:lif_reset}
+\end{align}
+
+\begin{equation}
+  \frac{\partial s_t}{\partial m_t} \;\approx\; \frac{\alpha/2}{1 + \left(\tfrac{\pi}{2}\alpha (m_t-\vartheta)\right)^2}
+  \label{eq:surrogate}
+\end{equation}
+
 \subsection{Readout Modes and the Readout Ladder}
 \label{subsec:readout_modes}
 % TODO-Readout Modes and the Readout Ladder
+
+\begin{equation}
+\begin{aligned}
+  \Delta_{\mathrm{dyn}} &= \mathrm{AP}_{\mathrm{analog}} - \mathrm{AP}_{\mathrm{PureSSM}},\\
+  \Delta_{\mathrm{sparse}} &= \mathrm{AP}_{\mathrm{graded}} - \mathrm{AP}_{\mathrm{analog}},\\
+  \Delta_{\mathrm{bin}} &= \mathrm{AP}_{\mathrm{spike}} - \mathrm{AP}_{\mathrm{graded}},
+\end{aligned}
+  \label{eq:ladder}
+\end{equation}
 
 \section{Dataset and Metrics}
 \label{sec:dataset}
 % TODO-Dataset and Metrics
 
+\begin{table}[htbp]
+\centering
+\small
+\caption[The Prophesee Gen1 dataset]{Gen1 splits as consumed by the training and evaluation pipeline (after RVT preprocessing and
+the size filter). ``Timestamps'' counts the distinct annotated instants.}
+\label{tab:gen1_stats}
+\begin{tabular}{lrrrrrr}
+\toprule
+Split & Chunks & Hours & Timestamps & Car boxes & Pedestrian boxes & Car share \\
+\midrule
+Train      & 1{,}458 & 24.30 &  72{,}370 & 131{,}592 & 16{,}839 & 88.7\,\% \\
+Validation &     429 &  7.15 &  20{,}329 &  37{,}909 &  2{,}823 & 93.1\,\% \\
+Test       &     470 &  7.83 &  30{,}605 &  58{,}512 &  7{,}792 & 88.2\,\% \\
+\midrule
+Total      & 2{,}357 & 39.28 & 123{,}304 & 228{,}013 & 27{,}454 & 89.3\,\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \section{Training Protocol}
 \label{sec:training}
 % TODO-Training Protocol
+
+\begin{table}[htbp]
+\centering
+\small
+\caption[Training recipe]{Training recipe of the own models against the published S5-RVT baseline (published column
+from~\cite{gehrig2023recurrent,zubic2024state} and the authors' released configuration). Rows marked
+$\dagger$ are the only differences.}
+\label{tab:recipe}
+\begin{tabularx}{\textwidth}{l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X}
+\toprule
+ & Published S5-RVT & Own models (this work) \\
+\midrule
+Iterations                  & 400k                        & 400k \\
+Optimiser                   & Adam                        & AdamW, weight decay 0 ($\equiv$ Adam) \\
+Peak learning rate          & $2\times10^{-4}$            & $2\times10^{-4}$ \\
+Schedule                    & OneCycle, linear            & OneCycle, linear \\
+Sequence length (frames)    & 21                          & 21 \\
+Batching                    & mixed (stream + random)     & mixed (stream + random) \\
+Batch size$^{\dagger}$      & 8                           & 4 \\
+Precision$^{\dagger}$       & 32-bit                      & bf16 mixed \\
+Hardware                    & 1$\times$ A100              & RTX~5070~Ti (EventSSM), RTX~5090 (PureSSM) \\
+\bottomrule
+\end{tabularx}
+\end{table}
 
 \section{Evaluation Protocol}
 \label{sec:eval_protocol}
@@ -714,6 +818,13 @@ in return?}
 
 \subsection{Spiking Activity and Energy}
 % TODO-Spiking Activity and Energy
+
+\begin{equation}
+  E \;=\; E_{\mathrm{MAC}}\big(M_{\mathrm{total}} - M_{\mathrm{fed}}\big)
+     \;+\; e_{\mathrm{op}} \sum_{s} r_s\, M_{\mathrm{fed},s}
+     \;+\; E_{\mathrm{MAC}}\, N_{\mathrm{LIF}},
+  \label{eq:sop_energy}
+\end{equation}
 
 \subsection{Statistical Treatment}
 % TODO-Statistical Treatment
@@ -732,6 +843,26 @@ in return?}
 \label{sec:acc_results}
 % TODO-Accuracy (Results)
 
+\begin{table}[htbp]
+\centering
+\caption[Gen1 test accuracy of the four models]{Gen1 test-set accuracy. Best own-model per row in bold.}
+\label{tab:accuracy}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Metric} & \textbf{S5-RVT} & \textbf{EventSSM} & \textbf{PureSSM} \\
+\midrule
+mAP @[0.50:0.95]        & 47.72 & 46.22 & \textbf{46.43} \\
+$\mathrm{AP}_{50}$      & 75.28 & \textbf{74.54} & 74.09 \\
+$\mathrm{AP}_{75}$      & 49.76 & 48.08 & \textbf{48.25} \\
+$\mathrm{AP}_S$ (small) & 38.81 & 37.42 & \textbf{37.50} \\
+$\mathrm{AP}_M$ (medium)& 54.92 & 53.68 & \textbf{53.96} \\
+$\mathrm{AP}_L$ (large) & 50.66 & 44.70 & \textbf{47.65} \\
+\midrule
+Car / Pedestrian        & 63.88 / 31.56 & 61.67 / 30.78 & 62.83 / 30.02 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{images/fig_accuracy_by_size.pdf}
@@ -745,6 +876,21 @@ in return?}
 \section{Effective Receptive Field}
 \label{sec:erf}
 % TODO-Effective Receptive Field
+
+\begin{table}[htbp]
+\centering
+\caption[Effective receptive field extent by stage]{Trained effective receptive field, and the change induced by training, measured against a
+random initialisation of the same architecture.}
+\label{tab:erf}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Backbone} & \textbf{Stage 3 $\sigma$} & \textbf{Stage 4 $\sigma$} & \textbf{$\Delta$ from training} \\
+\midrule
+ResNet-18 (EventSSM) & 41.8\,px & 84.4\,px & $+0.2$ / $+6.2$ \\
+BiMamba (PureSSM)    & \textbf{85.6\,px} & \textbf{105.5\,px} & $\mathbf{+34.4}$ / $\mathbf{+30.1}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \begin{figure}[htbp]
     \centering
@@ -763,8 +909,44 @@ in return?}
 \subsection{Fixed Cadence, Variable Accumulation Window}
 % TODO-Fixed Cadence, Variable Accumulation Window
 
+\begin{table}[htbp]
+\centering
+\caption[Robustness at a fixed cadence with a varied window]{Accumulation-window sweep (COCO mAP $\times$ 100). Training operating point is $1\times$.
+PureSSM is given to two decimals; its $1\times$ value (46.45) is measured on the re-preprocessed test set
+used for the sweep and differs from the canonical 46.43 only through that preprocessing.}
+\label{tab:regime1}
+\begin{tabular}{llccc}
+\toprule
+\textbf{Multiplier} & \textbf{$\Delta t$} & \textbf{S5-RVT} & \textbf{EventSSM} & \textbf{PureSSM} \\
+\midrule
+$0.25\times$ & 200\,ms & 41.0 & 40.9 & \textbf{41.65} \\
+$0.5\times$  & 100\,ms & 46.5 & 45.5 & 45.67 \\
+$1\times$    & 50\,ms  & 47.7 & 46.2 & 46.45 \\
+$2\times$    & 25\,ms  & 45.0 & 43.5 & 44.09 \\
+$4\times$    & 12.5\,ms & 38.4 & 35.4 & 35.68 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \subsection{True Event-Rate Change}
 % TODO-True Event-Rate Change
+
+\begin{table}[htbp]
+\centering
+\caption[Robustness under a true event-rate change]{True event-rate change. Retention $=\mathrm{mAP}@\text{rate} \div \mathrm{mAP}@1\times$.
+$^{\dagger}$Published by Zubic et al.~\cite{zubic2024state} for RVT at 200\,Hz, obtained with
+preprocessing that was not released; not measured on this test set (Section~\ref{subsec:f2}).}
+\label{tab:regime2}
+\begin{tabular}{lcccc}
+\toprule
+ & \textbf{S5-RVT} & \textbf{EventSSM} & \textbf{ConvLSTM}$^{\dagger}$ & \textbf{PureSSM} \\
+\midrule
+true-$10\times$ mAP        & 29.67 & 29.09 & 8.35 & \textbf{32.38} \\
+true-$10\times$ retention  & 62.2\% & 63.0\% & 17.7\% & \textbf{69.7\%} \\
+true-$2\times$ retention   & 95.1\% & 95.5\% & --- & \textbf{95.9\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \begin{figure}[htbp]
     \centering
@@ -782,9 +964,51 @@ in return?}
 \label{subsec:f2}
 % TODO-Reproducing Inference-Time Delta t-Rescaling
 
+\begin{table}[htbp]
+\centering
+\caption[Effect of inference-time \texorpdfstring{$\Delta t$}{Delta t} compensation]{Inference-time $\Delta t$ compensation under a true rate change (regime~2), mAP on the Gen1
+test split. ``Comp.'' rescales the step by the window ratio, the convention of~\cite{zubic2024state}.
+The published reference is S5 with compensation at 200\,Hz.}
+\label{tab:dt_comp}
+\begin{tabular}{llcccc}
+\toprule
+True rate & & \textbf{S5-RVT} & \textbf{EventSSM} & \textbf{PureSSM} & Published \\
+\midrule
+$2\times$ (25\,ms)  & no comp.  & 45.37 & 44.13 & 44.53 & --- \\
+                    & comp.     & 44.51 & 43.67 & 44.13 & --- \\
+\midrule
+$10\times$ (5\,ms)  & no comp.  & \textbf{29.67} & \textbf{29.09} & \textbf{32.38} & --- \\
+                    & comp.     & 19.96 & 20.18 & 19.70 & 39.84 \\
+                    & difference & $-9.71$ & $-8.91$ & $-12.68$ & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \section{Efficiency}
 \label{sec:efficiency}
 % TODO-Efficiency (Results)
+
+\begin{table}[htbp]
+\centering
+\caption[Efficiency of the non-spiking models]{Full-pipeline streaming inference, RTX 5070 Ti, idle-GPU-guarded harness. FLOPs per frame
+are counted as defined in Section~\ref{sec:eval_protocol}; mAP per GFLOP uses the test AP of
+Table~\ref{tab:accuracy}.}
+\label{tab:efficiency}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Metric} & \textbf{S5-RVT} & \textbf{EventSSM} & \textbf{PureSSM} \\
+\midrule
+Total parameters       & 18.19\,M & 19.18\,M & \textbf{16.33\,M} \\
+FLOPs                  & 11.06\,G & 12.71\,G & \textbf{10.03\,G} \\
+mAP per GFLOP          & 4.32 & 3.64 & \textbf{4.63} \\
+Latency p50, eager     & 17.14\,ms & \textbf{12.60\,ms} & 26.86\,ms \\
+Throughput, eager      & 58\,Hz & \textbf{79\,Hz} & 37\,Hz \\
+Throughput, CUDA-graph & --- & \textbf{210\,Hz} & 181\,Hz \\
+Energy per frame       & 0.723\,J & \textbf{0.438\,J} & 0.652\,J \\
+Streaming state        & \textbf{4.7\,MB} & 144\,MB & 144\,MB \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \begin{figure}[htbp]
     \centering
@@ -819,6 +1043,24 @@ in return?}
 \label{subsec:spk_accuracy}
 % TODO-Accuracy of the Readouts
 
+\begin{table}[htbp]
+\centering
+\caption[Accuracy of the spiking readouts (100k steps)]{Spiking readouts on Gen1 (test set, 100k-step schedule, spiking stages 2--4). Intervals: 95\,\%
+paired bootstrap over the 470 test recordings. Firing rate: share of nonzero readout outputs, weighted by the
+neck operations each stage feeds, on the final checkpoint.}
+\label{tab:spiking_ablation}
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Model (100k steps)} & \textbf{mAP [95\,\% CI]} & \textbf{AP\textsubscript{50}} & \textbf{AP\textsubscript{L}} & \textbf{Car / Ped.} & \textbf{Firing rate} \\
+\midrule
+PureSSM (no LIF)   & 42.52 [40.40, 44.39] & 69.40 & 42.62 & 60.43 / 24.62 & n/a \\
+analog (dense LIF) & 42.25 [40.14, 43.99] & 69.55 & 42.41 & 59.72 / 24.77 & 1.00 (dense) \\
+graded             & 40.72 [38.66, 42.33] & 67.57 & 38.41 & 59.09 / 22.36 & 0.17 \\
+spike (binary)     & 40.18 [38.09, 41.88] & 66.40 & 41.14 & 58.82 / 21.55 & 0.41 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \subsection{The Readout Ladder}
 \label{subsec:spk_ladder}
 % TODO-The Readout Ladder
@@ -847,6 +1089,29 @@ because every arm is scored on the same resampled recordings.}
 \subsection{The Graded Readout on the Full Schedule}
 \label{subsec:spk_full}
 % TODO-The Graded Readout on the Full Schedule
+
+\begin{table}[htbp]
+\centering
+\caption[The graded readout on the full schedule]{The graded readout trained on the full 400k-step schedule, against the 400k-step models of
+Table~\ref{tab:accuracy} (Gen1 test set, best-validation checkpoint of each run). Single runs; the paired
+interval of the graded--PureSSM difference is \res{[lo, hi]}.}
+\label{tab:spiking_400k}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Metric} & \textbf{S5-RVT} & \textbf{EventSSM} & \textbf{PureSSM} & \textbf{SpikingSSM, graded} \\
+\midrule
+mAP @[0.50:0.95]        & 47.72 & 46.22 & 46.43 & 46.24 \\
+$\mathrm{AP}_{50}$      & 75.28 & 74.54 & 74.09 & 73.86 \\
+$\mathrm{AP}_{75}$      & 49.76 & 48.08 & 48.25 & 48.42 \\
+$\mathrm{AP}_S$ (small) & 38.81 & 37.42 & 37.50 & 37.38 \\
+$\mathrm{AP}_M$ (medium)& 54.92 & 53.68 & 53.96 & 53.54 \\
+$\mathrm{AP}_L$ (large) & 50.66 & 44.70 & 47.65 & 49.63 \\
+\midrule
+Car / Pedestrian        & 63.88 / 31.56 & 61.67 / 30.78 & 62.83 / 30.02 & 61.93 / 30.54 \\
+Checkpoint (step)       & published & 320k & 310k & 350k \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \begin{figure}[htbp]
     \centering
@@ -908,6 +1173,49 @@ readout.}
 \label{subsec:spk_energy}
 % TODO-Synaptic Operations and Estimated Energy
 
+\begin{table}[htbp]
+\centering
+\caption[Operation-count energy estimate per readout]{Operation-count energy estimate per frame (Equation~\eqref{eq:sop_energy}; 45-nm constants,
+$E_{\mathrm{MAC}} = 4.6$\,pJ, $E_{\mathrm{AC}} = 0.9$\,pJ~\cite{horowitz2014computing}). Rates: share of nonzero
+readout outputs over 16 test clips after a 32-frame warm-up. Every arm has 52.4\,M spike-fed of 5.00\,G MACs
+per frame, so the saving is capped at 1.04\,\%. Active inputs of a graded or analog readout carry a value and
+are priced as multiply--accumulates (MAC), binary spikes as accumulates (AC). Memory traffic is not modelled.}
+\label{tab:sop}
+\small
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Readout (priced as)} & \textbf{Nonzero rate, s2 / s3 / s4} & \textbf{Driven ops} & \textbf{mJ/frame} & \textbf{Dense} & \textbf{Saving} \\
+\midrule
+graded, 400k (MAC) & 0.263 / 0.140 / 0.157 & 10.1\,M & 22.81 & 23.01 & 0.84\,\% \\
+analog, 100k (MAC) & 1.000 / 1.000 / 1.000 & 52.4\,M & 23.01 & 23.01 & $-0.01$\,\% \\
+graded, 100k (MAC) & 0.257 / 0.125 / 0.100 & 9.0\,M & 22.81 & 23.01 & 0.86\,\% \\
+binary, 100k (AC)  & 0.484 / 0.357 / 0.391 & 21.7\,M & 22.79 & 23.01 & 0.96\,\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\caption[Benchmark of the graded readout and the non-spiking models]{The graded 400k-step SpikingSSM and the non-spiking models measured in one benchmark session
+(harness of Table~\ref{tab:efficiency}, whose session gave 1--4\,\% higher latencies; models are compared within
+a session only). $^{*}$The idle power drifted during these runs; the range spans subtraction of the idle power
+measured before and after the run.}
+\label{tab:spiking_bench}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Metric} & \textbf{S5-RVT} & \textbf{EventSSM} & \textbf{PureSSM} & \textbf{SpikingSSM, graded} \\
+\midrule
+Parameters              & 18.19\,M & 19.18\,M & 16.33\,M & 16.34\,M \\
+FLOPs                   & 11.06\,G & 12.71\,G & 10.03\,G & 10.03\,G \\
+Latency p50, full       & 16.93\,ms & 12.09\,ms & 26.46\,ms & 27.19\,ms \\
+Latency p50, backbone   & 10.41\,ms & 5.19\,ms & 19.64\,ms & 20.30\,ms \\
+Energy per frame (GPU)  & 0.701\,J & 0.43--0.52\,J$^{*}$ & 0.641\,J & 0.55--0.69\,J$^{*}$ \\
+Streaming state         & 4.7\,MB & 144.5\,MB & 144.5\,MB & 145.6\,MB \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \subsection{Training Dynamics}
 \label{subsec:spk_dynamics}
 % TODO-Training Dynamics
@@ -954,6 +1262,34 @@ readout.}
 \label{sec:scope_change}
 % TODO-Scope Change: the Obstacle-Avoidance Aim
 
+\begin{table}[htbp]
+\centering
+\small
+\caption[Thesis A aims against what was delivered]{Aims registered in Thesis~A against what was delivered.}
+\label{tab:aims}
+\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Aim} & \textbf{Registered} & \textbf{Delivered} \\
+\midrule
+1 Architecture & SSM detector, comparing S4/S5/Mamba variants &
+  Delivered: two Mamba detectors (EventSSM, PureSSM) and a spiking variant, compared against the S5
+  baseline (Chapter~\ref{ch:method}). \\
+2 Benchmarking & Gen1 and 1Mpx; accuracy, latency, memory, energy; CNN, RNN and transformer baselines;
+  embedded-hardware latency &
+  Delivered on Gen1 with all four metrics (Sections~\ref{sec:acc_results}, \ref{sec:efficiency}); the
+  RNN (ConvLSTM) baseline enters only through its published rate result.\needsgpu{decision D1: replace with
+  the measured ConvLSTM baseline}
+  1Mpx deferred to future work (Section~\ref{sec:future_work}); latency and energy measured on a
+  desktop GPU, not embedded hardware. \\
+3 Temporal generalisation & Inference at frequencies other than training, without retraining &
+  Delivered and extended to two regimes, fixed cadence and true rate change, including a reproduction
+  of inference-time $\Delta t$-rescaling (Section~\ref{sec:robustness}). \\
+4 System integration & Obstacle-avoidance controller in simulation; micro-UAV flight if feasible &
+  Descoped (this section). \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
 \section{Limitations}
 \label{sec:limitations}
 % TODO-Limitations
@@ -983,11 +1319,30 @@ readout.}
 \section{Continuous-Time SSM}
 % TODO-Continuous-Time SSM
 
+\begin{align}
+    h'(t) &= A h(t) + B u(t) \\
+    y(t) &= C h(t) + D u(t)
+\end{align}
+
 \section{Discretisation}
 % TODO-Discretisation
 
+\begin{align}
+    \overline{A} &= \exp(\Delta A) \\
+    \overline{B} &= (\exp(\Delta A) - I) A^{-1} B
+\end{align}
+
+\begin{align}
+    h_k &= \overline{A} h_{k-1} + \overline{B} u_k \\
+    y_k &= C h_k + D u_k
+\end{align}
+
 \section{Mamba Selective Scan}
 % TODO-Mamba Selective Scan
+
+\begin{equation}
+    \Delta_k, B_k, C_k = f_\theta(u_k)
+\end{equation}
 
 \section{Event Representations}
 % TODO-Event Representations
@@ -996,15 +1351,85 @@ readout.}
 \label{subsec:stacked_hist}
 % TODO-Stacked Histogram
 
+\begin{equation}
+  b_k = \min\!\left(\left\lfloor B\,\frac{t_k - t_{\min}}{\max(t_{\max}-t_{\min},\,1)}\right\rfloor,\; B-1\right),
+  \label{eq:sh_bin}
+\end{equation}
+
+\begin{equation}
+  S_{p,b}(x,y) = \min\!\left(c,\; \sum_k \mathbb{1}[p_k=p]\,\mathbb{1}[b_k=b]\,\mathbb{1}[x_k=x]\,\mathbb{1}[y_k=y]\right).
+  \label{eq:sh_count}
+\end{equation}
+
 \subsection{Voxel Grid (proposed in Thesis A; not used)}
 % TODO-Voxel Grid (proposed in Thesis A; not used)
+
+\begin{equation}
+    V_b(x, y) = \sum_k p_k \cdot \max(0, 1 - |(B-1) \cdot t_k / T - b|) \cdot \delta(x-x_k) \cdot \delta(y-y_k)
+\end{equation}
 
 \chapter{Reproducibility}
 \label{app:repro}
 % TODO-Reproducibility
 
+\begin{table}[htbp]
+\centering
+\small
+\caption[Software environment]{Pinned software environment.}
+\label{tab:env}
+\begin{tabular}{ll}
+\toprule
+Component & Version \\
+\midrule
+Python & 3.11.15 \\
+PyTorch & 2.11.0+cu128 (CUDA 12.8, Blackwell \texttt{sm\_120}) \\
+\texttt{mamba-ssm} & 2.3.2.post1, built for \texttt{sm\_120} \\
+\texttt{causal-conv1d} & 1.6.2.post1, built for \texttt{sm\_120} \\
+PyTorch Lightning & 2.6.5 \\
+Hydra & 1.3.2 \\
+\texttt{torchdata} & 0.9.0 \\
+Reference implementation & \texttt{ssms\_event\_cameras} at commit \texttt{7c871b5} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\small
+\caption[Checkpoints evaluated]{Checkpoints behind the reported results (SHA-256, first 16 hex digits).}
+\label{tab:ckpts}
+\begin{tabular}{llll}
+\toprule
+Model & Origin & Selected step & SHA-256 (prefix) \\
+\midrule
+S5-RVT & published release~\cite{zubic2024state} & --- & \texttt{58396f15b6c6081c} \\
+EventSSM & run \texttt{8zotrwjw}, workstation & 320k (best val.) & \texttt{e94a36c2157bfea0} \\
+PureSSM & run \texttt{aekvsalq}, rented RTX~5090 & 310k (best val.) & \texttt{a07c108b430d288a} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \chapter{Project Timeline}
 % TODO-Project Timeline
+
+\begin{table}[htbp]
+    \centering
+    \caption[Planned timeline and milestones (Thesis A)]{Summary of the thesis timeline and major milestones, as registered in Thesis~A.}
+    \label{tab:timeline}
+    \renewcommand{\arraystretch}{1.4}
+    \begin{tabularx}{\textwidth}{|l|X|l|}
+        \hline
+        \rowcolor[gray]{0.9} \textbf{Phase} & \textbf{Tasks} & \textbf{Timeline} \\ \hline
+        Literature Review \& Foundations & Complete literature survey; identify optimal SSM variant and event representation. & Weeks 1--12 (Thesis A)  \\ \hline
+        Architecture Design & Design SSM detection architecture; implement in PyTorch. & Weeks 13--16 (Thesis A/B)  \\ \hline
+        Dataset Preparation & Download and preprocess Gen1/1Mpx datasets; implement data loaders. & Weeks 17--18 (Thesis B) \\ \hline
+        Training \& Benchmarking & Train models; benchmark against baselines; ablation studies. & Weeks 18--22 (Thesis B)  \\ \hline
+        Temporal Generalisation & Evaluate multi-frequency deployment; compare with RNN/Transformer. & Weeks 23--25 (Thesis B)\\ \hline
+        Simulation Integration & Integrate with avoidance controller; evaluate in simulation. & Weeks 26--29 (Thesis B)\\ \hline
+        Hardware Testing (if feasible) & Deploy on physical UAV platform; collect real-world results. & Weeks 30--33 (Thesis B/C)\\ \hline
+        Thesis Writing & Complete thesis document; final revisions. & Weeks 34--40 (Thesis C)  \\ \hline
+    \end{tabularx}
+\end{table}
 
 \begin{figure}[htbp]
     \centering
@@ -1024,3 +1449,22 @@ readout.}
 % TODO-Risk Assessment
 
 \end{document}
+
+\begin{table}[htbp]
+    \centering
+    \small
+    \caption[Risk assessment]{Risk register for Thesis~C (status on 6 October 2026).}
+    \label{tab:risk_assessment}
+    \renewcommand{\arraystretch}{1.4}
+    \begin{tabularx}{\textwidth}{|>{\RaggedRight\arraybackslash}p{3.2cm}|l|l|>{\RaggedRight\arraybackslash}X|}
+        \hline
+        \rowcolor[gray]{0.9} \textbf{Risk} & \textbf{Likelihood} & \textbf{Impact} & \textbf{Mitigation and status} \\ \hline
+        Spiking model does not train stably & Medium & High & A kill-switch fixed before training: if the model is not training stably by 11~October, it is frozen as a simulated proof of concept and effort moves to the write-up. Spiking is introduced stage by stage, and the residual bypass is reported if used. \emph{Status:} criteria met. In overfitting tests the dense and graded readouts pass, and the binary readout, which receives about a third of the dense readout's gradient, passes with twice the steps. In 25k-step runs with spiking at stage~4 the spike and graded readouts reached 0.345 and 0.343 validation mAP against 0.351 for PureSSM under the same schedule, with no silent or saturated stage; runs with spiking at stages 2--4 are under way. \\ \hline
+        Single-seed variance & High & Medium & Each model is trained once. Run-to-run variation is unmeasured; overall-mAP differences below about 1~mAP are treated as not distinguishable, and only larger effects, such as $\mathrm{AP}_L$ differences, are reported as findings, as single-seed results (Section~\ref{sec:limitations}). \\ \hline
+        Training environment breaks & Medium & High & The hand-built Blackwell stack is pinned (Appendix~\ref{app:repro}); dependency resolution is disabled for the kernel packages; runbooks and patches rebuild it from scratch. \\ \hline
+        Long run lost to a crash or out-of-memory kill & Medium & Medium & Full-state checkpoint resumption, validated in earlier runs; data-loader workers capped for host memory; a rented GPU of the same architecture as fallback. \\ \hline
+        Write-up completed late & Medium & High & Writing runs in parallel with the experiments, and every non-spiking section is drafted before the spiking results arrive; the kill-switch caps the time the spiking strand can take. \\ \hline
+        Neuromorphic hardware access delayed (INRC, Lava archived) & High & Low & Hardware deployment is future work, not a thesis result (Section~\ref{sec:future_work}); the model is exported through the vendor-neutral NIR format. \\ \hline
+    \end{tabularx}
+\end{table}
+
