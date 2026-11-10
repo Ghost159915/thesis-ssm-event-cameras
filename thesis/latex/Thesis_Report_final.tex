@@ -190,8 +190,26 @@ State Space Models (SSMs), and in particular the recently developed Mamba archit
 
 This thesis investigates state space models for event-based object detection, motivated by the perception needs of micro-UAVs; obstacle avoidance is the motivating application rather than an evaluated system (Section~\ref{sec:scope}). The working hypothesis is that SSM-based backbones can exploit the temporal structure of event streams at least as well as convolutional, recurrent or transformer-based ones, with competitive accuracy and favourable efficiency. The research question below narrows this hypothesis to a form that can be tested. 
 
-% TODO-Research Question pointer: one or two sentences stating the question briefly and pointing to
-% Chapter~\ref{ch:research_question}; also reword "The research question below" in the paragraph above
+\section{Research Question and Aims}
+\label{sec:rq}
+% TODO-Research Question and Aims: add the numbered aims after the question
+Prior work establishes that state space models are \emph{competitive} on event-camera detection, but
+every published comparison changes several things at once --- backbone, tokeniser and training recipe
+together --- so the contribution of the sequence model itself cannot be read off the result. This
+thesis narrows the question until it is answerable:
+
+\begin{quote}
+\textbf{Holding the entire detection pipeline fixed, what is the isolated effect of the backbone's
+spatial mixer --- convolution versus state space --- on accuracy, temporal robustness and efficiency
+for event-based object detection?}
+\end{quote}
+
+A second question follows from the first, and motivates the neuromorphic strand of the work:
+\emph{what does it cost to make such a detector spiking, and what does neuromorphic hardware give back
+in return?}
+
+\section{Hypotheses}
+% TODO-Hypotheses
 
 \section{Contributions}
 \label{sec:contributions}
@@ -617,30 +635,6 @@ identical pipeline. The three readouts of Section~\ref{subsec:readout_modes}, wh
 designed to measure exactly that decomposition (Section~\ref{sec:spiking_results}).
 
 % ===================================================================== CHAPTERS 3-7 (skeleton: write here)
-
-\chapter{Research Question}
-\label{ch:research_question}
-
-\section{Research Question and Aims}
-\label{sec:rq}
-% TODO-Research Question and Aims: the question below is moved from Chapter 1; add the numbered aims after it
-Prior work establishes that state space models are \emph{competitive} on event-camera detection, but
-every published comparison changes several things at once --- backbone, tokeniser and training recipe
-together --- so the contribution of the sequence model itself cannot be read off the result. This
-thesis narrows the question until it is answerable:
-
-\begin{quote}
-\textbf{Holding the entire detection pipeline fixed, what is the isolated effect of the backbone's
-spatial mixer --- convolution versus state space --- on accuracy, temporal robustness and efficiency
-for event-based object detection?}
-\end{quote}
-
-A second question follows from the first, and motivates the neuromorphic strand of the work:
-\emph{what does it cost to make such a detector spiking, and what does neuromorphic hardware give back
-in return?}
-
-\section{Hypotheses}
-% TODO-Hypotheses
 
 \chapter{Methodology}
 \label{ch:method}
