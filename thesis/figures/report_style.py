@@ -36,6 +36,7 @@ GRID, AXIS = "#e1e0d9", "#c3c2b7"
 
 # key -> (label, colour, marker). Keys match the result files (val_histories.json, captures, eval tags).
 MODELS = {
+    "convlstm": ("RVT (ConvLSTM)",    "#1f1e1c", "P"),   # literature baseline: near-black, only in fig_robustness
     "s5rvt":    ("S5-RVT (baseline)", "#6f6e69", "s"),
     "eventssm": ("EventSSM",          "#2a78d6", "o"),
     "puressm":  ("PureSSM",           "#eb6834", "^"),

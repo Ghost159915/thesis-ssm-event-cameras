@@ -78,12 +78,11 @@ best accuracy-per-FLOP at 4.63), and closing roughly half of the large-object ga
 baseline ($\mathrm{AP}_L$ $+2.95$ over the convolutional hybrid). A gradient-based receptive-field
 probe attributes that gain to a learned spatial extent up to twice that of the convolutional stack.
 Under a true tenfold change in event rate PureSSM retains 69.7\% of its accuracy, the most of the
-models tested\needsgpu{decision D1: add the same-protocol retention of RVT's ConvLSTM, measured on the
-true-rate test set; the published 17.7\,\% used unreleased preprocessing}. An attempted
-reproduction of the inference-time $\Delta t$-rescaling compensation reported in the literature finds
-that, under the published checkpoint and code, it does not recover accuracy at any tested operating
-point and the published high-rate result is not reproducible, while the rate robustness itself is
-present without it.
+state-space models tested, although RVT's ConvLSTM, measured on the same test set, retains more
+(80.3\%). An attempted reproduction of the inference-time $\Delta t$-rescaling compensation reported in
+the literature finds that, under the published checkpoint and code, it does not recover accuracy at any
+tested operating point and that neither published high-rate result (S5 with compensation, or the
+ConvLSTM's collapse) is reproducible, while the rate robustness itself is present without it.
 
 A spiking variant passes PureSSM's temporal output through a leaky integrate-and-fire readout whose three
 modes, analog, graded and binary, share one membrane, so that the cost of spiking separates into the cost
@@ -1174,26 +1173,34 @@ slow end of the sweep and the baseline at the sparse, fast end.
 \subsection{Regime 2 --- true rate change}
 \begin{table}[htbp]
 \centering
-\caption{True event-rate change. Retention $=\mathrm{mAP}@\text{rate} \div \mathrm{mAP}@1\times$.
-$^{\dagger}$Published by Zubic et al.~\cite{zubic2024state} for RVT at 200\,Hz, obtained with
-preprocessing that was not released; not measured on this test set (Section~\ref{subsec:f2}).}
+\caption{True event-rate change without $\Delta t$ compensation (Gen1 test set, COCO mAP $\times$ 100).
+Retention $=\mathrm{mAP}@\text{rate} \div \mathrm{mAP}@1\times$. The $1\times$ values of the state space
+models are measured on the re-preprocessed test set used for the sweep (Table~\ref{tab:regime1}). RVT's
+ConvLSTM is the published checkpoint~\cite{gehrig2023recurrent}, evaluated here on the same true-rate test
+set; Zubi\'{c} et al.~\cite{zubic2024state} report 8.35~mAP (17.7\,\%) for it at 200\,Hz, obtained with
+preprocessing that was not released (Section~\ref{subsec:f2}).}
 \label{tab:regime2}
 \begin{tabular}{lcccc}
 \toprule
- & \textbf{S5-RVT} & \textbf{EventSSM} & \textbf{ConvLSTM}$^{\dagger}$ & \textbf{PureSSM} \\
+ & \textbf{RVT (ConvLSTM)} & \textbf{S5-RVT} & \textbf{EventSSM} & \textbf{PureSSM} \\
 \midrule
-true-$10\times$ mAP        & 29.67 & 29.09 & 8.35 & \textbf{32.38} \\
-true-$10\times$ retention  & 62.2\% & 63.0\% & 17.7\% & \textbf{69.7\%} \\
-true-$2\times$ retention   & 95.1\% & 95.5\% & --- & \textbf{95.9\%} \\
+$1\times$ mAP (50\,ms)        & 47.14  & 47.69  & 46.20  & 46.45 \\
+true-$2\times$ mAP (25\,ms)   & 46.08  & 45.37  & 44.13  & 44.53 \\
+true-$2\times$ retention      & 97.7\% & 95.1\% & 95.5\% & 95.9\% \\
+true-$10\times$ mAP (5\,ms)   & 37.84  & 29.67  & 29.09  & 32.38 \\
+true-$10\times$ retention     & 80.3\% & 62.2\% & 63.0\% & 69.7\% \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-PureSSM is the most rate-robust model tested. Because EventSSM and PureSSM share an \emph{identical}
-temporal path, the additional robustness originates in the spatial backbone. The wider receptive field
-behind the $\mathrm{AP}_L$ result is a plausible explanation, since true-$10\times$ frames are event-sparse,
-but it has not been tested directly.\needsgpu{decision D1: add RVT's ConvLSTM measured on this true-rate
-test set, replacing the published column}
+PureSSM is the most rate-robust of the state-space models. Because EventSSM and PureSSM share an
+\emph{identical} temporal path, the additional robustness originates in the spatial backbone. The wider
+receptive field behind the $\mathrm{AP}_L$ result is a plausible explanation, since true-$10\times$ frames
+are event-sparse, but it has not been tested directly. RVT's ConvLSTM, evaluated from its published
+checkpoint on the same test set, is more robust than every state-space model: it retains 97.7\,\% at the
+twofold and 80.3\,\% at the tenfold rate, 37.84~mAP against PureSSM's 32.38. Robustness to a true rate
+change is therefore not a property that distinguishes the state-space models from this
+recurrent-convolutional baseline.
 
 \subsection{Reproducing inference-time \texorpdfstring{$\Delta t$}{Delta t}-rescaling}
 \label{subsec:f2}
@@ -1235,12 +1242,13 @@ true tenfold rate is 29.67~mAP, without compensation. The released preprocessing
 true-rate test set, because the frame stride is fixed at 50~ms in the code; the published experiment
 must therefore have used preprocessing that was not released, and that difference may account for the
 discrepancy. Third, the rate robustness itself is reproduced: without any compensation every state-space
-model retains 62--70\,\% of its accuracy at a true tenfold rate (Table~\ref{tab:regime2}), against the
-17.7\,\% reported for the ConvLSTM under the authors' unreleased preprocessing.
+model retains 62--70\,\% of its accuracy at a true tenfold rate (Table~\ref{tab:regime2}). The published
+contrast with the ConvLSTM is not: the authors report 17.7\,\% for it under their unreleased
+preprocessing, but on the same test set as the state-space models it retains 80.3\,\%.
 
 The conclusion drawn here is accordingly limited to what the published artefacts support. State-space
-detectors are substantially more rate-robust than the recurrent-convolutional baseline, and under the
-released checkpoint and code this robustness does not require the inference-time compensation. Whether
+detectors are rate-robust without the inference-time compensation, but under the released checkpoint and
+code they are not more rate-robust than the recurrent-convolutional baseline. Whether
 the compensation behaves differently under the unreleased preprocessing cannot be determined from the
 published material. The complete audit, with the code evidence and all evaluations, is recorded in the
 project repository (\path{docs/notes/Stage9_Zubic_methodology_verdict.md}).
@@ -1416,7 +1424,8 @@ its 340k checkpoint, with the same data-order caveat as above. Validation mAP wa
 \centering
 \caption{The graded readout trained on the full 400k-step schedule, against the 400k-step models of
 Table~\ref{tab:accuracy} (Gen1 test set, best-validation checkpoint of each run). Single runs; the paired
-interval of the graded--PureSSM difference is \res{[lo, hi]}.}
+95\,\% bootstrap interval of the graded--PureSSM difference is $-0.19$~[$-0.66$, $+0.09$]~mAP, and
+$+1.98$~[$-0.40$, $+3.59$] for $\mathrm{AP}_L$.}
 \label{tab:spiking_400k}
 \begin{tabular}{lcccc}
 \toprule
@@ -1437,13 +1446,14 @@ Checkpoint (step)       & published & 320k & 310k & 350k \\
 
 On the test set the graded readout reaches 46.24~mAP, 0.19 below PureSSM (46.43) and level with EventSSM
 (46.22) (Table~\ref{tab:spiking_400k}). At 100k steps the same readout was 1.80 below its PureSSM anchor, so
-most of the 100k-step cost of the graded readout is slower convergence rather than lost capacity
-\res{confirm with the paired interval of graded 400k against PureSSM 400k}. Validation and test agree in the
+most of the 100k-step cost of the graded readout is slower convergence rather than lost capacity: the
+paired 95\,\% interval of the 400k difference, $-0.66$ to $+0.09$~mAP, includes zero. Validation and test agree in the
 same way for both models (graded 47.28 to 46.24, PureSSM 47.53 to 46.43).
 
 Its large-object AP of 49.63 is the highest of the proposed models, 1.98 above PureSSM, 4.93 above EventSSM
 and 1.03 below S5-RVT. Validation $\mathrm{AP}_L$ swings by up to 4 points between neighbouring checkpoints, so
-the comparison with PureSSM rests on the test set \res{paired interval of $\mathrm{AP}_L$}. The comparison with
+the comparison with PureSSM rests on the test set, where the paired 95\,\% interval of the difference,
+$-0.40$ to $+3.59$, includes zero. The comparison with
 EventSSM is more systematic: the graded run's validation $\mathrm{AP}_L$ was above EventSSM's at 16 of the 20
 validation points the two runs share, and at every one from 240k steps on.
 
@@ -1500,11 +1510,28 @@ readout.}
 \subsection{Rate robustness of the spiking readouts}
 \label{subsec:spk_rate}
 Under the true-rate protocol of Section~\ref{sec:robustness} (5-ms windows at 200\,Hz, no compensation), the
-graded and binary readouts retain \res{\%} and \res{\%} of their 1$\times$ test mAP, against \res{\%} for
-the PureSSM 100k anchor under the same protocol. (The 69.7\,\% of Table~\ref{tab:regime2} belongs to the
-400k-step PureSSM and is not the comparison.) The leak and threshold were learned at the 50-ms training rate
-only, so this measures whether the LIF readout preserves the robustness of the uncompensated recurrence.
-\res{Interpret: preserved, reduced or improved.}
+graded and binary readouts retain 63.2\,\% and 70.3\,\% of their 1$\times$ test mAP, against 69.1\,\% for
+the PureSSM 100k anchor under the same protocol (Figure~\ref{fig:robustness_spiking}). (The 69.7\,\% of
+Table~\ref{tab:regime2} belongs to the 400k-step PureSSM; against it the 400k graded readout retains
+65.2\,\%.) The leak and threshold were learned at the 50-ms training rate only, so this measures whether
+the LIF readout preserves the robustness of the uncompensated recurrence. Sparsity reduces it: the graded
+readout loses 5.9 points of retention against its anchor. Binarisation recovers it: the binary readout
+retains slightly more than the anchor and, at the tenfold rate, scores 2.5~mAP above the graded readout
+(28.26 against 25.73) although it is 0.54~mAP below it at 1$\times$. A plausible but untested explanation
+is the fixed spike amplitude: when sparser frames reduce the membrane input, the binary output loses
+spikes but not their size, whereas the graded output, which carries the membrane value, shrinks in both.
+These are single runs without intervals, so the differences are indicative only.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.62\textwidth]{images/fig_robustness_spiking.pdf}
+    \caption{Rate robustness of the spiking readouts under a true event-rate change,
+    without compensation (retention as in Table~\ref{tab:regime2}). Solid: the 100k-step models, PureSSM
+    and the graded and binary readouts trained on the same schedule. Dashed: the 400k-step PureSSM and graded
+    readout. Each model's $1\times$ reference is its Gen1 test mAP. Single runs, without intervals.}
+    \label{fig:robustness_spiking}
+\end{figure}
+
 
 \subsection{Synaptic operations and estimated energy}
 \label{subsec:spk_energy}
@@ -1585,14 +1612,17 @@ the most plausible source of PureSSM's additional rate robustness, because Event
 identical temporal path; that attribution follows from the controlled design rather than from a direct
 probe.
 
-\textbf{State-space temporal processing is robust to the event rate.} All three state-space models
-keep 62--70\,\% of their accuracy at a true tenfold rate without any compensation, against 17.7\,\%
-reported for the ConvLSTM under the authors' unreleased preprocessing (Table~\ref{tab:regime2}). Under the published artefacts this robustness does
+\textbf{Recurrent temporal processing is robust to the event rate; the state-space form is not what
+makes it so.} All three state-space models keep 62--70\,\% of their accuracy at a true tenfold rate
+without any compensation, and RVT's ConvLSTM, measured on the same test set, keeps 80.3\,\%
+(Table~\ref{tab:regime2}); the 17.7\,\% reported for it under the authors' unreleased preprocessing is not
+reproduced. Under the published artefacts this robustness does
 not depend on the inference-time $\Delta t$ compensation, which lowered accuracy at every tested
 operating point (Section~\ref{subsec:f2}); whether it behaves differently under the unreleased
 preprocessing cannot be settled from the released material. For a platform whose event rate varies with
-its own speed, the practical consequence is that a state-space detector degrades gracefully, rather than
-collapsing, at a rate it was not trained for, and without per-rate tuning.
+its own speed, the practical consequence is that a detector with a recurrent memory, state-space or
+ConvLSTM, degrades gracefully rather than collapsing at a rate it was not trained for, without per-rate
+tuning.
 
 \textbf{Efficiency is a trade-space, not a free gain.} PureSSM performs the least computation and has
 the best accuracy per FLOP, but it is the slowest model in eager execution (37\,Hz), because its
@@ -1676,8 +1706,8 @@ every registered aim against what this thesis delivers.
 2 Benchmarking & Gen1 and 1Mpx; accuracy, latency, memory, energy; CNN, RNN and transformer baselines;
   embedded-hardware latency &
   Delivered on Gen1 with all four metrics (Sections~\ref{sec:acc_results}, \ref{sec:efficiency}); the
-  RNN (ConvLSTM) baseline enters only through its published rate result.\needsgpu{decision D1: replace with
-  the measured ConvLSTM baseline}
+  RNN baseline is RVT's published ConvLSTM checkpoint, measured for accuracy and rate robustness
+  (Section~\ref{sec:robustness}) but not retrained or benchmarked for efficiency;
   1Mpx deferred to future work (Section~\ref{sec:future_work}); latency and energy measured on a
   desktop GPU, not embedded hardware. \\
 3 Temporal generalisation & Inference at frequencies other than training, without retraining &
@@ -1713,7 +1743,8 @@ demonstration, whose outcome depends on many components other than the backbone.
 The micro-UAV motivation is unchanged; what changed is that the evaluation is architectural rather than
 system-level. Several results bear on that motivation directly. The event rate of a moving camera varies
 with its speed and the scene~\cite{gallego2020event}, so robustness to rate changes is a property a
-flying platform needs, and PureSSM is the most rate-robust model tested. Parameters, FLOPs, latency and
+flying platform needs; PureSSM is the most rate-robust of the state-space models, although the ConvLSTM
+baseline is more robust still. Parameters, FLOPs, latency and
 energy are reported for every model, including the 31-fold larger streaming state of the Mamba models,
 which counts against them on a memory-constrained platform. The spiking model opens a path to
 neuromorphic hardware, whose energy is estimated here in simulation rather than measured on silicon
@@ -1793,7 +1824,8 @@ as follows.
         for the convolutional stack (Section~\ref{sec:erf}).
   \item \textbf{A reproduction study of $\Delta t$-rescaling.} Without compensation, the state-space
         models retain 62--70\,\% of their accuracy at a true tenfold event-rate increase, PureSSM the most
-        (69.7\,\%), against 17.7\,\% reported for a ConvLSTM under the authors' unreleased preprocessing. Under
+        (69.7\,\%); RVT's ConvLSTM, measured on the same test set, retains 80.3\,\%, not the 17.7\,\% the
+        authors report. Under
         the published checkpoint and code, the
         inference-time compensation did not recover accuracy at any tested point and cost 9--13~mAP at the
         tenfold rate, and the published 200\,Hz result (39.84) could not be reproduced; the best
@@ -1834,8 +1866,9 @@ expectation that more pixels help. Gehrig and Scaramuzza~\cite{gehrig2022high} s
 in low light, higher-resolution event cameras produce more temporal noise, because each pixel fires more
 often, and can be outperformed by lower-resolution ones; learning-based methods trained on realistic,
 noisy data largely overcome that penalty. The state-space detectors of this thesis retained 62--70\,\% of
-their accuracy at a tenfold rate change (Section~\ref{sec:robustness}), so the hypothesis is that they
-lose least to the temporal noise of a high-resolution sensor and therefore gain most from its resolution.
+their accuracy at a tenfold rate change, and the ConvLSTM baseline 80\,\% (Section~\ref{sec:robustness}),
+so the hypothesis is that the most rate-robust detectors lose least to the temporal noise of a
+high-resolution sensor and therefore gain most from its resolution.
 The models should be trained on 1Mpx rather than transferred from Gen1 without retraining; zero-shot
 transfer would confound the change of resolution with the temporal-noise penalty that training on the
 target data removes.

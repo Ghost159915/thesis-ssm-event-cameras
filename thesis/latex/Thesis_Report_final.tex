@@ -1122,17 +1122,22 @@ $4\times$    & 12\,ms   & 38.4 & 35.4 & 35.68 \\
 
 \begin{table}[htbp]
 \centering
-\caption[Robustness under a true event-rate change]{True event-rate change. Retention $=\mathrm{mAP}@\text{rate} \div \mathrm{mAP}@1\times$.
-$^{\dagger}$Published by Zubic et al.~\cite{zubic2024state} for RVT at 200\,Hz, obtained with
-preprocessing that was not released; not measured on this test set (Section~\ref{subsec:f2}).}
+\caption[Robustness under a true event-rate change]{True event-rate change without $\Delta t$ compensation (Gen1 test set, COCO mAP $\times$ 100).
+Retention $=\mathrm{mAP}@\text{rate} \div \mathrm{mAP}@1\times$. The $1\times$ values of the state space
+models are measured on the re-preprocessed test set used for the sweep (Table~\ref{tab:regime1}). RVT's
+ConvLSTM is the published checkpoint~\cite{gehrig2023recurrent}, evaluated here on the same true-rate test
+set; Zubi\'{c} et al.~\cite{zubic2024state} report 8.35~mAP (17.7\,\%) for it at 200\,Hz, obtained with
+preprocessing that was not released (Section~\ref{subsec:f2}).}
 \label{tab:regime2}
 \begin{tabular}{lcccc}
 \toprule
- & \textbf{S5-RVT} & \textbf{EventSSM} & \textbf{ConvLSTM}$^{\dagger}$ & \textbf{PureSSM} \\
+ & \textbf{RVT (ConvLSTM)} & \textbf{S5-RVT} & \textbf{EventSSM} & \textbf{PureSSM} \\
 \midrule
-true-$10\times$ mAP        & 29.67 & 29.09 & 8.35 & \textbf{32.38} \\
-true-$10\times$ retention  & 62.2\% & 63.0\% & 17.7\% & \textbf{69.7\%} \\
-true-$2\times$ retention   & 95.1\% & 95.5\% & --- & \textbf{95.9\%} \\
+$1\times$ mAP (50\,ms)        & 47.14  & 47.69  & 46.20  & 46.45 \\
+true-$2\times$ mAP (25\,ms)   & 46.08  & 45.37  & 44.13  & 44.53 \\
+true-$2\times$ retention      & 97.7\% & 95.1\% & 95.5\% & 95.9\% \\
+true-$10\times$ mAP (5\,ms)   & 37.84  & 29.67  & 29.09  & 32.38 \\
+true-$10\times$ retention     & 80.3\% & 62.2\% & 63.0\% & 69.7\% \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1143,9 +1148,10 @@ true-$2\times$ retention   & 95.1\% & 95.5\% & --- & \textbf{95.9\%} \\
     \caption[Temporal robustness under event-rate change]{Temporal robustness as retention, the mAP at each operating point as a percentage of the model's
     own $1\times$ mAP. (a) Fixed 50-ms cadence with a shortened or lengthened accumulation window
     (Table~\ref{tab:regime1}). (b) True event-rate change (Tables~\ref{tab:regime2} and~\ref{tab:dt_comp}):
-    solid lines without and dashed lines with inference-time $\Delta t$ compensation; stars are published
-    values not measured on this test set, S5 with compensation at 200\,Hz (83.5\,\%) and RVT's ConvLSTM
-    (17.7\,\%)~\cite{zubic2024state}.}
+    solid lines without and dashed lines with inference-time $\Delta t$ compensation; the black line is RVT's
+    ConvLSTM (published checkpoint) measured on the same test set. Stars are the values published by
+    Zubi\'{c} et al.~\cite{zubic2024state} for a tenfold rate, not reproduced on this test set: S5 with
+    compensation (83.5\,\%) and RVT's ConvLSTM (17.7\,\%).}
     \label{fig:robustness}
 \end{figure}
 
@@ -1284,7 +1290,8 @@ because every arm is scored on the same resampled recordings.}
 \centering
 \caption[The graded readout on the full schedule]{The graded readout trained on the full 400k-step schedule, against the 400k-step models of
 Table~\ref{tab:accuracy} (Gen1 test set, best-validation checkpoint of each run). Single runs; the paired
-interval of the graded--PureSSM difference is \res{[lo, hi]}.}
+95\,\% bootstrap interval of the graded--PureSSM difference is $-0.19$~[$-0.66$, $+0.09$]~mAP, and
+$+1.98$~[$-0.40$, $+3.59$] for $\mathrm{AP}_L$.}
 \label{tab:spiking_400k}
 \begin{tabular}{lcccc}
 \toprule
@@ -1358,6 +1365,16 @@ readout.}
 \subsection{Rate Robustness of the Spiking Readouts}
 \label{subsec:spk_rate}
 % TODO-Rate Robustness of the Spiking Readouts
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.62\textwidth]{images/fig_robustness_spiking.pdf}
+    \caption[Rate robustness of the spiking readouts]{Rate robustness of the spiking readouts under a true event-rate change,
+    without compensation (retention as in Figure~\ref{fig:robustness}). Solid: the 100k-step models, PureSSM
+    and the graded and binary readouts trained on the same schedule. Dashed: the 400k-step PureSSM and graded
+    readout. Each model's $1\times$ reference is its Gen1 test mAP. Single runs, without intervals.}
+    \label{fig:robustness_spiking}
+\end{figure}
 
 \subsection{Synaptic Operations and Estimated Energy}
 \label{subsec:spk_energy}
@@ -1468,8 +1485,8 @@ Streaming state         & 4.7\,MB & 144.5\,MB & 144.5\,MB & 145.6\,MB \\
 2 Benchmarking & Gen1 and 1Mpx; accuracy, latency, memory, energy; CNN, RNN and transformer baselines;
   embedded-hardware latency &
   Delivered on Gen1 with all four metrics (Sections~\ref{sec:acc_results}, \ref{sec:efficiency}); the
-  RNN (ConvLSTM) baseline enters only through its published rate result.\needsgpu{decision D1: replace with
-  the measured ConvLSTM baseline}
+  RNN baseline is RVT's published ConvLSTM checkpoint, measured for accuracy and rate robustness
+  (Section~\ref{sec:robustness}) but not retrained or benchmarked for efficiency;
   1Mpx deferred to future work (Section~\ref{sec:future_work}); latency and energy measured on a
   desktop GPU, not embedded hardware. \\
 3 Temporal generalisation & Inference at frequencies other than training, without retraining &

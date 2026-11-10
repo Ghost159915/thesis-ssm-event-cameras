@@ -1,0 +1,16 @@
+model,mult,dt_ms,comp,AP,retention_pct
+puressm_100k,1.0,50.0,none,42.52,100.0
+puressm_100k,2.0,25.0,none,40.88,96.1
+puressm_100k,10.0,5.0,none,29.4,69.1
+graded_100k,1.0,50.0,none,40.72,100.0
+graded_100k,2.0,25.0,none,38.81,95.3
+graded_100k,10.0,5.0,none,25.73,63.2
+spike_100k,1.0,50.0,none,40.18,100.0
+spike_100k,2.0,25.0,none,39.04,97.2
+spike_100k,10.0,5.0,none,28.26,70.3
+puressm,1.0,50.0,none,46.43,100.0
+puressm,2.0,25.0,none,44.53,95.9
+puressm,10.0,5.0,none,32.38,69.7
+graded_400k,1.0,50.0,none,46.24,100.0
+graded_400k,2.0,25.0,none,43.88,94.9
+graded_400k,10.0,5.0,none,30.16,65.2
