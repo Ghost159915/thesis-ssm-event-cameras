@@ -80,7 +80,7 @@ def main() -> None:
         bx.text(0.8 if inside else driven / 1e6 + 0.8, y,
                 f"{driven / 1e6:.1f} M driven ({driven / fed * 100:.0f} %, priced as {op})",
                 ha="left", va="center", fontsize=7.5, color=rs.INK)
-        bx.text(fed / 1e6 + 0.8, y, f"saving {saving * 100:.2f} %", ha="left", va="center", fontsize=7.5,
+        bx.text(fed / 1e6 + 0.8, y, f"saving {saving * 100:.2f} %".replace("-", "−"), ha="left", va="center", fontsize=7.5,
                 color=rs.INK)
         rates = sop["rates"]["stages"]
         rows.append({"arm": name, "op_class": op, "total_macs": total, "spike_fed_macs": fed,

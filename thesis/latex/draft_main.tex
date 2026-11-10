@@ -88,7 +88,8 @@ present without it.
 A spiking variant passes PureSSM's temporal output through a leaky integrate-and-fire readout whose three
 modes, analog, graded and binary, share one membrane, so that the cost of spiking separates into the cost
 of the neuron dynamics, of sparsity and of binarisation. On a common 100k-step schedule these cost
-$-0.28$, $-1.52$ and $-0.54$~mAP (95\,\% paired bootstrap intervals \res{[lo, hi] per step}). On the full
+$-0.28$, $-1.52$ and $-0.54$~mAP (95\,\% paired bootstrap intervals $[-0.63, 0.05]$, $[-1.98, -1.06]$ and
+$[-1.07, -0.07]$: the dynamics cost is not distinguishable from zero, the other two are). On the full
 400k-step schedule the graded readout reaches 46.2 AP, 0.2 below PureSSM, with the highest large-object
 AP of the proposed models (49.6). Because spikes feed about 1\,\% of the detector's operations, an
 operation-count estimate puts the graded readout's energy saving at 0.84\,\%, so the energy case for
@@ -206,7 +207,8 @@ in return?}
         leaky integrate-and-fire layer with three readouts sharing one membrane (analog, graded, binary).
         Stepping PureSSM $\rightarrow$ analog $\rightarrow$ graded $\rightarrow$ binary separates the
         accuracy cost of the neuron dynamics, of sparsity and of binarisation ($-0.28$, $-1.52$ and
-        $-0.54$~mAP on a common 100k-step schedule, \res{95\,\% intervals}), where published spiking
+        $-0.54$~mAP on a common 100k-step schedule; the 95\,\% paired intervals of the last two exclude zero),
+        where published spiking
         detectors report at most a single spiking-versus-non-spiking difference. On the full schedule the
         graded readout reaches 46.24~mAP against PureSSM's 46.43.
 \end{enumerate}
@@ -1343,10 +1345,10 @@ neck operations each stage feeds, on the final checkpoint.}
 \toprule
 \textbf{Model (100k steps)} & \textbf{mAP [95\,\% CI]} & \textbf{AP\textsubscript{50}} & \textbf{AP\textsubscript{L}} & \textbf{Car / Ped.} & \textbf{Firing rate} \\
 \midrule
-PureSSM (no LIF)   & 42.52 \res{[lo, hi]} & 69.40 & 42.62 & 60.43 / 24.62 & n/a \\
-analog (dense LIF) & 42.25 \res{[lo, hi]} & 69.55 & 42.41 & 59.72 / 24.77 & n/a (dense) \\
-graded             & 40.72 \res{[lo, hi]} & 67.57 & 38.41 & 59.09 / 22.36 & \res{} \\
-spike (binary)     & 40.18 \res{[lo, hi]} & 66.40 & 41.14 & 58.82 / 21.55 & \res{} \\
+PureSSM (no LIF)   & 42.52 [40.40, 44.39] & 69.40 & 42.62 & 60.43 / 24.62 & n/a \\
+analog (dense LIF) & 42.25 [40.14, 43.99] & 69.55 & 42.41 & 59.72 / 24.77 & 1.00 (dense) \\
+graded             & 40.72 [38.66, 42.33] & 67.57 & 38.41 & 59.09 / 22.36 & 0.17 \\
+spike (binary)     & 40.18 [38.09, 41.88] & 66.40 & 41.14 & 58.82 / 21.55 & 0.41 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1375,16 +1377,25 @@ not distinguishable on Gen1 rather than as zero.
 
 \begin{figure}[htbp]
 \centering
-\fbox{\parbox{0.9\textwidth}{\centering\vspace{2em}\res{Figure: the ladder --- test mAP per arm with 95\,\% intervals,
-and the paired cost of each step about zero (\texttt{event\_ssm.eval.ladder\_plot})}\vspace{2em}}}
-\caption{The cost of spiking, step by step. Left: test mAP per arm. Right: the paired change at each step of
-the ladder; whiskers are 95\,\% bootstrap intervals over test recordings.}
+\includegraphics[width=\textwidth]{images/fig_ladder.pdf}
+\caption{The cost of spiking, step by step (100k-step schedule, Gen1 test set). (a) Test mAP per arm. (b) The
+paired change at each step of the ladder: LIF dynamics (PureSSM $\rightarrow$ analog), sparsity (analog
+$\rightarrow$ graded) and binarisation (graded $\rightarrow$ spike). Whiskers are 95\,\% bootstrap intervals
+over the 470 test recordings; the paired intervals in (b) are narrower than the per-arm intervals in (a)
+because every arm is scored on the same resampled recordings.}
 \label{fig:spiking_ladder}
 \end{figure}
 
-The steps measured $\Delta_{\mathrm{dyn}} = -0.28$ \res{[lo, hi]}, $\Delta_{\mathrm{sparse}} = -1.52$
-\res{[lo, hi]} and $\Delta_{\mathrm{bin}} = -0.54$ \res{[lo, hi]}~mAP (Figure~\ref{fig:spiking_ladder}); the
-pre-registered ordering held in the point estimates \res{and in the intervals: which steps exclude zero}.
+The steps measured $\Delta_{\mathrm{dyn}} = -0.28$ $[-0.63, 0.05]$, $\Delta_{\mathrm{sparse}} = -1.52$
+$[-1.98, -1.06]$ and $\Delta_{\mathrm{bin}} = -0.54$ $[-1.07, -0.07]$~mAP (Figure~\ref{fig:spiking_ladder}); the
+pre-registered ordering held in the point estimates and in the intervals. The sparsity and binarisation steps
+exclude zero; the dynamics step does not, so the cost of the leak and reset is not distinguishable from zero on
+Gen1. The per-arm intervals of Table~\ref{tab:spiking_ablation} are about 4~mAP wide and overlap, because each
+carries the difficulty of the particular test recordings; pairing removes that shared part, and the step
+intervals are four to six times narrower. By object size, sparsity costs on small objects ($-1.88$
+$[-2.24, -1.44]$) and medium ones ($-1.23$ $[-1.91, -0.53]$), whereas binarisation costs on medium objects
+($-1.06$ $[-1.87, -0.37]$) but not on small ones ($-0.06$ $[-0.63, 0.32]$). The large-object intervals of every
+step are 6 to 8~mAP wide, so no step is attributed a large-object effect.
 The largest step is sparsity, not binarisation, as it was on the validation split ($-0.4$, $-1.4$ and
 $-0.7$). A 25k-step pilot on the same stages had given validation mAP of 35.1 (PureSSM),
 35.1 (analog), 34.0 (graded) and 30.5 (binary), so steps of 0.0, $-1.1$ and $-3.5$, and at matched steps
@@ -1464,15 +1475,25 @@ The threshold is fixed at $\vartheta = 1$ in training and not learned, so the tr
 re-evaluated at other thresholds. Figure~\ref{fig:threshold_sweep} plots accuracy against the spike-weighted
 firing rate for $\vartheta \in \{0.5, 0.75, 1, 1.5, 2, 3\}$. Every point other than $\vartheta = 1$ is a
 \emph{post-hoc} operating point of the same weights, so the curve measures sensitivity to the threshold, not
-what a model trained at that sparsity would reach. \res{Describe the curve: where accuracy holds and where it
-falls; graded against binary.}
+what a model trained at that sparsity would reach. On both readouts the training threshold is the most
+accurate point. Lowering the threshold raises the firing rate without gaining accuracy: at $\vartheta = 0.75$
+the graded readout fires at 21.1\,\% instead of 17.3\,\% for 40.68 against 40.72~mAP, and at
+$\vartheta = 0.5$ both readouts lose accuracy (graded 39.87, binary 38.57). Raising it lowers the rate at a
+steep cost, and faster for the binary readout: at $\vartheta = 1.5$ the graded readout loses 2.1~mAP and the
+binary 2.3, at $\vartheta = 2$ they lose 6.1 and 11.8. No post-hoc operating point dominates the trained
+one, so a sparser readout would have to be trained at its threshold. At $\vartheta = 1$ the binary readout
+fires about 2.4 times as often as the graded one (41.5 against 17.3\,\% of the spike-fed operations),
+consistent with the compensation noted above. The threshold is also no energy lever on this architecture:
+even the sparsest point measured (graded, $\vartheta = 3$, 5.3\,\%) would raise the estimated saving of
+Section~\ref{subsec:spk_energy} from 0.86\,\% only to about 0.99\,\%, at a cost of 12.9~mAP.
 
 \begin{figure}[htbp]
 \centering
-\fbox{\parbox{0.9\textwidth}{\centering\vspace{2em}\res{Figure: post-hoc threshold sweep --- test mAP against
-spike-weighted firing rate, graded and binary (\texttt{event\_ssm.eval.threshold\_sweep})}\vspace{2em}}}
-\caption{Post-hoc threshold sensitivity. Each point re-evaluates the trained weights at another firing
-threshold; the ringed point is the training threshold $\vartheta = 1$.}
+\includegraphics[width=0.75\textwidth]{images/fig_threshold.pdf}
+\caption{Post-hoc threshold sensitivity of the 100k-step graded and binary readouts (Gen1 test set). Each point
+re-evaluates the trained weights at another firing threshold; the ringed point is the training threshold
+$\vartheta = 1$. Firing rate: share of the spike-fed neck operations driven. The dashed line is the dense analog
+readout.}
 \label{fig:threshold_sweep}
 \end{figure}
 
@@ -1509,8 +1530,14 @@ nonzero at rates of 0.263, 0.140 and 0.157 at stages 2, 3 and 4 (0.193 when weig
 each stage feeds), so 10.1\,M of the 52.4\,M spike-fed MACs are driven per frame. Equation~\eqref{eq:sop_energy}
 then gives 22.81\,mJ per frame against 23.01\,mJ for dense execution, a saving of 0.84\,\% against the
 1.04\,\% ceiling. The graded readout carries a value, so its active inputs are priced as MACs; the binary
-readout's are priced as accumulates \res{binary and graded 100k: nonzero rates, driven ops and mJ/frame from
-the per-arm benchmarks}.
+readout's are priced as accumulates. Measured in the same way, the three 100k-step readouts give the energy
+side of the ladder: the analog readout is dense (rate 1.00 at every stage, 52.4\,M MACs driven, saving
+$-0.01$\,\% once the neuron updates are counted), the graded readout fires at 0.257, 0.125 and 0.100 (9.0\,M
+MACs driven, 22.81\,mJ, saving 0.86\,\%) and the binary readout at 0.484, 0.357 and 0.391 (21.7\,M
+accumulates driven, 22.79\,mJ, saving 0.96\,\%). The binary readout saves slightly more than the graded one
+although it fires 2.4 times as often, because an accumulate is priced at about a fifth of a MAC. The
+latencies (27.1--27.5\,ms) and measured GPU energies (0.70--0.72\,J per frame) of the three readouts agree
+within noise, as expected on dense hardware.
 
 The same benchmark session measured the model on the GPU. The spiking model runs at 27.19\,ms per frame
 (p50, full pipeline) against 26.46\,ms for PureSSM, the extra 0.73\,ms being the per-timestep LIF loop, and
@@ -1781,8 +1808,8 @@ as follows.
         built as a drop-in backbone for the same pipeline and verified by tests, including that it reduces
         numerically to PureSSM when no stage spikes (Section~\ref{subsec:spiking_method}). On a common
         100k-step schedule the binary readout reaches 40.18 test mAP against 42.52 for PureSSM, and the
-        neuron dynamics, sparsity and binarisation cost $-0.28$, $-1.52$ and $-0.54$~mAP
-        \res{95\,\% intervals}; sparsity is the largest step. On the full 400k-step schedule the graded
+        neuron dynamics, sparsity and binarisation cost $-0.28$, $-1.52$ and $-0.54$~mAP, the last two with
+        95\,\% paired intervals that exclude zero; sparsity is the largest step. On the full 400k-step schedule the graded
         readout reaches 46.24~mAP, 0.19 below PureSSM, with an $\mathrm{AP}_L$ of 49.63, the highest of the
         proposed models (Section~\ref{sec:spiking_results}). Because the spikes feed about 1\,\% of the
         detector's operations, the estimated energy saving is bounded accordingly: 22.81\,mJ against

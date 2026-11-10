@@ -1,0 +1,8 @@
+panel,item,ap,ci_lo,ci_hi,frac_reps_ge_0
+a,puressm,42.52,40.4,44.39,
+a,analog,42.25,40.14,43.99,
+a,graded,40.72,38.66,42.33,
+a,binary,40.18,38.09,41.88,
+b,puressm:analog,-0.28,-0.63,0.05,0.041
+b,analog:graded,-1.52,-1.98,-1.06,0.0
+b,graded:binary,-0.54,-1.07,-0.07,0.013

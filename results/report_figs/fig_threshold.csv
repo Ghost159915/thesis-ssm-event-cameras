@@ -1,0 +1,13 @@
+arm,threshold,weighted_rate_pct,test_map,posthoc
+graded,3.0,5.33,27.79,True
+graded,2.0,8.91,34.61,True
+graded,1.5,12.19,38.66,True
+graded,1.0,17.25,40.72,False
+graded,0.75,21.14,40.68,True
+graded,0.5,26.54,39.87,True
+binary,3.0,23.68,23.04,True
+binary,2.0,30.87,28.35,True
+binary,1.5,35.76,37.84,True
+binary,1.0,41.47,40.18,False
+binary,0.75,44.53,39.97,True
+binary,0.5,47.64,38.57,True
