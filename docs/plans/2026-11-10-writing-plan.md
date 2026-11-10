@@ -1,6 +1,6 @@
 # Writing plan: full thesis by Sunday 15 November 2026
 
-The report is `thesis/latex/Thesis_Report_final.tex`. Every section to write has a `% TODO-<section name>` comment
+The report is `thesis/latex/Thesis_Report_final.tex`. **Reference copy: `thesis/latex/Thesis_Report_full.tex`** (created 10 Nov): every paragraph still to write has, in green, the points it must contain and a word target, followed by an example paragraph; write your own version in the final file and compare. Its per-paragraph word targets supersede the per-section estimates below (they total about 9,000 words). Every section to write has a `% TODO-<section name>` comment
 under its heading (Ctrl+F `TODO-`); delete the comment when the section is done. Sources for each section: the
 prose and every final number are in `thesis/latex/draft_main.tex`; the bullet guides, tables and equations are in
 `thesis/latex/main.tex`. Write in your own words, shorter than the draft.
