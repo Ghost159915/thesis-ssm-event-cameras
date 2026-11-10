@@ -1989,8 +1989,9 @@ The two polarities and ten bins are stacked polarity-major into $2B=20$ channels
 a tensor of shape $(20,240,304)$ stored as 8-bit integers. The data pipeline converts it to floating point
 without further normalisation and zero-pads it to $(20,256,320)$. Unlike the voxel grid below, events are
 not interpolated between bins, and the two polarities occupy separate channels rather than being summed
-with a sign. The representation is very sparse: in a sampled test recording only about 0.1\,\% of its
-entries are non-zero, and the count cut-off of 10 is reached by a negligible fraction of them.
+with a sign. The representation is sparse: over 40 frames from each of 20 randomly drawn test recordings,
+1.5\,\% of its entries are non-zero on average (median 1.2\,\%, between 0.2 and 4.0\,\% per recording,
+depending on scene activity), and the count cut-off of 10 is reached by about 0.2\,\% of the non-zero entries.
 
 \subsection{Voxel Grid (proposed in Thesis A; not used)}
 The Thesis~A plan proposed the voxel grid below. It is retained for reference only; no model in this
