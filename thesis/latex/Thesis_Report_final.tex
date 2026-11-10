@@ -62,29 +62,34 @@
 
 \begin{titlepage}
     \centering
-    School of Mechanical and Manufacturing Engineering\\
-    Faculty of Engineering\\
-    UNSW Sydney\\[2cm]
-    by\\[0.5cm]
-    {\Large Benas Vaiciulis}\\[2cm]
-    {\LARGE\bfseries State Space Models for Event-Based Object Detection:\\[4pt]
-    A Controlled Architectural Study with a Neuromorphic Deployment Path}\\[2cm]
-    Thesis submitted as a requirement for the degree of\\
-    Bachelor of Engineering in \res{degree}\\
+    \vspace*{1cm}
+    \Large\textbf{State Space Models for Event-Based Object Detection:}\\[4pt]
+    \Large\textbf{A Controlled Architectural Study with a Neuromorphic Deployment Path} \\
+    \vspace{0.5cm}
+    \large Undergraduate Thesis --- MMAN4953 (Thesis C) \\
+    Bachelor of Robotics and Mechatronic Engineering \\
+    \vspace{1.5cm}
+    \textbf{Author:} Benas Vaiciulis \\
+    \textbf{Student zID:} z5457896 \\
+    \textbf{Supervisor:} Dr Will Midgley \\
+    \vspace{1.5cm}
+    UNSW Sydney \\
+    School of Mechanical and Manufacturing Engineering \\
     \vfill
-    \begin{tabular}{@{}l@{\hspace{3cm}}r@{}}
-        Submitted: \res{date} & Student zID: z5457896\\
-        Supervisor: Dr Will Midgley & \\
-    \end{tabular}
+    \textbf{Submitted:} November 20, 2026
 \end{titlepage}
 
 \chapter*{Originality Statement}
+% TODO-Originality Statement
 
 \chapter*{Abstract}
 \addcontentsline{toc}{chapter}{Abstract}
+% TODO-Abstract
 
 \chapter*{Acknowledgements}
 \addcontentsline{toc}{chapter}{Acknowledgements}
+% TODO-Acknowledgements
+The auther is grateful
 
 \tableofcontents
 \clearpage\phantomsection\addcontentsline{toc}{chapter}{\listfigurename}
@@ -163,6 +168,7 @@ This thesis investigates state space models for event-based object detection, mo
 
 \section{Research Question}
 \label{sec:rq}
+% TODO-Research Question (Introduction): revise; this now has its own chapter (Chapter 3)
 Prior work establishes that state space models are \emph{competitive} on event-camera detection, but
 every published comparison changes several things at once --- backbone, tokeniser and training recipe
 together --- so the contribution of the sequence model itself cannot be read off the result. This
@@ -220,6 +226,7 @@ rather than system-level.
 
 \section{Thesis Organisation}
 \label{sec:organisation}
+% TODO-Thesis Organisation: revise to the new chapter order (fixes the "Chapter ??" reference)
 Chapter~\ref{ch:lit} reviews event-based sensing, event representations, detection architectures,
 state space models, spiking networks and neuromorphic hardware, and identifies the research gaps.
 Chapter~\ref{ch:method} describes the frozen pipeline, the four models and the spiking block.
@@ -606,16 +613,20 @@ designed to measure exactly that decomposition (Section~\ref{sec:spiking_results
 \label{ch:research_question}
 
 \section{Research Question and Aims}
+% TODO-Research Question and Aims
 
 \section{Hypotheses}
+% TODO-Hypotheses
 
 \chapter{Methodology}
 \label{ch:method}
 
 \section{Event Representation}
+% TODO-Event Representation
 
 \section{The Frozen Detection Pipeline}
 \label{sec:frozen_pipeline}
+% TODO-The Frozen Detection Pipeline
 
 \begin{figure}[htbp]
     \centering
@@ -631,52 +642,71 @@ designed to measure exactly that decomposition (Section~\ref{sec:spiking_results
 \end{figure}
 
 \subsection{Neck, Head and Loss}
+% TODO-Neck, Head and Loss
 
 \subsection{The Two Mixing Axes}
+% TODO-The Two Mixing Axes
 
 \section{Model Architectures}
+% TODO-Model Architectures
 
 \subsection{Baseline: S5-RVT}
+% TODO-Baseline: S5-RVT
 
 \subsection{EventSSM: Convolutional Spatial, State-Space Temporal}
+% TODO-EventSSM: Convolutional Spatial, State-Space Temporal
 
 \subsection{PureSSM: State-Space Spatial and Temporal}
+% TODO-PureSSM: State-Space Spatial and Temporal
 
 \subsection{SpikingSSM: A Spiking Temporal Readout}
 \label{subsec:spiking_method}
+% TODO-SpikingSSM: A Spiking Temporal Readout
 
 \subsection{Readout Modes and the Readout Ladder}
 \label{subsec:readout_modes}
+% TODO-Readout Modes and the Readout Ladder
 
 \section{Dataset and Metrics}
 \label{sec:dataset}
+% TODO-Dataset and Metrics
 
 \section{Training Protocol}
 \label{sec:training}
+% TODO-Training Protocol
 
 \section{Evaluation Protocol}
 \label{sec:eval_protocol}
+% TODO-Evaluation Protocol
 
 \subsection{Accuracy}
+% TODO-Accuracy (Methodology)
 
 \subsection{Temporal Robustness}
+% TODO-Temporal Robustness (Methodology)
 
 \subsection{Efficiency}
+% TODO-Efficiency (Methodology)
 
 \subsection{Spiking Activity and Energy}
+% TODO-Spiking Activity and Energy
 
 \subsection{Statistical Treatment}
+% TODO-Statistical Treatment
 
 \section{Implementation and Hardware}
+% TODO-Implementation and Hardware
 
 \chapter{Results}
 \label{ch:results}
 
 \section{Baseline Reproduction}
 \label{sec:repro_results}
+% TODO-Baseline Reproduction
 
 \section{Accuracy}
 \label{sec:acc_results}
+% TODO-Accuracy (Results)
 
 \begin{figure}[htbp]
     \centering
@@ -690,6 +720,7 @@ designed to measure exactly that decomposition (Section~\ref{sec:spiking_results
 
 \section{Effective Receptive Field}
 \label{sec:erf}
+% TODO-Effective Receptive Field
 
 \begin{figure}[htbp]
     \centering
@@ -703,10 +734,13 @@ designed to measure exactly that decomposition (Section~\ref{sec:spiking_results
 
 \section{Temporal Robustness}
 \label{sec:robustness}
+% TODO-Temporal Robustness (Results)
 
 \subsection{Fixed Cadence, Variable Accumulation Window}
+% TODO-Fixed Cadence, Variable Accumulation Window
 
 \subsection{True Event-Rate Change}
+% TODO-True Event-Rate Change
 
 \begin{figure}[htbp]
     \centering
@@ -722,9 +756,11 @@ designed to measure exactly that decomposition (Section~\ref{sec:spiking_results
 
 \subsection{Reproducing Inference-Time \texorpdfstring{$\Delta t$}{Delta t}-Rescaling}
 \label{subsec:f2}
+% TODO-Reproducing Inference-Time Delta t-Rescaling
 
 \section{Efficiency}
 \label{sec:efficiency}
+% TODO-Efficiency (Results)
 
 \begin{figure}[htbp]
     \centering
@@ -737,6 +773,7 @@ designed to measure exactly that decomposition (Section~\ref{sec:spiking_results
 \end{figure}
 
 \section{Qualitative Results}
+% TODO-Qualitative Results
 
 \begin{figure}[htbp]
     \centering
@@ -752,12 +789,15 @@ designed to measure exactly that decomposition (Section~\ref{sec:spiking_results
 
 \section{Spiking SSM Detector}
 \label{sec:spiking_results}
+% TODO-Spiking SSM Detector
 
 \subsection{Accuracy of the Readouts}
 \label{subsec:spk_accuracy}
+% TODO-Accuracy of the Readouts
 
 \subsection{The Readout Ladder}
 \label{subsec:spk_ladder}
+% TODO-The Readout Ladder
 
 \begin{figure}[htbp]
 \centering
@@ -782,6 +822,7 @@ because every arm is scored on the same resampled recordings.}
 
 \subsection{The Graded Readout on the Full Schedule}
 \label{subsec:spk_full}
+% TODO-The Graded Readout on the Full Schedule
 
 \begin{figure}[htbp]
     \centering
@@ -804,6 +845,7 @@ because every arm is scored on the same resampled recordings.}
 
 \subsection{Firing Activity and the Threshold Trade-off}
 \label{subsec:spk_firing}
+% TODO-Firing Activity and the Threshold Trade-off
 
 \begin{figure}[htbp]
     \centering
@@ -836,31 +878,41 @@ readout.}
 
 \subsection{Rate Robustness of the Spiking Readouts}
 \label{subsec:spk_rate}
+% TODO-Rate Robustness of the Spiking Readouts
 
 \subsection{Synaptic Operations and Estimated Energy}
 \label{subsec:spk_energy}
+% TODO-Synaptic Operations and Estimated Energy
 
 \subsection{Training Dynamics}
 \label{subsec:spk_dynamics}
+% TODO-Training Dynamics
 
 \section{Summary of Results}
+% TODO-Summary of Results
 
 \chapter{Discussion}
 \label{ch:discussion}
 
 \section{Answering the Research Question}
+% TODO-Answering the Research Question
 
 \section{What the State-Space Model Contributes}
 \label{sec:what_shown}
+% TODO-What the State-Space Model Contributes
 
 \section{Temporal Robustness and the \texorpdfstring{$\Delta t$}{Delta t}-Rescaling Claim}
+% TODO-Temporal Robustness and the Delta t-Rescaling Claim
 
 \section{Efficiency Trade-offs}
+% TODO-Efficiency Trade-offs
 
 \section{Latency and the Choice of Window}
+% TODO-Latency and the Choice of Window
 
 \section{The Neuromorphic Case}
 \label{sec:neuro_case}
+% TODO-The Neuromorphic Case
 
 \begin{figure}[htbp]
     \centering
@@ -876,15 +928,19 @@ readout.}
 
 \section{Scope Change: the Obstacle-Avoidance Aim}
 \label{sec:scope_change}
+% TODO-Scope Change: the Obstacle-Avoidance Aim
 
 \section{Limitations}
 \label{sec:limitations}
+% TODO-Limitations
 
 \section{Future Research Opportunities}
 \label{sec:future_work}
+% TODO-Future Research Opportunities
 
 \chapter{Conclusion}
 \label{ch:conclusion}
+% TODO-Conclusion
 
 % ===================================================================== BACK MATTER (roman, continuing)
 \clearpage
@@ -901,22 +957,30 @@ readout.}
 \label{app:maths}
 
 \section{Continuous-Time SSM}
+% TODO-Continuous-Time SSM
 
 \section{Discretisation}
+% TODO-Discretisation
 
 \section{Mamba Selective Scan}
+% TODO-Mamba Selective Scan
 
 \section{Event Representations}
+% TODO-Event Representations
 
 \subsection{Stacked Histogram}
 \label{subsec:stacked_hist}
+% TODO-Stacked Histogram
 
 \subsection{Voxel Grid (proposed in Thesis A; not used)}
+% TODO-Voxel Grid (proposed in Thesis A; not used)
 
 \chapter{Reproducibility}
 \label{app:repro}
+% TODO-Reproducibility
 
 \chapter{Project Timeline}
+% TODO-Project Timeline
 
 \begin{figure}[htbp]
     \centering
@@ -933,5 +997,6 @@ readout.}
 \end{figure}
 
 \chapter{Risk Assessment}
+% TODO-Risk Assessment
 
 \end{document}
