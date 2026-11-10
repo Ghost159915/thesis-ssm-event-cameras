@@ -98,7 +98,8 @@ difference within single-seed noise, while PureSSM is the smallest model (16.3\,
 least computation, and closes roughly half of EventSSM's large-object gap to the attention-based baseline. A
 gradient-based receptive-field probe links that gain to a learned spatial extent up to twice that of the
 convolutional stack. Under a true tenfold change in event rate, PureSSM retains 69.7\,\% of its accuracy, the
-most of the models tested.
+most of the state-space models tested, although RVT's ConvLSTM, measured on the same test set, retains more
+(80.3\,\%).
 
 A spiking variant passes PureSSM's temporal output through a leaky integrate-and-fire (LIF) readout whose three
 modes, analog, graded and binary, share one membrane, so that the cost of spiking separates into the cost of
