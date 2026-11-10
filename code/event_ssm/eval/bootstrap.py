@@ -35,6 +35,7 @@ Usage (workstation, after the captures exist):
 from __future__ import annotations
 
 import argparse
+import hashlib
 import importlib
 import json
 import pickle
@@ -113,6 +114,43 @@ def check_aligned(caps: Sequence[Capture]) -> None:
         for i, (a, b) in enumerate(zip(ref.labels, c.labels)):
             if a.shape != b.shape or a.dtype != b.dtype or not np.array_equal(a, b):
                 raise CaptureMismatch(f"{c.name} vs {ref.name}: ground-truth labels differ at element {i}")
+
+
+def _recordings_by_labels(cap: Capture) -> Dict[str, np.ndarray]:
+    """sha256 of a recording's ground-truth arrays (element order, dtype and shape included) -> its element indices."""
+    out: Dict[str, np.ndarray] = {}
+    for g in sequence_groups(cap.seq_ids):
+        h = hashlib.sha256()
+        for i in g:
+            a = np.ascontiguousarray(cap.labels[i])
+            h.update(repr((a.dtype.descr, a.shape)).encode())
+            h.update(a.tobytes())
+        key = h.hexdigest()
+        if key in out:
+            raise CaptureMismatch(f"{cap.name}: two recordings have identical ground truth, so labels cannot align them")
+        out[key] = g
+    return out
+
+
+def align_by_labels(ref: Capture, cap: Capture) -> Capture:
+    """`cap` reordered into `ref`'s element layout, recordings matched by their ground truth.
+
+    Why it is needed: Part A numbers recordings per (dataloader worker, batch slot) in order of appearance, so
+    an eval run with another batch size or worker count (S5-RVT's published recipe uses batch 8) streams the same
+    recordings in another interleaving under other ids. Each Gen1 test recording's label sequence is unique and
+    a recording's elements are in time order in every run, so the ground truth identifies the recording. The
+    result goes through check_aligned like any capture, so a wrong match cannot pass silently."""
+    by_ref, by_cap = _recordings_by_labels(ref), _recordings_by_labels(cap)
+    if set(by_ref) != set(by_cap):
+        raise CaptureMismatch(f"{cap.name} vs {ref.name}: {len(set(by_ref) ^ set(by_cap))} recordings "
+                              "appear in only one capture")
+    idx = np.empty(len(ref.seq_ids), dtype=np.int64)
+    for key, g_ref in by_ref.items():
+        idx[g_ref] = by_cap[key]                  # same ground truth => same number of elements
+    aligned = Capture(cap.name, ref.seq_ids.copy(), [cap.labels[i] for i in idx],
+                      [cap.predictions[i] for i in idx], {**cap.meta, "aligned_to": ref.name})
+    check_aligned([ref, aligned])
+    return aligned
 
 
 def draw_samples(n_seq: int, n_boot: int, seed: int) -> np.ndarray:
@@ -277,9 +315,16 @@ def main(argv=None) -> int:
     p.add_argument("--identity", action="store_true", help="score the full captures only, no resampling")
     p.add_argument("--expect", type=_kv, action="append", default=[], metavar="NAME=AP",
                    help="with --identity: fail unless the full-capture AP matches (abs tol 5e-5)")
+    p.add_argument("--align-by-labels", action="store_true",
+                   help="reorder every capture into the first one's layout, matching recordings by ground truth "
+                        "(needed when the arms were evaluated with different batch sizes, e.g. S5-RVT at batch 8)")
     a = p.parse_args(argv)
 
     caps = [load_capture(path, name) for name, path in a.capture]
+    if a.align_by_labels:
+        caps = [caps[0]] + [align_by_labels(caps[0], c) for c in caps[1:]]
+        print(f"[bootstrap] aligned {', '.join(c.name for c in caps[1:])} to {caps[0].name} by ground truth",
+              file=sys.stderr)
     score_fn = load_scorer(a.scorer, caps[0].meta)
     if a.metrics:
         full_fn, keep = score_fn, list(a.metrics)
@@ -308,6 +353,7 @@ def main(argv=None) -> int:
 
     result = run_bootstrap(caps, score_fn, a.n_boot, a.seed, a.pair, a.level, a.workers, progress)
     result["config"]["captures"] = {name: str(path) for name, path in a.capture}
+    result["config"]["aligned_by_labels"] = bool(a.align_by_labels)
     result["config"]["seconds"] = round(time.time() - t0, 1)
     md = to_markdown(result)
     print(md)

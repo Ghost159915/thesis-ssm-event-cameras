@@ -166,3 +166,58 @@ def test_cli_identity_check_passes_and_fails(tmp_path):
     common = ["--capture", arg, "--identity", "--scorer", "event_ssm.tests.eval.toy_scorer:score"]
     assert bs.main(common + ["--expect", "a=0.5"]) == 0
     assert bs.main(common + ["--expect", "a=0.4643"]) == 1
+
+
+def relayout(cap, name, seed=0):
+    """The same elements as `cap`, as an eval run with another batch size records them: recordings streamed
+    round-robin in another order (interleaved, as batch slots do) and numbered differently."""
+    rng = np.random.default_rng(seed)
+    groups = bs.sequence_groups(cap.seq_ids)
+    order = rng.permutation(len(groups))
+    new_id = rng.permutation(len(groups)) + 100
+    queues = [list(groups[g]) for g in order]
+    idx, ids = [], []
+    while any(queues):
+        for q, g in zip(queues, order):
+            if q:
+                idx.append(q.pop(0))
+                ids.append(new_id[g])
+    return bs.Capture(name, np.array(ids), [cap.labels[i] for i in idx], [cap.predictions[i] for i in idx], cap.meta)
+
+
+def test_another_interleaving_is_refused_but_aligns_by_labels():
+    a = make_capture("a", 12, hit=lambda s, e, k: (s + k) % 3 != 0)
+    b_native = make_capture("b", 12, hit=lambda s, e, k: s % 4 != 0)      # same GT (same seed), other predictions
+    b = relayout(b_native, "b", seed=5)
+    with pytest.raises(bs.CaptureMismatch):
+        run([a, b])
+    aligned = bs.align_by_labels(a, b)
+    assert np.array_equal(aligned.seq_ids, a.seq_ids)
+    assert all(np.array_equal(x, y) for x, y in zip(aligned.predictions, b_native.predictions))
+    assert run([a, aligned], pairs=[("a", "b")]) == run([a, b_native], pairs=[("a", "b")])
+    same = bs.align_by_labels(a, b_native)                                 # already aligned: unchanged
+    assert all(x is y for x, y in zip(same.predictions, b_native.predictions))
+
+
+def test_alignment_refuses_missing_and_ambiguous_recordings():
+    a = make_capture("a", 6)
+    with pytest.raises(bs.CaptureMismatch):
+        bs.align_by_labels(a, relayout(make_capture("b", 5), "b"))         # a recording is missing
+    with pytest.raises(bs.CaptureMismatch):
+        bs.align_by_labels(a, relayout(make_capture("b", 6, seed=99), "b"))  # different ground truth
+    twin_gt = bs.Capture("t", np.array([0, 0, 1, 1]), [a.labels[0], a.labels[1]] * 2, [a.labels[0]] * 4, {})
+    with pytest.raises(bs.CaptureMismatch):
+        bs.align_by_labels(twin_gt, twin_gt)                               # two recordings, identical GT
+
+
+def test_cli_align_by_labels(tmp_path):
+    a = make_capture("a", 8)
+    b_native = make_capture("b", 8, hit=lambda s, e, k: k == 0)
+    common = ["--capture", _write(tmp_path, a), "--capture", _write(tmp_path, relayout(b_native, "b")),
+              "--pair", "a:b", "--n-boot", "40", "--scorer", "event_ssm.tests.eval.toy_scorer:score"]
+    with pytest.raises(bs.CaptureMismatch):
+        bs.main(common)
+    assert bs.main(common + ["--align-by-labels", "--out", str(tmp_path / "out")]) == 0
+    result = json.loads((tmp_path / "out" / "bootstrap.json").read_text())
+    assert result["config"]["aligned_by_labels"] is True
+    assert result["gaps"]["a:b"]["AP"] == run([a, b_native], pairs=[("a", "b")], n_boot=40)["gaps"]["a:b"]["AP"]
