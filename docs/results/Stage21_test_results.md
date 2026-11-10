@@ -177,6 +177,13 @@ Spiking model only, one session, VS Code closed, no idle-drift flag. Tables `eff
    `stage9_truerate_sweep.sh` found 0/469 rendered sequences and skipped every eval (it skips unrendered rates by
    design, so the chain moved on silently). Redo = `stage9_prep_test.sh` (extract `data/test_{a,b}.7z` + dat→h5) →
    `stage9_render_truerate.sh` (2× ≈ 26 GB, 10× ≈ 35 GB) → the four sweeps (≈ 3 h each at 10×).
-2. **`models_400k` bootstrap: no output.** `ladder_100k` finished 06:43; `models_400k` (≈ 5 h) was then running when
-   the machine went down (next boot 2026-10-17 12:05; the system journal keeps no entries for that night, so the
-   cause is unknown). Redo = the second command of `overnight_2026-10-17_bootstrap.sh` (CPU only; all captures intact).
+2. **`models_400k` bootstrap: no output.** It failed at once with `CaptureMismatch: graded vs s5rvt: different
+   recording/element layout` (found 2026-11-10; the machine going down later that morning was unrelated). Cause:
+   Part A numbers recordings per (worker, batch slot) in order of appearance, and S5-RVT was evaluated with RVT's
+   recipe (batch 8), so the same 30 605 elements / 470 recordings / 66 304 boxes arrive in another interleaving under
+   other ids. Our three 400k captures share one layout. **Fix (commit `5af0b20`):** `--align-by-labels` matches each
+   recording by its ground-truth sequence (all 470 are unique, verified on the real captures) and reorders into the
+   first capture's layout, then re-runs the alignment check; 3 new unit tests. Reordering moves a reordered arm's
+   full-sample AP by ≈ 1e-5 (COCO breaks score ties by list order), so PureSSM goes first as the reference: the own
+   models keep their exact official values and S5-RVT gives 47.7155 / AP_L 50.66 (same to 2 dp). Redo:
+   `code/event_ssm/scripts/overnight_2026-11-10_bootstrap.sh`.
