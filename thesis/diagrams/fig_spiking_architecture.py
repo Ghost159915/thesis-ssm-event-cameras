@@ -142,9 +142,9 @@ GY = 588
 panel(40, GY, "b", "What each model changes - the two axes are independent")
 rows = [
     ("S5-RVT  (reproduced baseline)", "MaxViT attention", False, "S5 diagonal SSM", False, "47.7", ""),
-    ("EventSSM  (Thesis B)",          "ResNet-18 conv",   False, "Mamba-2",         False, "46.2", ""),
-    ("PureSSM  (Thesis B)",           "BiMamba scan",     True,  "Mamba-2",         False, "46.4", ""),
-    ("SpikingSSM  (Thesis C)",       "BiMamba scan",     False, "Mamba-2  +  LIF", True,  "?",    "3 readout arms"),
+    ("EventSSM  (this work)",         "ResNet-18 conv",   False, "Mamba-2",         False, "46.2", ""),
+    ("PureSSM  (this work)",          "BiMamba scan",     True,  "Mamba-2",         False, "46.4", ""),
+    ("SpikingSSM  (this work)",      "BiMamba scan",     False, "Mamba-2  +  LIF", True,  "46.2", "graded readout"),
 ]
 cx = [56, 430, 760, 1032]
 hy = GY + 34
