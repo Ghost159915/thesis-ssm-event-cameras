@@ -192,8 +192,7 @@ Spiking model only, one session, VS Code closed, no idle-drift flag. Tables `eff
 
 Read 2026-11-10 22:20. The true-rate test set was rebuilt first (raw test events re-extracted and converted, then
 true 10× = 5 ms and true 2× = 25 ms windows rendered, 469/469 recordings each; `data/gen1_stage9/preproc_tr/`).
-Still running at the time of writing: spike 100k and PureSSM 100k true-rate sweeps (≈ 2 h 20 min each: 2× ≈ 27 min,
-10× ≈ 1 h 51 min) ⇒ chain ends ≈ 03:00 on 11 Nov.
+Chain finished 2026-11-11 02:47 (`ALL DONE`); each 100k sweep took ≈ 2 h 20 min (2× ≈ 27 min, 10× ≈ 1 h 51 min).
 
 ### 7.1 Bootstrap CIs on the four 400k models (`results/stage21_bootstrap/models_400k/bootstrap.{md,json}`)
 
@@ -226,8 +225,10 @@ PureSSM as the layout reference). Point estimates reproduce §2.
 | PureSSM 400k (Stage 16) | 46.43 | 44.53 | 95.9 % | 32.38 | 69.7 % |
 | graded 400k | 46.24 | 43.88 | 94.9 % | 30.16 | 65.2 % |
 | graded 100k | 40.72 | 38.81 | 95.3 % | 25.73 | 63.2 % |
-| spike 100k / PureSSM 100k | — | running | | running | |
+| PureSSM 100k | 42.52 | 40.88 | 96.2 % | 29.40 | 69.1 % |
+| spike 100k | 40.18 | 39.04 | 97.2 % | 28.26 | **70.3 %** |
 
+PureSSM 100k (`igk6myyb` step 100k, verified in the log): `results/stage14_test_eval/test_eval_20261111_{003236,005902}.txt`.
 Logs: ConvLSTM `results/stage9_rvt_lstm/rvt_lstm_{gen1,preproc_tr_dt=25,preproc_tr_dt=5}_20261110_*.log`;
 spiking arms `results/stage21_test_eval/graded_s234_dt{25,5}/`; sweep summaries `results/stage9/sweep_tr/`.
 
@@ -241,3 +242,10 @@ spiking arms `results/stage21_test_eval/graded_s234_dt{25,5}/`; sweep summaries 
   robust; (c) the spiking readout keeps the SSM-level robustness (graded 400k 65.2 % vs PureSSM 69.7 %, graded 100k
   63.2 %).
 - Note ConvLSTM AP_L rises at 2× (49.14 → 49.62) and falls only to 40.14 at 10×.
+- **100k ladder at true 10× (single seed, no CIs; analog not run):** PureSSM 69.1 % → graded 63.2 % → spike 70.3 %.
+  Sparsity (graded) costs robustness (−5.9 pp retention, −3.7 AP absolute at 10×), but binarisation wins it back:
+  spike beats graded at 10× by **+2.5 AP absolute (28.26 vs 25.73)** although it is 0.54 AP lower at 1×, and its
+  retention is the highest of all SSM models. Same pattern at 400k is untested (no spike 400k). Hypothesis only: a
+  binary spike has a fixed amplitude, so when sparser true-rate frames shrink the membrane input, the spike output
+  degrades by count, whereas the graded output (s·m) also shrinks in amplitude. Schedule length barely changes
+  robustness (PureSSM 69.1 % at 100k vs 69.7 % at 400k; graded 63.2 % vs 65.2 %).
