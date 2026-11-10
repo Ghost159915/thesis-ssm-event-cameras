@@ -5,12 +5,14 @@
     (PureSSM = zero line). Message: the pre-registered ordering analog >= graded > spike is not an artefact of the
     final checkpoint; the arms sit below the anchor through most of training, by amounts comparable to the
     checkpoint-to-checkpoint wobble (~1.5 points), which is why the test-set bootstrap decides.
-(b) The 400k-step runs: graded SpikingSSM (joined across its three resumes at 180k and 340k) and EventSSM (validated
-    every 20k), with PureSSM's best checkpoint as a point (its cloud run's history is not stored locally; the value
-    is the exact best_model_score from the checkpoint). Message: graded converges to within 0.25 points of PureSSM.
+(b) The 400k-step runs: graded SpikingSSM (joined across its three resumes at 180k and 340k), EventSSM (validated
+    every 20k) and PureSSM (its cloud run's W&B history, downloaded into train_histories.json by
+    extract_train_histories.py; without it, its best checkpoint is drawn as a point, the exact best_model_score).
+    Message: graded converges to within 0.25 points of PureSSM.
 Different schedule lengths are different runs (Stage-20 D1), so (a) and (b) are not compared with each other.
 
-  python thesis/figures/extract_val_histories.py && python thesis/figures/fig_training_curves.py
+  python thesis/figures/extract_val_histories.py && python thesis/figures/extract_train_histories.py \
+      && python thesis/figures/fig_training_curves.py
   -> thesis/latex/images/fig_training_curves.{pdf,png} + results/report_figs/fig_training_curves.csv
 """
 from __future__ import annotations
@@ -62,10 +64,21 @@ def main() -> None:
         bx.plot(steps, ap, color=rs.colour(style), marker=rs.marker(style), markersize=3.5, markeredgewidth=0,
                 linewidth=1.5, label=f"{name} (best {ap[best]:.1f} @ {steps[best]}k)")
         rows += [{"panel": "b", "run": key, "step_k": s, "val_AP": round(a, 2)} for s, a in zip(steps, ap)]
-    s, v = PURESSM_400K_BEST
-    bx.plot(s // 1000, v, rs.marker("puressm"), color=rs.colour("puressm"), markersize=7, markeredgecolor="white",
-            markeredgewidth=0.8, zorder=4, label=f"PureSSM (best {v:.1f} @ {s // 1000}k)")
-    rows.append({"panel": "b", "run": "puressm_400k_best", "step_k": s // 1000, "val_AP": v})
+    train = rs.DATA / "train_histories.json"
+    cloud = json.loads(train.read_text()).get("puressm_400k") if train.exists() else None
+    if cloud:                                  # the full cloud curve (W&B logs the step as 10002, 20002, ...)
+        h = cloud["series"]["val/AP"]
+        steps, ap = [round(s / 1000) for s in h["step"]], [a * 100 for a in h["value"]]
+        best = max(range(len(ap)), key=ap.__getitem__)
+        assert abs(ap[best] - PURESSM_400K_BEST[1]) < 1e-3, "cloud history disagrees with the checkpoint's best score"
+        bx.plot(steps, ap, color=rs.colour("puressm"), marker=rs.marker("puressm"), markersize=3.5,
+                markeredgewidth=0, linewidth=1.5, label=f"PureSSM (best {ap[best]:.1f} @ {steps[best]}k)")
+        rows += [{"panel": "b", "run": "puressm_400k", "step_k": s, "val_AP": round(a, 2)} for s, a in zip(steps, ap)]
+    else:
+        s, v = PURESSM_400K_BEST
+        bx.plot(s // 1000, v, rs.marker("puressm"), color=rs.colour("puressm"), markersize=7, markeredgecolor="white",
+                markeredgewidth=0.8, zorder=4, label=f"PureSSM (best {v:.1f} @ {s // 1000}k)")
+        rows.append({"panel": "b", "run": "puressm_400k_best", "step_k": s // 1000, "val_AP": v})
     bx.set_ylim(20, 50)
     bx.set_xlim(0, 410)
     bx.set_xticks(range(0, 401, 100))
