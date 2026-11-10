@@ -122,9 +122,9 @@ hardware, more of the network, such as the spatial backbone, would need to spike
 \guide{40}{
   \item Thank the supervisor by name and role; the School; anyone else who helped (family, friends, peers).
 }
-The author is grateful to Dr Will Midgley for his guidance and support in shaping the direction of this
-research, and to the staff of the School of Mechanical and Manufacturing Engineering at UNSW Sydney for
-their support throughout the project.
+The author is grateful to Dr Will Midgley for his guidance and support throughout this research, and to the
+staff of the School of Mechanical and Manufacturing Engineering at UNSW Sydney for their help during the
+project.
 
 \tableofcontents
 \clearpage\phantomsection\addcontentsline{toc}{chapter}{\listfigurename}
@@ -203,72 +203,70 @@ This thesis investigates state space models for event-based object detection, mo
 
 \section{Research Question and Aims}
 \label{sec:rq}
-\guide{120}{
-  \item Why published comparisons cannot answer the question: they change the backbone, the tokeniser and the training recipe together.
+\guide{140}{
+  \item Why published comparisons cannot answer the question: they change the backbone, the input format and the training recipe together.
   \item The main question, stated once and set apart (quote box, bold).
-  \item The second question: what spiking costs and what neuromorphic hardware gives back.
+  \item The second question: what making the detector spiking costs, and what neuromorphic hardware gives back.
 }
-Prior work establishes that state space models are \emph{competitive} on event-camera detection, but
-every published comparison changes several things at once --- backbone, tokeniser and training recipe
-together --- so the contribution of the sequence model itself cannot be read off the result. This
-thesis narrows the question until it is answerable:
+Earlier studies show that state space models perform well on event-camera detection. However, each of
+these studies changes several parts of the detector at once, such as the backbone, the way events are
+turned into input, and the training settings. When several things change together, it is impossible to
+tell which change caused the improvement. This thesis therefore narrows the question to one that can be
+answered:
 
 \begin{quote}
-\textbf{Holding the entire detection pipeline fixed, what is the isolated effect of the backbone's
-spatial mixer --- convolution versus state space --- on accuracy, temporal robustness and efficiency
-for event-based object detection?}
+\textbf{If every other part of the detector is kept the same, what difference does the backbone's spatial
+mixer make --- a convolutional network or a state space model --- to accuracy, robustness to changes in
+event rate, and efficiency?}
 \end{quote}
 
-A second question follows from the first, and motivates the neuromorphic strand of the work:
-\emph{what does it cost to make such a detector spiking, and what does neuromorphic hardware give back
-in return?}
+A second question follows from the first and motivates the neuromorphic part of the work: \emph{how much
+accuracy is lost when the detector is made to communicate with spikes, and what could neuromorphic
+hardware offer in return?}
 
-\guide{210}{
+\guide{190}{
   \item One lead-in sentence.
-  \item Six numbered, measurable aims: (1) reproduce S5-RVT; (2) two controlled detectors, compared overall, per class and by size; (3) explain the difference by mechanism; (4) robustness in two regimes, with and without $\Delta t$ compensation; (5) efficiency on every axis; (6) spiking variant and the decomposition of its cost.
+  \item Six numbered, measurable aims: (1) reproduce S5-RVT; (2) two controlled detectors, compared overall, per class and by size; (3) explain the difference; (4) robustness in two regimes, with and without the published correction; (5) efficiency on every axis; (6) spiking variant and the breakdown of its cost.
   \item One sentence linking the aims to the Thesis~A aims, pointing to Table~\ref{tab:aims}.
 }
-To answer these questions, the thesis pursues six aims:
+To answer these questions, the thesis sets six aims:
 \begin{enumerate}
-  \item Reproduce the published S5-RVT detector on the Gen1 test set to within single-seed noise of its
-        reported 47.7~mAP, so that every later comparison rests on a verified pipeline and evaluator.
-  \item Build two original detectors, EventSSM and PureSSM, as backbone swaps into that pipeline that differ
-        only in the spatial mixer, and compare their accuracy overall, per class and by object size.
-  \item Explain any accuracy difference between them by mechanism rather than by score alone.
-  \item Measure robustness to a change in event rate in two regimes, a fixed cadence with a varied
-        accumulation window and a true change of rate, with and without the inference-time $\Delta t$
-        compensation reported in the literature.
-  \item Measure efficiency on every axis that matters to a power-constrained platform: parameters,
-        computation, latency, energy and the size of the streaming state.
-  \item Build a spiking variant of the state-space detector and decompose the accuracy cost of spiking into
-        the cost of the neuron dynamics, of sparsity and of binarisation.
+  \item Reproduce the published S5-RVT detector and confirm that it reaches its reported accuracy of
+        47.7~mAP, so that every later comparison rests on a verified starting point.
+  \item Build two new detectors, EventSSM and PureSSM, that differ from each other only in their spatial
+        mixer, and compare their accuracy overall, for each object class and for each object size.
+  \item Explain why any difference in accuracy occurs, rather than only reporting it.
+  \item Measure how well the detectors cope when the rate of incoming events changes, in two different
+        test settings, both with and without the correction proposed in the literature.
+  \item Measure efficiency in every way that matters for a small, battery-powered platform: model size,
+        amount of computation, speed, energy use and memory.
+  \item Build a spiking version of the detector and break down the accuracy it loses into separate,
+        measurable causes.
 \end{enumerate}
-Aims 1, 2, 3 and 5 refine the architecture and benchmarking aims registered in Thesis~A, aim 4 its
-temporal-generalisation aim, and aim 6 is new; the obstacle-avoidance aim of Thesis~A was descoped
-(Section~\ref{sec:scope_change}, Table~\ref{tab:aims}).
+These aims refine the aims registered in Thesis~A. The Thesis~A aim of connecting the detector to an
+obstacle-avoidance controller was later removed from the scope, as explained in
+Section~\ref{sec:scope_change} and summarised in Table~\ref{tab:aims}.
 
 \section{Hypotheses}
 \label{sec:hypotheses}
 \guide{120}{
-  \item Three hypotheses, one line each, each stated so that an experiment can refute it.
-  \item H1: receptive field $\rightarrow$ large objects. H2: recurrence is rate-robust, and $\Delta t$-rescaling improves it (as published). H3: analog $\geq$ graded $>$ binary.
+  \item Three hypotheses, each a clear prediction that an experiment could prove wrong.
+  \item H1: wider view of the image $\rightarrow$ better large objects. H2: state space models cope with rate changes, and the published correction helps further. H3: analog $\geq$ graded $>$ binary.
   \item For each hypothesis, the section that tests it.
   \item Say that H3 was fixed before the spiking models were trained. Do not add ``binarisation is the largest cost'': that was not registered.
 }
-Three hypotheses make the aims testable:
+The aims lead to three hypotheses, each of which the experiments could prove wrong:
 \begin{description}
-  \item[H1] A state-space spatial mixer has a wider effective receptive field than a convolutional one, and
-            therefore detects large objects better at equal overall accuracy (tested in
-            Sections~\ref{sec:acc_results} and~\ref{sec:erf}).
-  \item[H2] State-space recurrence makes a detector robust to a change in event rate, and the inference-time
-            rescaling of the discretisation step reported by Zubi\'{c} et al.~\cite{zubic2024state} improves
-            that robustness further (Section~\ref{sec:robustness}).
-  \item[H3] The accuracy of the three spiking readouts is ordered analog $\geq$ graded $>$ binary
-            (Section~\ref{subsec:spk_ladder}). This ordering, and the commitment to report all three costs
-            whatever their size, were fixed before the spiking models were trained.
+  \item[H1] A state space model used as the spatial mixer can draw on a wider area of the image than a
+            convolutional network, and should therefore detect large objects better
+            (Sections~\ref{sec:acc_results} and~\ref{sec:erf}).
+  \item[H2] State space models stay accurate when the event rate changes, and the correction proposed by
+            Zubi\'{c} et al.~\cite{zubic2024state} makes them even more robust (Section~\ref{sec:robustness}).
+  \item[H3] Among the three spiking versions of the detector, the analog version is at least as accurate as
+            the graded version, which is more accurate than the binary version (Section~\ref{subsec:spk_ladder}).
+            This prediction was written down before the spiking models were trained.
 \end{description}
-Each hypothesis can be refuted by the experiments, and Section~\ref{sec:answer_rq} reports which of them
-held.
+Section~\ref{sec:answer_rq} reports which hypotheses held.
 
 \section{Contributions}
 \label{sec:contributions}
@@ -698,68 +696,66 @@ designed to measure exactly that decomposition (Section~\ref{sec:spiking_results
 
 \chapter{Methodology}
 \label{ch:method}
-\guide{70}{
+\guide{80}{
   \item What the chapter covers, in the order of its sections.
-  \item The governing principle: only the backbone changes between models.
+  \item The guiding principle: only the backbone changes between models.
 }
-This chapter describes how the detectors were built, trained and evaluated.
-Section~\ref{sec:repr} introduces the event representation and Section~\ref{sec:frozen_pipeline} the
-detection pipeline shared by every model. Section~\ref{sec:models} describes the four models,
-Sections~\ref{sec:dataset} and~\ref{sec:training} the data and the training recipe, and
-Section~\ref{sec:eval_protocol} how accuracy, robustness and efficiency were measured. One principle
-governs all of it: only the backbone changes from one model to the next.
+This chapter explains how the detectors were built, trained and tested. It first describes how the
+camera's events are turned into an input the network can use (Section~\ref{sec:repr}), and then the
+detection pipeline that all models share (Section~\ref{sec:frozen_pipeline}). It then describes the models
+themselves (Section~\ref{sec:models}), the dataset (Section~\ref{sec:dataset}), the training settings
+(Section~\ref{sec:training}) and the way the results were measured (Section~\ref{sec:eval_protocol}). One
+rule applies throughout: only the backbone changes from one model to the next.
 
 \section{Event Representation}
 \label{sec:repr}
-\guide{120}{
-  \item Events are grouped into 50-ms windows; counted per pixel, per polarity and in 10 time bins $\rightarrow$ 20 channels, shape $(20, 240, 304)$.
-  \item Counts capped at 10 (formula in Appendix~\ref{app:maths}); zero-padded to $(20, 256, 320)$ so every stride divides it; feature maps $32\times40$, $16\times20$, $8\times10$ at strides 8, 16, 32.
-  \item Sparsity: about 1.5\,\% non-zero (0.2--4.0\,\% per recording); the cap affects about 0.2\,\% of the non-zero entries.
+\guide{140}{
+  \item Events are grouped into 50-ms windows and counted per pixel, per polarity and in 10 time slices $\rightarrow$ 20 channels, an input of size $20 \times 240 \times 304$.
+  \item Counts capped at 10 (formula in Appendix~\ref{app:maths}); padded to $256 \times 320$ so the image halves evenly; the neck receives maps of $32\times40$, $16\times20$, $8\times10$.
+  \item Sparsity: about 1.5\,\% of the values are non-zero (0.2--4.0\,\% per recording); the cap almost never applies.
   \item Cite RVT~\cite{gehrig2023recurrent}. Do not call it a voxel grid.
 }
-Every model consumes the stacked-histogram representation of RVT~\cite{gehrig2023recurrent}. The event
-stream is cut into consecutive 50-ms windows, and within each window the events are counted per pixel,
-separately for the two polarities and in ten equal time bins, which gives a tensor of $2\times10=20$
-channels at the sensor's resolution, $(20, 240, 304)$
-(Equations~\eqref{eq:sh_bin}--\eqref{eq:sh_count}, Appendix~\ref{app:maths}). Counts are capped at 10, and
-the pipeline zero-pads the tensor to $(20, 256, 320)$ so that every downsampling stride divides it; the
-feature maps passed to the detection neck are then $32\times40$, $16\times20$ and $8\times10$ at strides
-8, 16 and 32. The representation is sparse: over 40 frames from each of 20 randomly drawn test recordings,
-1.5\,\% of its entries are non-zero on average (between 0.2 and 4.0\,\% per recording, depending on scene
-activity), and the cap is reached by only about 0.2\,\% of the non-zero entries.
+An event camera produces a stream of individual events, but a neural network needs a fixed-size input.
+Every model in this thesis uses the same solution as RVT~\cite{gehrig2023recurrent}, called a stacked
+histogram. The event stream is cut into windows of 50~ms. Within each window, the events at every pixel
+are counted, separately for brightness increases and decreases, and separately for ten equal time slices
+of the window. This gives 20 count images of $240\times304$ pixels, stacked into one input (the formula is
+given in Appendix~\ref{app:maths}). Each count is capped at 10, and the input is padded with zeros to
+$256\times320$ pixels so that it can be halved evenly several times. The detection neck therefore receives
+feature maps of $32\times40$, $16\times20$ and $8\times10$ cells. The input is mostly empty: on average only
+1.5\,\% of its values are non-zero, ranging from 0.2 to 4.0\,\% depending on how busy the scene is, and the
+cap of 10 is almost never reached.
 
-\guide{90}{
-  \item It was not chosen by a new comparison: it is the baseline's frozen input, and changing it would add a second variable.
+\guide{80}{
+  \item It was not chosen by a new comparison: it is the baseline's fixed input, and changing it would add a second variable.
   \item Point to Chapter~\ref{ch:lit} for the alternatives instead of repeating them.
-  \item Consequences: one prediction per window (20\,Hz); latency cannot be shorter than the window.
-  \item The voxel grid of Thesis~A was not used (one sentence).
+  \item Consequences: one prediction every 50\,ms (20 per second); the delay can never be shorter than the window.
+  \item The voxel grid planned in Thesis~A was not used (one sentence).
 }
-The representation was not selected by a new comparison. It is the input of the verified S5-RVT
-pipeline, and changing it would add a second variable to a study whose purpose is to vary only the
-backbone; the alternatives are reviewed in Chapter~\ref{ch:lit}. The choice has two consequences that
-the rest of the thesis carries. The detector makes one prediction per window, at 20\,Hz, and its
-latency cannot be shorter than the window (Section~\ref{sec:latency_window}). The voxel grid proposed in
-Thesis~A was accordingly not used.
+This representation was not chosen by a new comparison. It is the input of the verified S5-RVT detector,
+and changing it would add a second variable to a study that is meant to change only the backbone. The
+alternatives are reviewed in Chapter~\ref{ch:lit}. The choice has two consequences. The detector makes one
+prediction for every 50-ms window, or 20 per second, and its response can never be faster than one
+window (Section~\ref{sec:latency_window}). The voxel grid planned in Thesis~A was therefore not used.
 
 \section{The Frozen Detection Pipeline}
 \label{sec:frozen_pipeline}
 \guide{160}{
-  \item Reused unmodified: data pipeline, YOLO-PAFPN neck, YOLOX head, loss and label assignment, Prophesee evaluator, PyTorch Lightning training loop.
-  \item How a backbone is swapped without editing the baseline code: Hydra configuration and a registration hook.
-  \item Why this makes the comparison controlled; EventSSM vs PureSSM differ only in the spatial mixer (with its initialisation).
-  \item What still differs from the published baseline: both mixers, batch 4 vs 8, bf16 vs 32-bit. Point to Figure~\ref{fig:spiking_arch}(a).
+  \item Reused without any change: data loading, neck, detection head, loss, evaluation code and training loop.
+  \item How a new backbone is plugged in without editing the original code (a configuration setting and a registration step).
+  \item Why this makes the comparison fair: a difference between models can only come from the backbone; EventSSM and PureSSM differ only in the spatial mixer.
+  \item What still differs from the published baseline: both mixers, batch 4 instead of 8, lower numerical precision. Point to Figure~\ref{fig:spiking_arch}(a).
 }
-The methodological core of the thesis is that the detection pipeline around the backbone never changes.
-Every model reuses the verified S5-RVT/RVT code base without modification: the data pipeline, the
-YOLO-PAFPN neck, the YOLOX detection head~\cite{ge2021yolox} with its loss and label assignment, the
-Prophesee evaluator and the PyTorch Lightning training loop. A new backbone enters through the Hydra
-configuration and a registration hook that selects it by name, so the baseline's own code is never
-edited. Figure~\ref{fig:spiking_arch}(a) shows the shared pipeline. Because only the backbone changes,
-a difference between two models is attributable to their backbones, and between EventSSM and PureSSM,
-which differ only in the spatial mixer and its initialisation, to that one component. The comparison
-with the published baseline is looser: both mixers of its backbone differ from those of the own models,
-and the own models were trained with batch size 4 and bf16 mixed precision rather than 8 and 32-bit
-(Section~\ref{sec:training}).
+The most important design decision of this thesis is that the detection pipeline around the backbone
+never changes. Every model reuses the verified S5-RVT code without any modification: the data loading,
+the neck, the detection head~\cite{ge2021yolox}, the loss, the evaluation code and the training loop. A
+new backbone is added through a configuration setting and a short registration step, so the original
+code is never edited. Figure~\ref{fig:spiking_arch}(a) shows this shared pipeline. Because nothing else
+changes, any difference in results between two models can only come from their backbones. EventSSM and
+PureSSM differ only in their spatial mixer, so any difference between them can be traced to that single
+component. The comparison with the published baseline is less strict. Both of its mixers differ from
+those of the new models, and the new models were trained with a batch size of 4 instead of 8 and with a
+lower numerical precision (Section~\ref{sec:training}).
 
 \begin{figure}[htbp]
     \centering
@@ -776,58 +772,59 @@ and the own models were trained with batch size 4 and bf16 mixed precision rathe
 
 \subsection{Neck, Head and Loss}
 \label{subsec:neck_head}
-\guide{120}{
-  \item PAFPN: top-down then bottom-up fusion of the stride-8/16/32 features of stages 2--4.
-  \item YOLOX: decoupled, anchor-free; objectness, class and box per cell; SimOTA dynamic label assignment.
-  \item The loss as an equation, with its terms named.
+\guide{160}{
+  \item The neck combines detail from the high-resolution maps with context from the low-resolution ones (top-down, then bottom-up).
+  \item The YOLOX head~\cite{ge2021yolox}: at every cell, a score for ``is there an object'', class scores and a box; a training rule decides which cells are responsible for which object.
+  \item The loss as an equation, each term explained in words.
   \item Correct the Thesis~A description (FCOS, focal, GIoU) in one sentence.
 }
-The neck is a YOLO-PAFPN~\cite{ge2021yolox}, which fuses the stride-8, 16 and 32 features of backbone
-stages 2--4 first top-down and then bottom-up, so that every output scale combines fine localisation with
-coarse context. The YOLOX head~\cite{ge2021yolox} is decoupled and anchor-free: at every cell of each scale
-it predicts an objectness score, class scores and a box, and the SimOTA strategy assigns ground-truth boxes
-to cells dynamically during training. The loss is
+The neck combines the feature maps from backbone stages 2, 3 and 4. It passes information first from the
+coarse maps to the fine ones and then back again, so that every output combines precise location with
+wider context. The detection head comes from YOLOX~\cite{ge2021yolox}. At every cell of every map, it
+predicts how likely it is that an object is present, which class the object belongs to, and where its box
+lies. During training, a matching rule called SimOTA decides which cells are responsible for which object.
+The training loss adds up three terms:
 \begin{equation}
   \mathcal{L} \;=\; \mathcal{L}^{\mathrm{BCE}}_{\mathrm{obj}} + \mathcal{L}^{\mathrm{BCE}}_{\mathrm{cls}}
-  + 5\,\big(1 - \mathrm{IoU}^2\big),
+  + 5\,\big(1 - \mathrm{IoU}^2\big).
   \label{eq:loss}
 \end{equation}
-binary cross-entropy for objectness and class, and an IoU loss on the matched boxes with weight 5. The
-Thesis~A report described the head and loss as FCOS with focal and GIoU losses; the code audit of this
-project found the YOLOX configuration above, which is the one used for every model.
+The first two terms measure errors in the object and class predictions. The third term measures how well
+each predicted box overlaps its true box, and is weighted five times more strongly. The Thesis~A report
+described a different head and loss; the code review carried out in this project identified the
+configuration above, which is used for every model.
 
 \subsection{The Two Mixing Axes}
 \label{subsec:two_axes}
 \guide{190}{
-  \item Spatial mixer: within a frame, time folded into the batch, $(L\cdot B, C, H, W)$, stateless.
-  \item Temporal mixer: along time at each location, $(B\cdot H\cdot W, L, C)$, causal, state carried across clips.
-  \item Orthogonal axes $\Rightarrow$ each can be changed alone.
-  \item Temporal blocks only on stages 2--4, as taps (the next spatial stage reads per-frame features); contrast with RVT; no residual around the block; identical in all own models.
+  \item The spatial mixer looks across one frame at a time and keeps no memory.
+  \item The temporal mixer looks along time at each position, only at the past, and keeps a memory between clips.
+  \item Because the two are separate, each can be changed alone.
+  \item Temporal blocks only on stages 2--4; they branch off the spatial stages instead of feeding the next one (unlike RVT); their output replaces the stage output; identical in all new models.
 }
-Each backbone stage mixes information along two orthogonal axes. Its spatial mixer acts on every frame
-independently, with time folded into the batch dimension, $(L\cdot B, C, H, W)$, and keeps no state. The
-features are then re-folded to $(B\cdot H\cdot W, L, C)$, and the temporal mixer acts along time at each
-spatial location independently; it is causal and carries its state from one clip to the next. Because the
-axes are separate, each can be changed without touching the other, which is exactly what the models of
-Section~\ref{sec:models} do. Temporal blocks exist only for stages 2--4, whose outputs feed the neck; a
-block at stage~1 would only add unused parameters. They are taps on the spatial pyramid rather than links
-in it: the pyramid runs on every frame first, each temporal output goes to the neck, and the next spatial
-stage continues from the per-frame features. In RVT~\cite{gehrig2023recurrent}, by contrast, each stage's
-recurrent output is the input of the next stage. The temporal output replaces the stage features, with no
-residual path around the block. The design is identical in all own models, so it does not confound
-their comparison.
+Each stage of the backbone processes information in two separate directions. The spatial mixer looks
+across the image, one frame at a time, and keeps no memory from frame to frame. The temporal mixer then
+looks along time at each position in the image. It only uses past frames, never future ones, and it keeps
+a memory that is passed from one clip of frames to the next. Because the two mixers are separate, either
+one can be changed without touching the other, and this is exactly how the models in
+Section~\ref{sec:models} differ from each other. Temporal blocks are only placed on stages 2, 3 and 4,
+because only these stages feed the neck. Each temporal block branches off its stage: its output goes to
+the neck, while the next spatial stage continues from the frame-by-frame features. This differs from
+RVT~\cite{gehrig2023recurrent}, where each stage's memory output feeds the next stage. The output of a
+temporal block replaces the stage's features rather than being added to them. This design is the same in
+all of the new models, so it does not affect the comparison between them.
 
 \section{Model Architectures}
 \label{sec:models}
-\guide{70}{
-  \item Name the models of Table~\ref{tab:four_models} and the role of each (literature baseline, reproduced reference, three own models).
-  \item What changes from one own model to the next: one mixer at a time.
+\guide{80}{
+  \item Name the models in Table~\ref{tab:four_models} and the role of each.
+  \item What changes from one new model to the next: one mixer at a time.
 }
-Table~\ref{tab:four_models} lists the models compared. RVT, with a ConvLSTM in time, is the literature
-baseline, and S5-RVT, which replaces the ConvLSTM with an S5 state-space layer, is the reproduced
-reference. The three models of this work change one mixer at a time: EventSSM pairs a convolutional
-spatial mixer with a Mamba-2 temporal mixer, PureSSM replaces the convolutional mixer with a bidirectional
-state-space one, and SpikingSSM adds a spiking readout to PureSSM's temporal mixer.
+Table~\ref{tab:four_models} lists the models compared in this thesis. RVT, which uses a ConvLSTM to process
+time, is the original baseline from the literature. S5-RVT replaces the ConvLSTM with an S5 state space
+layer and is the reference that was reproduced. The three new models each change one part at a time.
+EventSSM combines a convolutional spatial mixer with a Mamba-2 temporal mixer. PureSSM replaces the
+convolutional mixer with a state space one. SpikingSSM adds a spiking output to PureSSM's temporal mixer.
 
 \begin{table}[htbp]
 \centering
@@ -849,198 +846,193 @@ Spiking-SSM (this work) & BiMamba (identical) & Mamba-2 $+$ \textbf{LIF readout}
 
 \subsection{Baseline: S5-RVT}
 \label{subsec:s5rvt}
-\guide{100}{
-  \item MaxViT spatial mixer (window attention + grid attention)~\cite{tu2022maxvit}; S5 temporal mixer at every location; same neck and head.
+\guide{120}{
+  \item Spatial mixer: MaxViT attention~\cite{tu2022maxvit} (nearby patches, then a spread-out grid); temporal mixer: S5 at every position; same neck and head.
   \item 18.19\,M parameters.
-  \item Why it is the reference: the published state-space event detector on Gen1 with released code and checkpoint.
-  \item Evaluated as released, not retrained; its reproduction validates the pipeline.
+  \item Why it is the reference: the published state space event detector on Gen1 with released code and weights.
+  \item Used exactly as released, without retraining.
 }
-S5-RVT~\cite{zubic2024state} is the RVT detector~\cite{gehrig2023recurrent} with its ConvLSTM replaced by
-an S5 layer, a diagonal linear state-space model. Each backbone stage mixes space with MaxViT
-attention~\cite{tu2022maxvit}, local window attention followed by attention over a dilated grid, and mixes
-time with S5 at every spatial location, before the same PAFPN neck and YOLOX head used here. It has
-18.19\,M parameters. It is the reference because it is the published state-space event detector on Gen1
-with released code and checkpoint. The published checkpoint is evaluated as released, without retraining,
-and its reproduction (Section~\ref{sec:repro_results}) validates the pipeline used for every other model.
+S5-RVT~\cite{zubic2024state} is the RVT detector~\cite{gehrig2023recurrent} with its ConvLSTM replaced by an
+S5 layer, a simple type of state space model. In each stage, it mixes information across the image with
+MaxViT attention~\cite{tu2022maxvit}, which first compares nearby patches and then patches spread across
+the whole image. It then processes time with S5 at every position, and uses the same neck and head as
+this thesis. The model has 18.19 million parameters. It serves as the reference because it is the
+published state space event detector on Gen1 with released code and trained weights. These weights were
+used exactly as released, without retraining, and reproducing their result
+(Section~\ref{sec:repro_results}) confirms that the pipeline is correct.
 
 \subsection{EventSSM: Convolutional Spatial, State-Space Temporal}
 \label{subsec:eventssm}
-\guide{110}{
-  \item Spatial mixer: ImageNet-initialised ResNet-18~\cite{he2016deep}; stem + four residual stages of widths 64/128/256/512 at strides 4/8/16/32.
-  \item The first convolution adapted from 3 to 20 channels by average projection: the equation, and why (same response to a uniform input; pretrained filters available to every bin and polarity).
+\guide{140}{
+  \item Spatial mixer: ResNet-18~\cite{he2016deep} pre-trained on ImageNet; four stages that halve the image size each time.
+  \item The first layer adapted from 3 colour channels to 20 histogram channels by averaging its weights: the equation, and why (it keeps the pre-trained filters useful for every channel).
 }
-The spatial mixer of EventSSM is an ImageNet-initialised ResNet-18~\cite{he2016deep}: a stem
-($7\times7$ stride-2 convolution, batch normalisation, ReLU and max-pooling) followed by four residual
-stages of widths 64/128/256/512 at strides 4/8/16/32. The pretrained first convolution expects three RGB
-channels, so it is adapted to the 20 histogram channels by \emph{average projection}: the pretrained kernel
-$W\in\mathbb{R}^{64\times3\times7\times7}$ is averaged over its input channels, tiled across the 20 new
-channels and rescaled,
+EventSSM uses ResNet-18~\cite{he2016deep} as its spatial mixer. ResNet-18 is a widely used convolutional
+network, and here it starts from weights pre-trained on the ImageNet photo dataset. It consists of a first
+layer followed by four stages, each of which halves the size of the feature map. The pre-trained first
+layer expects the three colour channels of a photograph, whereas the input here has 20 channels. The
+first layer is therefore adapted by averaging its weights over the three colour channels and copying the
+result to all 20 channels, scaled so that the overall response stays the same:
 \begin{equation}
-  W'_{:,c} \;=\; \frac{3}{20}\cdot\frac{1}{3}\sum_{k=1}^{3} W_{:,k}, \qquad c = 1,\dots,20,
+  W'_{:,c} \;=\; \frac{3}{20}\cdot\frac{1}{3}\sum_{k=1}^{3} W_{:,k}, \qquad c = 1,\dots,20.
   \label{eq:avg_projection}
 \end{equation}
-so that each filter responds to a spatially uniform input as the original did, and the pretrained edge and
-blob detectors are available to every bin and polarity. All later layers keep their ImageNet weights.
+Here $W$ is the original weight and $W'$ the adapted one. In this way, the edge and shape detectors learned
+on photographs remain useful for every channel of the event input. All later layers keep their
+pre-trained weights.
 
-\guide{150}{
-  \item One Mamba-2 layer~\cite{dao2024transformers} per stage 2--4 at the stage width (128/256/512); state size $N=64$, expansion 2, head dimension 64, causal convolution of width 4.
-  \item Folded into $B\,h_s w_s$ sequences of length $L$, one per location; the recurrence as equations, every symbol defined.
-  \item The input-dependent step $\Delta_t$ is what distinguishes Mamba from S4/S5.
-  \item State carried across clips in RVT's state container; one scan kernel for training and streaming evaluation; 19.18\,M parameters.
+\guide{190}{
+  \item One Mamba-2 layer~\cite{dao2024transformers} per stage 2--4; each image position is treated as its own sequence over time.
+  \item The update equations, with every symbol explained in words.
+  \item What makes Mamba different from S4/S5: the step $\Delta_t$ depends on the input, so the model decides at each moment how much to remember.
+  \item The memory is passed between clips; training and testing use the same code; 19.18\,M parameters.
 }
-In time, one Mamba-2 layer~\cite{dao2024transformers} acts on each neck-fed stage $s\in\{2,3,4\}$ at that
-stage's width $C_s\in\{128,256,512\}$, with state size $N=64$, expansion factor 2 (heads of dimension
-$P=64$) and a causal convolution of width 4. The clip of shape $(L, B, C_s, h_s, w_s)$ is folded into
-$B\,h_s w_s$ independent sequences of length $L$, one per spatial location, and each head $j$ runs the
-selective recurrence
+For time, EventSSM uses one Mamba-2 layer~\cite{dao2024transformers} on each of stages 2, 3 and 4. Each
+position in the feature map is treated as its own sequence over time, so the layer follows how the
+features at that position change from frame to frame. At every time step $t$, each part $j$ of the layer
+updates a memory $H$ and produces an output $y$:
 \begin{align}
   H^{(j)}_t &= \exp\!\big(\Delta^{(j)}_t a^{(j)}\big)\, H^{(j)}_{t-1} + \Delta^{(j)}_t\, x^{(j)}_t B_t^{\top},
   \label{eq:mamba2_state}\\
-  y^{(j)}_t &= H^{(j)}_t C_t + D^{(j)} x^{(j)}_t,
+  y^{(j)}_t &= H^{(j)}_t C_t + D^{(j)} x^{(j)}_t.
   \label{eq:mamba2_out}
 \end{align}
-where $x^{(j)}_t\in\mathbb{R}^{P}$ is the head's slice of the expanded and convolved input,
-$H^{(j)}_t\in\mathbb{R}^{P\times N}$ its state, $a^{(j)}<0$ a learned decay,
-$\Delta^{(j)}_t=\mathrm{softplus}(\cdot)>0$ an input-dependent step, $B_t, C_t\in\mathbb{R}^{N}$
-input-dependent projections and $D^{(j)}$ a learned skip weight. Unlike S4 and S5, the decay
-$\exp(\Delta_t a)$ depends on the input. The state is carried across clips in RVT's existing state
-container, and training and streaming evaluation use the same chunked scan kernel, so no separate
-inference path can drift from the trained model. EventSSM has 19.18\,M parameters, 11.23\,M of them in
-the ResNet-18.
+In the first equation, the old memory is multiplied by a decay factor and the new input $x_t$ is added. The
+decay depends on a learned rate $a<0$ and a step size $\Delta_t>0$. The projections $B_t$ and $C_t$
+control how the input is written into the memory and read out of it, and $D$ passes part of the input
+straight through. The key feature of Mamba, compared with S4 and S5, is that the step size depends on the
+current input. The model can therefore decide, at every moment, how much of the past to keep. The memory
+is carried from one clip to the next, and the same code is used for training and testing, so the two
+cannot drift apart. EventSSM has 19.18 million parameters in total.
 
 \subsection{PureSSM: State-Space Spatial and Temporal}
 \label{subsec:puressm}
-\guide{110}{
-  \item Each ResNet stage replaced by a stack of bidirectional Mamba-2 (BiMamba) blocks; everything else identical to EventSSM.
-  \item Convolution only where it supplies position: a stem of two $3\times3$ stride-2 convolutions and one between stages; no positional embedding; LayerNorm, no batch norm.
-  \item Depths $(2,2,8,2)$, stochastic depth 0.1~\cite{huang2016deep}, trained from scratch; 16.33\,M parameters (8.38\,M spatial).
+\guide{100}{
+  \item Each ResNet stage replaced by a stack of bidirectional Mamba (BiMamba) blocks; everything else identical to EventSSM.
+  \item Convolution kept only to shrink the image between stages; no extra position information; trained from scratch.
+  \item Depths $(2,2,8,2)$; 16.33\,M parameters, the smallest model.
 }
-PureSSM replaces each ResNet stage with a stack of bidirectional Mamba-2 blocks and changes nothing else:
-the stage widths and strides, the temporal blocks, the state handling and everything downstream are those
-of EventSSM. Convolution remains only where it supplies position information, in a stem of two $3\times3$
-stride-2 convolutions ($20\to32\to64$ channels) and in one $3\times3$ stride-2 convolution between
-consecutive stages; no explicit positional embedding is used, as in VMamba~\cite{liu2024vmamba}.
-Normalisation is LayerNorm throughout. The stage depths are $(2,2,8,2)$, fourteen blocks in total, with
-stochastic depth~\cite{huang2016deep} rising linearly to 0.1, and the model is trained from scratch.
-PureSSM has 16.33\,M parameters, 8.38\,M of them in the spatial pyramid.
+PureSSM replaces each convolutional stage of EventSSM with a stack of bidirectional Mamba blocks, and
+changes nothing else. The stage sizes, the temporal blocks and everything after the backbone are the same
+as in EventSSM. Convolution is kept only where it shrinks the image: at the start of the network and
+between stages. The four stages contain 2, 2, 8 and 2 blocks, fourteen in total, and a regularisation
+method called stochastic depth~\cite{huang2016deep} is used during training. Unlike EventSSM, PureSSM is
+trained from scratch, without pre-trained weights. It has 16.33 million parameters, the fewest of all the
+models.
 
-\guide{140}{
-  \item The block as equations: zero-initialised depthwise term, then a bidirectional scan with LayerNorm and stochastic depth.
-  \item Row-major and column-major order alternate between blocks~\cite{li2024mamband}; one forward and one backward scan~\cite{zhu2024vision}; the scan equation.
-  \item What the two directions share and what they keep separate; spatial state size 16; sequence lengths 5{,}120 to 80 tokens.
+\guide{120}{
+  \item How one block works, as equations: a small local filter that starts switched off, then a scan over the whole image.
+  \item The image is read row by row in some blocks and column by column in others~\cite{li2024mamband}; each scan runs forwards and backwards~\cite{zhu2024vision}.
+  \item Why bidirectional: every position can see the whole image in both directions.
 }
-Each block maps a feature map $X\in\mathbb{R}^{C\times h\times w}$ as
+Each block processes a feature map $X$ in two steps:
 \begin{align}
   X' &= X + \mathrm{DWConv}_{3\times3}(X), \label{eq:bimamba_local}\\
   X_{\mathrm{out}} &= X' + \mathrm{DropPath}\big(\mathrm{BiScan}(\mathrm{LN}(X'))\big). \label{eq:bimamba_block}
 \end{align}
-The depthwise convolution is zero-initialised, so every block starts as a pure global scan and learns how
-much local mixing to add. $\mathrm{BiScan}$ flattens the map into a sequence $u$ of $hw$ tokens, row-major
-in even blocks and column-major in odd ones~\cite{li2024mamband}, and runs one Mamba-2 scan over $u$ and
-one over the reversed sequence~\cite{zhu2024vision}:
+The first step adds a small $3\times3$ filter that starts at zero, so each block begins as a pure scan and
+learns during training how much local detail to add. The second step flattens the image into a long
+sequence and scans it with Mamba. The image is read row by row in some blocks and column by column in
+others~\cite{li2024mamband}, so information spreads in both directions across the image. Each scan runs
+both forwards and backwards over the sequence~\cite{zhu2024vision}:
 \begin{equation}
   \mathrm{BiScan}(u) \;=\; W_{\mathrm{out}}\,\mathrm{RMSNorm}\Big(\big[\,\overrightarrow{\mathrm{SSM}}(u)
-  + \mathrm{flip}\big(\overleftarrow{\mathrm{SSM}}(\mathrm{flip}(u))\big)\big]\odot\mathrm{SiLU}(z)\Big),
+  + \mathrm{flip}\big(\overleftarrow{\mathrm{SSM}}(\mathrm{flip}(u))\big)\big]\odot\mathrm{SiLU}(z)\Big).
   \label{eq:biscan}
 \end{equation}
-where each $\mathrm{SSM}$ is the recurrence of Equations~\eqref{eq:mamba2_state}--\eqref{eq:mamba2_out}
-started from a zero state. The two directions share the input projection, the gate $z$ and
-$W_{\mathrm{out}}$, but keep their own convolution, decay and skip weight, so each learns its own length
-scales. The spatial state size is 16, a quarter of the temporal blocks', and the four stages scan sequences
-of 5{,}120, 1{,}280, 320 and 80 tokens.
+The forward and backward scans follow the update of Equation~\eqref{eq:mamba2_state} and are added
+together. As a result, every position can draw on information from the whole image, not only from its
+neighbours.
 
-\guide{100}{
-  \item A frame is complete when processed, so bidirectional mixing within it is allowed.
-  \item The spatial scan restarts from zero every frame: stateless, so it cannot leak information across time.
-  \item Time is handled only by the causal temporal blocks, identical to EventSSM's; the comparison isolates the spatial mixer as instantiated, including its initialisation.
+\guide{80}{
+  \item Looking both ways is allowed within a frame, because the whole frame is available at once.
+  \item The spatial scan starts fresh for every frame, so it cannot leak information between frames; time is handled only by the temporal blocks, identical to EventSSM's.
+  \item The comparison therefore isolates the spatial mixer, including the fact that one is pre-trained and the other is not.
 }
-The scan is bidirectional in space but the model remains causal in time. A frame is complete when it is
-processed, so a token may depend on tokens on either side of it. The spatial scan also starts from a zero
-state for every frame and carries nothing forward, so its bidirectionality cannot leak information across
-time. Time is handled only by the causal temporal blocks, identical in EventSSM and PureSSM, so the
-comparison between them isolates the spatial mixer as instantiated, including its initialisation: a
-pretrained convolutional stack against a state-space mixer trained from scratch.
+Looking in both directions is allowed within a frame, because the whole frame is available at once. The
+spatial scan also starts fresh for every frame and carries nothing forward, so it cannot mix information
+between frames. Time is handled only by the temporal blocks, which are identical in EventSSM and PureSSM.
+The comparison between the two models therefore isolates the spatial mixer, together with the fact that
+EventSSM's mixer is pre-trained and PureSSM's is not.
 
 \subsection{SpikingSSM: A Spiking Temporal Readout}
 \label{subsec:spiking_method}
-\guide{110}{
-  \item The Mamba-2 recurrence stays exact; only its output passes through a leaky integrate-and-fire (LIF) layer.
-  \item The three LIF equations, every symbol defined; reset by subtraction keeps the residue.
-  \item Leak $\beta$ learned per channel (initialised at 0.9); threshold $\vartheta=1$ fixed; spiking on stages 2--4; 16.34\,M parameters.
+\guide{130}{
+  \item The Mamba memory is unchanged; only its output passes through spiking neurons.
+  \item The three neuron equations, explained in words: the potential builds up, a spike fires at the threshold, the threshold is subtracted.
+  \item Leak learned (starts at 0.9); threshold fixed at 1; stages 2--4 spike; 16.34\,M parameters.
 }
-The spiking model keeps the Mamba-2 recurrence of PureSSM exact and passes only its output through a
-leaky integrate-and-fire (LIF) layer. For each timestep $t$, at every spatial location and channel,
+The spiking model keeps PureSSM's Mamba memory exactly as it is. Only the output of the memory passes
+through spiking neurons of the leaky integrate-and-fire (LIF) type. At each time step $t$, each neuron
+updates its potential $m_t$, decides whether to fire a spike $s_t$, and then resets:
 \begin{align}
   m_t &= \beta\, m_{t-1} + y_t, \label{eq:lif_integrate}\\
   s_t &= \Theta(m_t - \vartheta), \label{eq:lif_fire}\\
-  m_t &\leftarrow m_t - s_t\,\vartheta, \label{eq:lif_reset}
+  m_t &\leftarrow m_t - s_t\,\vartheta. \label{eq:lif_reset}
 \end{align}
-where $y_t$ is the state-space output, $m_t$ the membrane potential, $\vartheta$ the firing threshold,
-$\beta \in (0,1)$ the leak and $\Theta$ the Heaviside step. The reset subtracts the threshold rather than
-zeroing the membrane, so the residue above threshold is carried forward. The leak is learned per channel
-from an initial value of 0.9, the threshold is fixed at $\vartheta=1$, and all three neck-fed stages spike.
-The model has 16.34\,M parameters, 0.01\,M more than PureSSM.
+The potential leaks away slowly, at a rate set by $\beta$, while the new input $y_t$ is added. When the
+potential exceeds the threshold $\vartheta$, the neuron fires. The threshold is then subtracted from the
+potential, so any excess carries over to the next step. The leak is learned during training, starting from
+0.9, and the threshold is fixed at 1. All three stages that feed the neck use spiking neurons, and the model
+has 16.34 million parameters.
 
-\guide{70}{
-  \item Why the temporal axis: spikes are causal events in time, and the block already steps over clip time, so no extra timestep dimension (fully spiking detectors pay a factor $T=4$--5).
-  \item Why not the spatial scan: it is bidirectional and its axis is not time $\Rightarrow$ the model is a hybrid.
+\guide{80}{
+  \item Why the time direction: spikes are events in time, and the temporal block already steps through time, so no extra time steps are needed (fully spiking detectors repeat each input 4--5 times).
+  \item Why not the spatial scan: it looks in both directions and is not a time axis $\Rightarrow$ the model is a hybrid.
 }
-The temporal axis is chosen deliberately. Spikes are causal events in time, and the temporal block already
-steps over clip time, so the readout adds no extra timestep dimension and avoids the multiplicative cost
-($T=4$--$5$) that directly trained spiking detectors pay (Table~\ref{tab:snn_landscape}). The spatial scan
-of PureSSM is bidirectional and its axis is not time, so spiking it is not well defined; it stays
-non-spiking, and the model is a hybrid.
+Spikes were added to the time direction on purpose. Spikes are events in time, and the temporal block
+already steps through time, so no extra time steps are needed. Fully spiking detectors, by contrast,
+usually repeat each input four or five times (Table~\ref{tab:snn_landscape}). The spatial scan looks in both
+directions across the image and is not a time axis, so spiking it would not be well defined. It therefore
+stays non-spiking, which makes the model a hybrid.
 
-\guide{40}{
-  \item $\Theta$ has zero derivative almost everywhere $\Rightarrow$ surrogate gradient in the backward pass only.
-  \item The arctan surrogate as an equation, $\alpha=2$; the forward pass stays a hard step.
+\guide{50}{
+  \item A spike is an on/off step with no slope, so training uses a smooth stand-in for its slope: the equation, $\alpha = 2$.
+  \item The forward pass still uses real spikes.
 }
-Because $\Theta$ has zero derivative almost everywhere, training uses the arctan surrogate gradient in the
-backward pass only,
+A spike is an on/off step, which has no useful slope for training. Training therefore replaces the slope of
+the step with a smooth curve, used only when the weights are updated:
 \begin{equation}
   \frac{\partial s_t}{\partial m_t} \;\approx\; \frac{\alpha/2}{1 + \left(\tfrac{\pi}{2}\alpha (m_t-\vartheta)\right)^2},
   \label{eq:surrogate}
 \end{equation}
-with $\alpha = 2$. The forward pass remains a hard step, so the model genuinely spikes; only its gradient
-is smoothed.
+with $\alpha = 2$. When the model runs, it still produces real on/off spikes.
 
 \subsection{Readout Modes and the Readout Ladder}
 \label{subsec:readout_modes}
-\guide{80}{
-  \item The three readouts sharing one membrane: spike ($s_t$, binary), graded ($s_t m_t$, the counterpart of Loihi~2 graded spikes), analog ($m_t$, dense; leak and reset still run).
-  \item The ladder above PureSSM as an equation: dynamics, sparsity, binarisation.
+\guide{120}{
+  \item Three ways of reading out the same neurons: binary spikes; graded spikes that carry a value (as on Loihi~2~\cite{orchard2021efficient}); analog, which passes the potential on at every step.
+  \item The ladder from PureSSM through the three versions, as an equation: each step adds one property of spiking.
 }
-Three readouts share the same membrane: \textbf{spike} emits the binary $s_t$; \textbf{graded} emits
-$s_t m_t$, a spike that carries the membrane value, the counterpart of the graded spikes of
-Loihi~2~\cite{orchard2021efficient}; and \textbf{analog} emits the pre-reset membrane $m_t$ densely, with
-the leak and the subtractive reset still running. Together with PureSSM they form a ladder whose steps
-isolate one property of spiking each:
+The same neurons can pass on their activity in three ways. The \textbf{spike} version sends a binary signal,
+either 0 or 1. The \textbf{graded} version sends a spike that also carries the size of the potential, like
+the graded spikes of the Loihi~2 neuromorphic chip~\cite{orchard2021efficient}. The \textbf{analog} version
+sends the potential itself at every step, so it is never silent. Together with PureSSM, the three versions
+form a ladder in which each step adds one property of spiking:
 \begin{equation}
 \begin{aligned}
   \Delta_{\mathrm{dyn}} &= \mathrm{AP}_{\mathrm{analog}} - \mathrm{AP}_{\mathrm{PureSSM}},\\
   \Delta_{\mathrm{sparse}} &= \mathrm{AP}_{\mathrm{graded}} - \mathrm{AP}_{\mathrm{analog}},\\
-  \Delta_{\mathrm{bin}} &= \mathrm{AP}_{\mathrm{spike}} - \mathrm{AP}_{\mathrm{graded}},
+  \Delta_{\mathrm{bin}} &= \mathrm{AP}_{\mathrm{spike}} - \mathrm{AP}_{\mathrm{graded}}.
 \end{aligned}
   \label{eq:ladder}
 \end{equation}
-the costs of the LIF dynamics (leak and reset), of sparsity and of binarisation.
+The first step measures the cost of the neuron's behaviour itself (the leak and the reset), the second the
+cost of staying silent most of the time, and the third the cost of reducing each signal to a single bit.
 
 \section{Dataset and Metrics}
 \label{sec:dataset}
-\guide{130}{
-  \item Prophesee Gen1~\cite{detournemire2020large}: more than 39\,h of driving, $304\times240$ ATIS camera, urban to rural scenes; cars and pedestrians; manual labels at 1--4\,Hz.
-  \item Official splits; the test split is used only for the final numbers.
-  \item Table~\ref{tab:gen1_stats}: counts after RVT preprocessing and the size filter (side $\geq$ 10\,px, diagonal $\geq$ 30\,px); 255{,}467 boxes.
+\guide{100}{
+  \item Gen1~\cite{detournemire2020large}: more than 39 hours of driving, a $304\times240$ event camera, cars and pedestrians labelled by hand 1--4 times per second.
+  \item Standard training, validation and test parts; the test part is used only for the final results.
+  \item Table~\ref{tab:gen1_stats}: counts after very small boxes are removed; 255{,}467 boxes in total.
 }
-All experiments use the Prophesee Gen1 automotive detection dataset~\cite{detournemire2020large}: more than
-39~h of driving recorded with a $304\times240$ ATIS event camera in urban, highway, suburban and rural
-scenes, with manual bounding-box annotations of cars and pedestrians at 1--4~Hz. The official
-train/validation/test splits are used throughout, and the test split is used only for the final reported
-numbers. Table~\ref{tab:gen1_stats} summarises the splits as the pipeline consumes them, after the RVT
-preprocessing~\cite{gehrig2023recurrent}, which stores each recording as 60-s chunks and discards
-malformed boxes and boxes with a side shorter than 10~px or a diagonal shorter than 30~px, the size filter
-of the original protocol~\cite{detournemire2020large}. The 255{,}467 boxes in total agree with the
-``more than 255{,}000 labels'' of the dataset paper.
+All experiments use the Prophesee Gen1 dataset~\cite{detournemire2020large}. It contains more than 39 hours
+of driving recorded with a $304\times240$ event camera in cities, on highways and in the countryside. Cars
+and pedestrians were labelled by hand one to four times per second. The dataset comes with standard
+training, validation and test parts, and the test part was used only to produce the final results.
+Table~\ref{tab:gen1_stats} gives the size of each part after preprocessing, which removes faulty boxes and
+boxes too small to detect reliably~\cite{gehrig2023recurrent}. In total there are 255{,}467 labelled boxes.
 
 \begin{table}[htbp]
 \centering
@@ -1061,47 +1053,46 @@ Total      & 2{,}357 & 39.28 & 123{,}304 & 228{,}013 & 27{,}454 & 89.3\,\% \\
 \end{tabular}
 \end{table}
 
-\guide{100}{
-  \item Class imbalance: 89\,\% of boxes are cars; the validation split has only 2{,}823 pedestrian boxes.
-  \item Labels are sparse in time (0.87 annotated instants per second $\Rightarrow$ about 4\,\% of 50-ms predictions are scored) and incomplete (pedestrians under-annotated).
-  \item Consequence: lowers attainable AP for every model and makes absolute pedestrian AP an underestimate.
+\guide{90}{
+  \item Uneven classes: 89\,\% of the boxes are cars; the validation part has only 2{,}823 pedestrian boxes.
+  \item Labels are rare in time (only about 4\,\% of predictions can be checked) and incomplete (many pedestrians are unlabelled).
+  \item Consequence: every model's score is lowered, and pedestrian scores are underestimated.
 }
-Two properties of the data shape every result. The classes are strongly imbalanced: cars make up 89\,\% of
-all boxes, and the validation split, which drives checkpoint selection, contains only 2{,}823 pedestrian
-boxes. The labels are also sparse in time and incomplete. There are 123{,}304 annotated instants in
-39.3~h, 0.87 per second, so only about 4\,\% of the 50-ms predictions coincide with an annotation and are
-scored at all, and pedestrians visible in the events are often unlabelled (Section~\ref{sec:qualitative}).
-Because every model is trained and scored against the same labels, this noise lowers the attainable AP
-of all of them, and it makes absolute pedestrian AP an underestimate.
+Two properties of the data affect every result. First, the classes are very uneven: 89\,\% of all boxes
+are cars, and the validation part, which is used to choose the best model, contains only 2{,}823
+pedestrian boxes. Second, the labels are rare and incomplete. Labels exist only about once per second, so
+only about 4\,\% of the detector's predictions can be checked against a label. Many pedestrians that are
+visible in the events are also not labelled (Section~\ref{sec:qualitative}). Since all models are trained
+and scored against the same labels, this lowers every model's score, and it makes the scores for
+pedestrians lower than the true performance.
 
-\guide{100}{
-  \item Primary metric: COCO mAP over IoU 0.50:0.05:0.95; also $\mathrm{AP}_{50}$, $\mathrm{AP}_{75}$ and the size-stratified $\mathrm{AP}_S$, $\mathrm{AP}_M$, $\mathrm{AP}_L$; per-class AP read-out added for this work.
-  \item Correction of Thesis~A: 47.7 is mAP@[0.50:0.95], not mAP@0.5 ($\mathrm{AP}_{50}$ is 75.3); the per-class pair 56.8/38.6 had no source; measured 63.9/31.6.
+\guide{110}{
+  \item The main score: mAP, the standard COCO measure, averaged over strict and loose overlap thresholds; also scores for small, medium and large objects and for each class.
+  \item Two corrections of Thesis~A: 47.7 is this averaged mAP, not mAP at 0.5 (that one is 75.3); the per-class figures given there had no source (measured: cars 63.9, pedestrians 31.6).
 }
-The primary metric is COCO mean Average Precision over the IoU thresholds 0.50:0.05:0.95, written mAP.
-$\mathrm{AP}_{50}$ and $\mathrm{AP}_{75}$ are reported with it, together with the size-stratified
-$\mathrm{AP}_S$, $\mathrm{AP}_M$ and $\mathrm{AP}_L$, and a per-class read-out added to the evaluator for
-this work. Two figures in the Thesis~A report are corrected here. The baseline's 47.7 is mAP@[0.50:0.95],
-not mAP@0.5 as labelled there; its $\mathrm{AP}_{50}$ is 75.3. The per-class pair given there (car 56.8,
-pedestrian 38.6) has no measured or published source; the measured values for the published checkpoint
-are 63.9 and 31.6.
+The main measure of accuracy is the mean average precision (mAP) used in the COCO benchmark. It rewards
+detections that find the objects and place their boxes accurately, and it is averaged over a range of
+overlap thresholds from loose to strict. Separate scores are also reported for small, medium and large
+objects, and for each class. Two figures in the Thesis~A report are corrected here. The baseline's 47.7 is
+this averaged score, not the score at the loosest threshold of 0.5 as stated there, which is 75.3. The
+per-class figures given there had no source; the measured values are 63.9 for cars and 31.6 for
+pedestrians.
 
 \section{Training Protocol}
 \label{sec:training}
-\guide{140}{
-  \item One recipe for every own model: RVT's Gen1 recipe as used for S5-RVT, run by the same code; configurations differ only in the backbone (checked by a test).
-  \item AdamW with zero weight decay ($\equiv$ Adam~\cite{kingma2015adam}); OneCycle~\cite{smith2017super}: 2{,}000-step warm-up from $10^{-5}$ to $2\times10^{-4}$, linear decay to $2\times10^{-8}$ at 400k; gradient clipping at 1.0.
-  \item 21-frame sequences (1.05\,s); mixed batching: half streamed with the state carried (truncated BPTT), half random with the state reset.
+\guide{120}{
+  \item One set of training settings for every new model, taken from RVT and S5-RVT; only the backbone differs (checked by a test).
+  \item The optimiser~\cite{kingma2015adam} and the learning-rate schedule~\cite{smith2017super}: a short warm-up, then a steady decrease over 400{,}000 steps.
+  \item Training examples: 21 frames (just over 1 second); half continue from where the previous batch stopped, half start at random.
 }
-All own models are trained with one recipe, the Gen1 recipe of RVT~\cite{gehrig2023recurrent} as used for
-S5-RVT~\cite{zubic2024state}, run by the same unmodified training code; their configurations differ only
-in the backbone they select, which a test enforces. Table~\ref{tab:recipe} sets the recipe against the
-published one. Optimisation uses AdamW with zero weight decay, equivalent to Adam~\cite{kingma2015adam},
-under a OneCycle schedule~\cite{smith2017super}: a linear warm-up over 2{,}000 steps from $10^{-5}$ to
-$2\times10^{-4}$, then a linear decay to $2\times10^{-8}$ at step 400k. Gradients are clipped to norm 1.0.
-Each sample is a sequence of 21 consecutive frames (1.05~s), and batches are mixed: half of the samples
-continue their recording from the previous batch with the recurrent state carried over (truncated
-back-propagation through time), and half start at random positions with the state reset.
+All new models were trained with the same settings, taken from RVT~\cite{gehrig2023recurrent} as used for
+S5-RVT~\cite{zubic2024state}, and with the same training code. Their configurations differ only in the
+backbone, which an automated test confirms. Table~\ref{tab:recipe} compares these settings with the
+published ones. The weights are updated with the Adam optimiser~\cite{kingma2015adam}. The learning rate
+rises over the first 2{,}000 steps and then falls steadily until training ends after 400{,}000
+steps~\cite{smith2017super}. Each training example is a sequence of 21 consecutive frames, just over one
+second of driving. Half of the examples in each batch continue a recording from where the previous batch
+stopped, keeping the model's memory. The other half start at a random point with an empty memory.
 
 \begin{table}[htbp]
 \centering
@@ -1127,180 +1118,178 @@ Hardware                    & 1$\times$ A100              & RTX~5070~Ti (EventSS
 \end{tabularx}
 \end{table}
 
-\guide{90}{
-  \item Validation every 10k steps (20k for EventSSM); the best-validation checkpoint is the one tested (320k EventSSM, 310k PureSSM, 350k graded readout).
-  \item The spiking ladder (PureSSM anchor and three readouts) on a shorter 100k-step schedule; why a 100k model is not comparable with a 400k one (OneCycle stretches with the run length).
+\guide{100}{
+  \item The model is checked on the validation part every 10{,}000 steps; the best checkpoint is the one tested (320k EventSSM, 310k PureSSM, 350k graded).
+  \item The spiking ladder was trained on a shorter 100{,}000-step schedule, PureSSM included; why short and full schedules are not compared.
 }
-The validation split is evaluated every 10k steps (every 20k for EventSSM), and the checkpoint with the
-highest validation mAP is the one scored on the test split: step 320k for EventSSM, 310k for PureSSM and
-350k for the graded spiking readout. The readout ladder was trained on a shorter 100k-step schedule, for
-the PureSSM anchor and all three readouts alike. Because the OneCycle schedule stretches over the length
-of the run, a 100k-step model is not a snapshot of a 400k-step one, and the two schedules are never
-compared directly.
+During training, each model was checked on the validation part every 10{,}000 steps (every 20{,}000 for
+EventSSM). The best checkpoint was then tested once on the test part. The spiking ladder was trained on a
+shorter schedule of 100{,}000 steps, and PureSSM was trained again on the same short schedule so that the
+comparison stays fair. Because the learning-rate schedule stretches to fit the length of the run, a model
+trained for 100{,}000 steps is not the same as a longer run stopped early. Models from the two schedules are
+therefore never compared directly.
 
-\guide{130}{
-  \item Deviation 1: batch 4 instead of 8 (16\,GB GPU); kept at 4 on the 32\,GB cloud GPU for comparability; 1.6 vs 3.2 million sequences seen, which works against the own models.
-  \item Deviation 2: bf16 mixed precision instead of 32-bit.
-  \item Operational difference: data-loading workers (4 vs 6) change the data order; one unseeded run per model.
+\guide{140}{
+  \item Two differences from the published settings: batch size 4 instead of 8 (memory limit; kept at 4 everywhere for fairness, so the new models see half as many examples) and lower numerical precision.
+  \item Data loaded by a different number of worker processes $\Rightarrow$ different data order; each model trained once.
 }
-Two deviations from the published recipe apply to every own model. The batch size is 4 instead of 8,
-because batch 8 at sequence length 21 exceeds the 16~GB of the workstation GPU; the PureSSM run on a
-32~GB cloud GPU kept batch 4 so that the own models stay comparable. Over 400k steps the own models
-therefore see 1.6~million training sequences against the baseline's 3.2~million, which, if anything,
-works against them. They are also trained in bf16 mixed precision rather than 32-bit. A third difference
-is operational: the number of data-loading workers followed host memory (4 for EventSSM, 6 for PureSSM),
-which changes the order in which streamed recordings are seen. With one unseeded run per model, this is
-part of the run-to-run variation discussed in Section~\ref{sec:limitations}.
+Two settings differ from the published ones. The batch size is 4 instead of 8, because a batch of 8 does
+not fit into the 16~GB of memory of the workstation's graphics card. The batch size was kept at 4 for all
+new models, even on a larger cloud card, so that they remain comparable with each other. As a result, the
+new models see half as many training examples as the baseline, which, if anything, works against them. They
+were also trained with a lower numerical precision, which saves memory and time. Finally, the data was
+loaded by a different number of worker processes on different machines, which changes the order in which
+examples are seen. Since each model was trained only once, this is part of the run-to-run variation
+discussed in Section~\ref{sec:limitations}.
 
 \section{Evaluation Protocol}
 \label{sec:eval_protocol}
-\guide{40}{
-  \item Three pillars applied identically to every model: accuracy, temporal robustness, efficiency; plus spiking activity and energy, and the statistical treatment.
+\guide{50}{
+  \item Every model is measured in the same way: accuracy, robustness to rate changes, efficiency; plus spiking activity and energy, and how uncertainty is handled.
 }
-Every model is evaluated in the same way on three pillars, accuracy, temporal robustness and efficiency,
-and the spiking model additionally on its activity and an energy estimate. The subsections below define
-each measurement and the statistical treatment of the results.
+Every model was measured in the same way, on accuracy, on robustness to changes in event rate, and on
+efficiency. The spiking model was also measured on how often it fires and how much energy it might save.
+The following subsections describe each measurement and how uncertainty was handled.
 
 \subsection{Accuracy}
 \label{subsec:eval_acc}
-\guide{40}{
-  \item Test split, scored once per model, best-validation checkpoint; metrics of Section~\ref{sec:dataset}.
-  \item Mechanism: a gradient-based effective-receptive-field probe~\cite{luo2016understanding} on the trained backbones.
+\guide{50}{
+  \item Test part, best checkpoint, the scores of Section~\ref{sec:dataset}.
+  \item To explain differences: a probe that measures how much of the image each spatial mixer uses~\cite{luo2016understanding}.
 }
-Accuracy is the test-split mAP of the best-validation checkpoint, with the per-class and size-stratified
-metrics of Section~\ref{sec:dataset}, all produced by the same evaluator. The mechanism behind an accuracy
-difference is examined with a gradient-based effective-receptive-field probe~\cite{luo2016understanding}
-on the trained spatial backbones (Section~\ref{sec:erf}).
+Accuracy is the test score of each model's best checkpoint, using the measures of
+Section~\ref{sec:dataset} and the same evaluation code for every model. To explain differences in
+accuracy, a probe~\cite{luo2016understanding} measures how much of the image each trained spatial mixer
+actually uses (Section~\ref{sec:erf}).
 
 \subsection{Temporal Robustness}
 \label{subsec:eval_rob}
-\guide{130}{
-  \item Regime 1: fixed 50-ms cadence, window varied from 200 to 12.5\,ms ($0.25\times$ to $4\times$); the model still steps every 50\,ms.
-  \item Regime 2: true rate change, window = stride = 25\,ms ($2\times$) and 5\,ms ($10\times$); test set re-rendered; the model genuinely steps faster.
-  \item Retention = mAP at the rate $\div$ mAP at $1\times$.
-  \item $\Delta t$ compensation: the step rescaled by window$/50$ (S5's step; Mamba's post-softplus $\Delta_t$), as in~\cite{zubic2024state}.
+\guide{140}{
+  \item Setting 1: the model still sees a new frame every 50\,ms, but each frame collects events over a longer or shorter time (200 to 12.5\,ms).
+  \item Setting 2: frames really arrive faster, every 25\,ms (2 times) or 5\,ms (10 times); the test data had to be rebuilt.
+  \item Retention = accuracy at the new rate divided by accuracy at the normal rate.
+  \item The published correction: adjust the step size to the new rate~\cite{zubic2024state}; tested with and without it.
 }
-Robustness to the event rate is measured in two regimes. In the first, the model still steps every 50~ms
-but each frame accumulates a shorter or longer window, from 200 to 12.5~ms ($0.25\times$ to $4\times$), so
-only the number of events per frame changes. In the second, the window and the stride are shortened
-together, to 25~ms ($2\times$) and 5~ms ($10\times$), so the model genuinely steps faster; this is the
-experiment of Zubi\'{c} et al.~\cite{zubic2024state}, and it requires re-rendering the test set at each
-rate. Robustness is reported as retention, the mAP at a rate divided by the mAP at $1\times$. Inference-time
-compensation rescales the discretisation step by the ratio of the new window to 50~ms, applied to S5's step
-and to Mamba's post-softplus step $\Delta_t$.
+Robustness to the event rate was tested in two settings. In the first, the model still receives a new frame
+every 50~ms, but each frame collects events over a shorter or longer period, from 200 down to 12.5~ms. Only
+the number of events in each frame changes. In the second setting, the frames really arrive faster: every
+25~ms, which is twice the normal rate, or every 5~ms, which is ten times the normal rate. This is the
+experiment of Zubi\'{c} et al.~\cite{zubic2024state}, and it required rebuilding the test data at each rate.
+Robustness is reported as retention: the accuracy at the new rate divided by the accuracy at the normal
+rate. Each test was run with and without the correction proposed by Zubi\'{c} et al., which adjusts the
+model's step size $\Delta_t$ to match the new rate.
 
 \subsection{Efficiency}
 \label{subsec:eval_eff}
 \guide{120}{
-  \item Parameters; FLOPs per frame at batch 1 = profiler count of dense operators + analytic count inside the custom state-space kernels; mAP per GFLOP.
-  \item Latency: p50 of the full streaming pipeline, eager and CUDA-graph replay.
-  \item Energy per frame from GPU power above idle; streaming state per stream.
-  \item Idle-GPU guard; models compared within one benchmark session.
+  \item Size (parameters), computation per frame (FLOPs, including the work inside the special scan code), accuracy per unit of computation.
+  \item Speed: typical time per frame, in normal mode and in a faster pre-recorded mode (CUDA graphs).
+  \item Energy per frame; memory carried between frames; all models measured in one session on an idle card.
 }
-Efficiency is measured on every axis that bounds a deployment. FLOPs are counted per frame at batch size
-one, as the profiler count of the dense operators plus an analytic count of the work inside the custom
-state-space kernels, which the profiler cannot see; mAP per GFLOP relates them to accuracy. Latency is the
-median (p50) of the full streaming pipeline, measured in eager execution and with CUDA-graph replay.
-Energy per frame is derived from the GPU's power draw above idle, and the streaming state is the memory
-each stream must carry between frames. A guard refuses to start the benchmark unless the GPU is idle, and
-models are compared only within one benchmark session.
+Efficiency was measured in every way that limits a real deployment. Model size is the number of
+parameters. Computation is counted in floating-point operations (FLOPs) per frame, including the work done
+inside the special scan code that standard tools cannot see, and is also related to accuracy. Speed is the
+typical time to process one frame, measured in normal mode and in a faster mode in which the sequence of
+graphics-card operations is recorded once and replayed (CUDA graphs). Energy per frame is derived from the
+card's power use above idle. The memory that each video stream must carry between frames is also
+reported. The benchmark only starts on an idle card, and models are compared only within one session.
 
 \subsection{Spiking Activity and Energy}
 \label{subsec:eval_spk}
-\guide{120}{
-  \item Nonzero rate of the readout per stage, over 16 test clips after a 32-frame warm-up.
-  \item Spikes feed only the neck's first $1\times1$ convolutions: 52.4\,M of 5.00\,G MACs per frame.
-  \item The energy estimate as an equation with Horowitz 45-nm constants~\cite{horowitz2014computing}; graded priced as MAC, binary as AC; one MAC per neuron; memory traffic not modelled.
+\guide{160}{
+  \item How often the readout is active, per stage, over 16 test clips.
+  \item The spikes reach only the first layers of the neck: 52.4 million of the detector's 5 billion multiply-add operations per frame.
+  \item The energy estimate as an equation, with standard costs per operation~\cite{horowitz2014computing}; a binary spike only needs an addition, a graded one a multiplication too; memory is not counted.
 }
-For the spiking model, the share of nonzero readout outputs is measured per stage over 16 test clips,
-after a 32-frame warm-up in which the recurrent state fills. The spikes feed only the first $1\times1$
-convolutions of the neck, 52.4\,M of the detector's 5.00\,G multiply--accumulates (MACs) per frame, and the
-energy is estimated from operation counts with the 45-nm constants $E_{\mathrm{MAC}} = 4.6$\,pJ and
-$E_{\mathrm{AC}} = 0.9$\,pJ~\cite{horowitz2014computing}:
+For the spiking model, the share of active outputs was measured at each stage over 16 test clips. The spikes
+only reach the first layers of the neck, which account for 52.4 million of the detector's 5 billion
+multiply-add operations per frame. The energy was estimated by counting operations and pricing them with
+standard costs for a 45-nm chip~\cite{horowitz2014computing}: 4.6~pJ for a multiply-add and 0.9~pJ for an
+addition. The estimate is
 \begin{equation}
   E \;=\; E_{\mathrm{MAC}}\big(M_{\mathrm{total}} - M_{\mathrm{fed}}\big)
      \;+\; e_{\mathrm{op}} \sum_{s} r_s\, M_{\mathrm{fed},s}
-     \;+\; E_{\mathrm{MAC}}\, N_{\mathrm{LIF}},
+     \;+\; E_{\mathrm{MAC}}\, N_{\mathrm{LIF}}.
   \label{eq:sop_energy}
 \end{equation}
-where $M_{\mathrm{fed},s}$ are the neck MACs fed by stage~$s$, $r_s$ its nonzero rate and
-$N_{\mathrm{LIF}}=286{,}720$ the LIF neurons per frame, each costing one MAC. An active binary input only
-adds ($e_{\mathrm{op}}=E_{\mathrm{AC}}$), while a graded or analog one carries a value
-($e_{\mathrm{op}}=E_{\mathrm{MAC}}$). Memory traffic is not modelled.
+The first term covers the operations that spikes never reach, which are always computed. The second term
+covers the operations fed by spikes. These are only computed for active inputs, assuming hardware that
+skips inactive ones, so they grow with each stage's activity $r_s$. The last term is the cost of updating the neurons themselves. A binary spike only
+requires an addition, while a graded or analog value also requires a multiplication. The cost of moving
+data in memory is not included.
 
 \subsection{Statistical Treatment}
 \label{subsec:eval_stats}
-\guide{110}{
-  \item One unseeded run per model $\Rightarrow$ overall differences below about 1\,mAP are not treated as findings.
-  \item Paired sequence-level bootstrap~\cite{efron1993introduction} over the 470 test recordings, $B = 1000$, 95\,\% percentile intervals, every arm scored on the same resamples.
-  \item It reproduces the official AP on the full set; it covers test-set sampling only, not training variation.
+\guide{100}{
+  \item Each model trained once, so small differences (below about 1 point) are not treated as real.
+  \item Where intervals are given: the test recordings are resampled 1{,}000 times~\cite{efron1993introduction}, every model is scored on the same samples, and the middle 95\,\% of the results forms the interval.
+  \item This covers the choice of test recordings only, not training randomness.
 }
-Each model was trained once without a fixed seed, so run-to-run variation is unmeasured, and differences
-in overall mAP below about 1~point are not treated as findings. Where intervals are given, they come from
-a paired, sequence-level bootstrap~\cite{efron1993introduction}: the 470 test recordings are resampled with
-replacement 1{,}000 times, every model is scored on the same resampled recordings with the official
-evaluator, and the 95\,\% interval is the percentile interval of the scores. Pairing cancels the shared
-difficulty of a recording, so the interval of a difference is far narrower than the intervals of the two
-models. Scored on all recordings, the procedure reproduces each model's official AP. The intervals cover
-test-set sampling only, not training randomness.
+Each model was trained only once, so it is not known how much the result would change with a second
+training run. Differences in overall accuracy below about one point are therefore not treated as real.
+Where intervals are given, they come from a bootstrap~\cite{efron1993introduction}. The 470 test
+recordings are resampled at random 1{,}000 times, every model is scored on the same samples, and the middle
+95\,\% of the results forms the interval. Because the models are always compared on the same recordings,
+the interval of a difference between two models is much narrower than the intervals of the two models
+themselves. These intervals capture the uncertainty from the choice of test recordings, but not the
+randomness of training.
 
 \section{Implementation and Hardware}
 \label{sec:implementation}
-\guide{140}{
-  \item RTX 5070~Ti workstation (Blackwell \texttt{sm\_120}, CUDA 12.8): EventSSM and spiking training, all evaluation and benchmarks. Rented RTX 5090 (32\,GB, same architecture): PureSSM training.
-  \item Software: PyTorch 2.11 with CUDA 12.8; \texttt{mamba-ssm} 2.3.2 and \texttt{causal-conv1d} 1.6.2 built for \texttt{sm\_120}.
-  \item Thesis~A planned Katana / AMD ROCm: why not used (kernels compiled per architecture, walltime limits, interactive work).
-  \item Automated tests (about 500), including the null test; details in Appendix~\ref{app:repro}.
+\guide{150}{
+  \item A desktop graphics card (RTX~5070~Ti) for most training and all testing; a rented RTX~5090 for training PureSSM.
+  \item Software: PyTorch with the Mamba code built for these cards.
+  \item Thesis~A planned the Katana cluster and an AMD card: why they were not used.
+  \item About 500 automated tests; details in Appendix~\ref{app:repro}.
 }
-EventSSM and the spiking models were trained, and every model evaluated and benchmarked, on a workstation
-with an NVIDIA RTX~5070~Ti (Blackwell, \texttt{sm\_120}) under Ubuntu~24.04 and CUDA~12.8; PureSSM was
-trained on a rented RTX~5090 of the same architecture, which ran the identical software environment.
-The software is PyTorch~2.11 with the \texttt{mamba-ssm}~2.3.2 and \texttt{causal-conv1d}~1.6.2
-kernels compiled for \texttt{sm\_120}. Thesis~A had planned the UNSW Katana cluster and an AMD ROCm
-workstation; neither was used, because the selective-scan kernels are compiled for one GPU architecture,
-the cluster's walltime limits would have split every 30-hour run into resumed jobs, and the test-driven
-development needed interactive GPU access. The code is checked by about 500 automated tests, including a
-null test that the spiking model with no spiking stage reduces numerically to PureSSM;
-Appendix~\ref{app:repro} gives the environment and checkpoints.
+Most of the training, and all of the testing and benchmarking, was done on a desktop computer with an
+NVIDIA RTX~5070~Ti graphics card. PureSSM was trained on a rented RTX~5090, which belongs to the same
+generation and therefore ran exactly the same software. The models are written in PyTorch and use the
+Mamba code, which had to be built specifically for this generation of graphics card. Thesis~A had planned
+to use the UNSW Katana computing cluster and an AMD graphics card. Neither was used: the Mamba code would
+have had to be rebuilt for older cards, the cluster's time limits would have split every 30-hour training
+run into several jobs, and the development work needed direct, interactive access to a graphics card. The
+code is checked by about 500 automated tests, and Appendix~\ref{app:repro} lists the software versions and
+the trained models.
 
 \chapter{Results}
 \label{ch:results}
-\guide{80}{
-  \item All numbers: Gen1 test split, COCO mAP@[0.50:0.95], one evaluator.
-  \item One unseeded run per model: overall differences below about 1\,mAP are not findings; intervals only where the bootstrap was run.
+\guide{70}{
+  \item All results are on the Gen1 test part, with the same evaluation code.
+  \item Each model was trained once: small differences (below about 1 point) are not treated as real; intervals only where the bootstrap was run.
 }
-All numbers in this chapter are on the Gen1 test split under the COCO protocol, produced by the same
-evaluator for every model. Each model was trained once without a fixed seed, so overall-mAP differences
-below about 1~point are treated as not distinguishable, and only larger effects, such as the
-large-object gain and the robustness gaps, are reported as findings. Where 95\,\% intervals are given,
-they come from the paired bootstrap of Section~\ref{subsec:eval_stats} and cover test-set sampling only.
+All results in this chapter are measured on the Gen1 test part with the same evaluation code. Because each
+model was trained only once, differences in overall accuracy of less than about one point are treated as
+too small to be meaningful. Only larger effects, such as the gain on large objects and the differences in
+robustness, are reported as findings. Where 95\,\% intervals are given, they come from the bootstrap
+described in Section~\ref{subsec:eval_stats}.
 
 \section{Baseline Reproduction}
 \label{sec:repro_results}
 \guide{50}{
-  \item S5-RVT reproduces at 47.72 mAP ($\mathrm{AP}_{50}$ 75.28): an exact match to the published 47.7.
-  \item What this validates: pipeline, preprocessing, evaluator; done before any own model is measured.
+  \item S5-RVT reproduces at 47.72 mAP: an exact match to the published 47.7.
+  \item What this confirms: the data, the evaluation code and the scoring are correct.
 }
-The published S5-RVT checkpoint reproduces at a test mAP of 47.72 ($\mathrm{AP}_{50}$ 75.28), an exact match
-to the published 47.7. Because this was established before any own model was measured, it validates the
-data preprocessing, the evaluator and the metric implementation used for every number that follows.
+The published S5-RVT model scores 47.72~mAP on the test part, exactly matching its published result of
+47.7. This was checked before any new model was tested, and it confirms that the data preparation, the
+evaluation code and the scoring used for every other result are correct.
 
 \section{Accuracy}
 \label{sec:acc_results}
-\guide{130}{
-  \item Table~\ref{tab:accuracy}: EventSSM 46.22, PureSSM 46.43, S5-RVT 47.72; the 0.21 between the own models is within single-run noise.
-  \item EventSSM's main deficit was large objects ($\mathrm{AP}_L$ $-5.96$) with small/medium near parity $\Rightarrow$ points to a limited receptive field.
-  \item PureSSM: $\mathrm{AP}_L$ 44.70 $\rightarrow$ 47.65 ($+2.95$), about half of the gap closed; the gain is in cars ($+1.16$), not pedestrians ($-0.76$).
+\guide{140}{
+  \item Table~\ref{tab:accuracy}: EventSSM 46.22, PureSSM 46.43, S5-RVT 47.72; the small gap between the new models is not meaningful.
+  \item EventSSM's main weakness was large objects (6 points behind) while small and medium objects were close $\Rightarrow$ points to a limited view of the image.
+  \item PureSSM improves large objects from 44.70 to 47.65 (+2.95), closing about half of that gap; the gain is in cars, not pedestrians.
 }
-Table~\ref{tab:accuracy} and Figure~\ref{fig:acc_by_size} give the accuracy of the three models. Overall,
-EventSSM reaches 46.22 and PureSSM 46.43~mAP, against 47.72 for the baseline; the 0.21 between the own
-models is within single-run variation. The size-stratified metrics carry the result. EventSSM's deficit
-against the baseline lay almost entirely in large objects ($\mathrm{AP}_L$ 44.70 against 50.66), with small
-and medium objects near parity, a pattern that points to the limited receptive field of a convolutional
-stack. Replacing that stack with a state-space mixer raises $\mathrm{AP}_L$ to 47.65 ($+2.95$), closing
-about half of the gap. The gain falls on cars ($+1.16$), the class with large and close instances, and not
-on pedestrians ($-0.76$), which are almost never large, although both class differences are small for
-single runs.
+Table~\ref{tab:accuracy} and Figure~\ref{fig:acc_by_size} compare the accuracy of the three models.
+Overall, EventSSM scores 46.22 and PureSSM 46.43~mAP, against 47.72 for the baseline. The difference of
+0.21 between the two new models is too small to be meaningful. The scores by object size tell a clearer
+story. EventSSM was almost as good as the baseline on small and medium objects, but it fell six points
+behind on large objects. This pattern suggests that its convolutional spatial mixer cannot see enough of
+the image to recognise large objects. PureSSM, which replaces that mixer with a state space model, raises
+the score on large objects from 44.70 to 47.65, an improvement of 2.95 points that closes about half of
+the gap. The gain comes from cars, which are often large and close, and not from pedestrians, which rarely
+appear large.
 
 \begin{table}[htbp]
 \centering
@@ -1323,16 +1312,16 @@ Car / Pedestrian        & 63.88 / 31.56 & 61.67 / 30.78 & 62.83 / 30.02 \\
 \end{table}
 
 \guide{90}{
-  \item In plain words: no attention, no convolutional hierarchy, yet equal overall accuracy, better large objects and the fewest parameters (16.33\,M).
-  \item Still 1.3 below the baseline overall and 3.0 on large objects, trained with half its batch size.
-  \item Attributable to the spatial-mixer swap; Section~\ref{sec:erf} examines why.
+  \item In plain words: no attention and no convolutional layers in the spatial mixer, yet the same overall accuracy, better large-object detection and the fewest parameters.
+  \item Still 1.3 points behind the baseline, and trained with half its batch size.
+  \item The gain can be traced to the spatial mixer; the next section explains why.
 }
-Put plainly, PureSSM's spatial backbone uses neither attention nor a convolutional feature hierarchy, yet
-it matches the convolutional hybrid overall, is better where long-range context matters and has the fewest
-parameters of the three models (16.33\,M). It remains 1.3~mAP below the attention baseline overall and 3.0
-below it on large objects, having trained with half the baseline's batch size: the gap is narrowed, not
-closed. Because EventSSM and PureSSM differ only in the spatial mixer, the large-object gain is
-attributable to that swap; Section~\ref{sec:erf} examines why.
+In other words, PureSSM's spatial mixer uses neither attention nor convolutional layers, yet it matches the
+convolutional model overall, is better at detecting large objects, and has the fewest parameters of the
+three models. It is still 1.3 points behind the baseline overall, and three points behind on large objects,
+although it was trained with half the baseline's batch size. Because EventSSM and PureSSM differ only in
+their spatial mixer, the gain on large objects can be traced to that change. The next section examines
+why it occurs.
 
 \begin{figure}[htbp]
     \centering
@@ -1346,17 +1335,17 @@ attributable to that swap; Section~\ref{sec:erf} examines why.
 
 \section{Effective Receptive Field}
 \label{sec:erf}
-\guide{100}{
-  \item What the probe measures: gradient of the centre feature with respect to the input~\cite{luo2016understanding}, averaged over 8 random inputs; $\sigma$ = RMS spread in pixels.
-  \item Table~\ref{tab:erf}: BiMamba 85.6/105.5\,px vs ResNet 41.8/84.4\,px at stages 3/4; training widened BiMamba by 30--34\,px, ResNet by 0.2/6.2\,px.
+\guide{110}{
+  \item The receptive field: the area of the input that a feature in the network actually draws on; measured with a gradient probe~\cite{luo2016understanding}.
+  \item Table~\ref{tab:erf}: PureSSM's field is wider at both stages measured (85.6 vs 41.8 pixels; 105.5 vs 84.4); training widened it by 30--34 pixels, but the convolutional field barely moved.
 }
-To explain the large-object result, a gradient-based probe~\cite{luo2016understanding} measured how much of
-the input each trained spatial mixer actually uses: the gradient magnitude of the feature at the frame
-centre with respect to the input, averaged over eight random inputs, with $\sigma$ the root-mean-square
-spread of that gradient in input pixels. Table~\ref{tab:erf} and Figure~\ref{fig:erf} give the result. The
-state-space mixer sees wider at both measured stages, 85.6 against 41.8~px at stage~3 and 105.5 against
-84.4~px at stage~4, and training widened its field by 30--34~px, against 0.2 and 6.2~px for the
-convolutional stack.
+To explain the gain on large objects, the receptive field of each trained spatial mixer was measured. The
+receptive field is the area of the input image that a feature in the network actually draws on. It was
+measured with a standard probe~\cite{luo2016understanding} that traces which input pixels influence the
+feature at the centre of the image. Table~\ref{tab:erf} and Figure~\ref{fig:erf} show the results. The
+state space mixer draws on a much wider area at both stages measured: 85.6 pixels against 41.8 at stage~3,
+and 105.5 against 84.4 at stage~4. Training also widened its field by 30 to 34 pixels, whereas the field of
+the convolutional mixer hardly changed.
 
 \begin{table}[htbp]
 \centering
@@ -1374,21 +1363,20 @@ BiMamba (PureSSM)    & \textbf{85.6\,px} & \textbf{105.5\,px} & $\mathbf{+34.4}$
 \end{table}
 
 \guide{150}{
-  \item Why: a convolutional field is set by kernel size and depth (approximately Gaussian, grows with $\sqrt{\text{depth}}$), so training barely moves it.
-  \item In a scan every token can reach every other; the reach is set by learned decays and steps (Equation~\eqref{eq:mamba2_state}) $\Rightarrow$ a learned quantity.
-  \item Untrained, BiMamba is not wider at stage 4 (75.4 vs 78.2\,px): the advantage is acquired in training.
-  \item Caveats: random inputs, not events; ResNet reference is a random init, not ImageNet.
+  \item Why: a convolutional network only looks at small neighbourhoods, so its view grows slowly with depth and training hardly changes it.
+  \item A scan can pass information across the whole image, and how far it reaches is learned during training.
+  \item Before training, PureSSM's field was no wider at stage 4: the advantage is learned.
+  \item Two caveats: random test inputs rather than events; the untrained ResNet was not the ImageNet version.
 }
-The difference has a structural explanation. In a convolutional stack the effective receptive field is
-governed by kernel size and depth; it is approximately Gaussian and grows only with the square root of
-the number of layers~\cite{luo2016understanding}, so training reshapes it little. In a scan, every token
-can influence every other through the forward and backward passes, and how far that influence reaches is
-set by the learned decays and steps of Equation~\eqref{eq:mamba2_state}, which training can lengthen. The
-reach of the state-space mixer is therefore learned, while that of the convolutional stack is largely
-fixed by its architecture. Notably, the untrained BiMamba field is no wider than the ResNet's at stage~4
-(75.4 against 78.2~px): the advantage is acquired in training. Two caveats apply: the probe uses random
-inputs rather than events, and the untrained ResNet reference is a random initialisation rather than the
-ImageNet weights EventSSM started from.
+There is a simple reason for this difference. A convolutional network only combines small neighbourhoods
+of pixels at each layer, so its view of the image grows slowly with depth, and training changes it very
+little. A state space scan, by contrast, can pass information across the whole image in a single sweep,
+and how far that information travels is controlled by values that are learned during training. The reach
+of the state space mixer is therefore something it learns, while the reach of the convolutional mixer is
+largely fixed by its design. Before training, PureSSM's field at stage~4 was actually no wider than the
+convolutional one (75.4 against 78.2 pixels), so the advantage is acquired through training. Two caveats
+apply: the probe uses random inputs rather than real event data, and the untrained convolutional network
+it was compared with is not the ImageNet version that EventSSM started from.
 
 \begin{figure}[htbp]
     \centering
@@ -1403,24 +1391,24 @@ ImageNet weights EventSSM started from.
 \section{Temporal Robustness}
 \label{sec:robustness}
 \guide{20}{
-  \item The two regimes of Section~\ref{subsec:eval_rob}, then the $\Delta t$ reproduction.
+  \item The two test settings of Section~\ref{subsec:eval_rob}, then the published correction.
 }
-This section reports the two regimes of Section~\ref{subsec:eval_rob} and then the attempt to reproduce
-the inference-time $\Delta t$ compensation.
+This section reports the two test settings of Section~\ref{subsec:eval_rob}, followed by the attempt to
+reproduce the correction proposed in the literature.
 
 \subsection{Fixed Cadence, Variable Accumulation Window}
 \guide{110}{
-  \item Table~\ref{tab:regime1}: own models tied across the sweep, marginally below the baseline.
-  \item At $0.25\times$ (200\,ms) PureSSM leads overall (41.65 vs 40.95) because of large objects: the baseline's $\mathrm{AP}_L$ falls 14.3, PureSSM's 7.7.
-  \item Conclusion: PureSSM more robust at the dense, slow end; the baseline at the sparse, fast end.
+  \item Table~\ref{tab:regime1}: the two new models perform almost identically, slightly below the baseline.
+  \item With 200-ms windows (crowded, smeared frames), PureSSM beats the baseline (41.65 vs 40.95), mainly on large objects.
+  \item Conclusion: PureSSM copes best with crowded frames, the baseline with sparse ones.
 }
-With the cadence fixed at 50~ms, the two own models are tied across the window sweep and both lie
-marginally below the baseline (Table~\ref{tab:regime1}). One result at the dense end needs care. With
-200-ms windows ($0.25\times$), PureSSM exceeds the baseline overall (41.65 against 40.95), and the margin
-comes from large objects: on the smeared, dense frames the baseline's $\mathrm{AP}_L$ falls by 14.3 points
-and PureSSM's by 7.7. The overall margin is too small to separate with single runs; the large-object
-difference is the larger effect. PureSSM is therefore the more robust model at the dense, slow end of the
-sweep, and the baseline at the sparse, fast end.
+When the model still receives a frame every 50~ms but each frame collects events over a different period,
+the two new models perform almost identically, slightly below the baseline (Table~\ref{tab:regime1}). One
+result stands out. With 200-ms windows, each frame is crowded with events and objects appear smeared. Here
+PureSSM beats the baseline overall, 41.65 against 40.95, mainly because it handles large objects better:
+the baseline's score on large objects drops by 14.3 points, but PureSSM's drops by only 7.7. The overall
+difference is too small to be certain about, but the difference on large objects is clear. PureSSM
+therefore copes best with crowded frames, and the baseline with sparse ones.
 
 \begin{table}[htbp]
 \centering
@@ -1442,18 +1430,19 @@ $4\times$    & 12.5\,ms & 38.4 & 35.4 & 35.68 \\
 \end{table}
 
 \subsection{True Event-Rate Change}
-\guide{90}{
-  \item Table~\ref{tab:regime2}: at a true $10\times$ rate, retention 62.2\,\% (S5-RVT), 63.0\,\% (EventSSM), 69.7\,\% (PureSSM); at $2\times$ all keep about 95\,\%.
-  \item The ConvLSTM baseline under the same protocol: \res{measured retention} (1$\times$: 47.14).
-  \item The temporal path of EventSSM and PureSSM is identical $\Rightarrow$ the extra robustness comes from the spatial backbone; the wider field is plausible but untested.
+\guide{100}{
+  \item Table~\ref{tab:regime2}: at twice the rate all models keep about 95\,\%; at ten times, S5-RVT keeps 62.2\,\%, EventSSM 63.0\,\%, PureSSM 69.7\,\%.
+  \item The ConvLSTM baseline under the same test: \res{measured retention} (47.14 at the normal rate).
+  \item EventSSM and PureSSM process time identically $\Rightarrow$ the extra robustness comes from the spatial mixer; the wider view is a likely but untested reason.
 }
-Under a true change of rate the models separate (Table~\ref{tab:regime2}, Figure~\ref{fig:robustness}).
-At twice the rate all three keep about 95\,\% of their accuracy. At ten times the rate, with 5-ms windows
-at 200\,Hz and no retraining, S5-RVT and EventSSM retain 62.2 and 63.0\,\% and PureSSM 69.7\,\%, the most
-of the models tested. RVT's ConvLSTM, measured under the same protocol from its 47.14~mAP at the training
-rate, retains \res{\%}. Because EventSSM and PureSSM share an identical temporal path, PureSSM's additional
-robustness must originate in its spatial backbone. The wider receptive field is a plausible explanation,
-since frames at ten times the rate carry few events, but it has not been tested directly.
+When frames really arrive faster, the models start to differ (Table~\ref{tab:regime2},
+Figure~\ref{fig:robustness}). At twice the normal rate, all three keep about 95\,\% of their accuracy. At
+ten times the normal rate, with a new frame every 5~ms and no retraining, S5-RVT keeps 62.2\,\% and
+EventSSM 63.0\,\%, while PureSSM keeps 69.7\,\%, the most of the models tested. The original RVT model,
+whose ConvLSTM was tested in the same way, keeps \res{\%} of its 47.14~mAP. Because EventSSM and PureSSM
+process time in exactly the same way, PureSSM's extra robustness must come from its spatial mixer. Its
+wider view of the image is a likely reason, since frames at ten times the rate contain very few events,
+but this has not been tested directly.
 
 \begin{table}[htbp]
 \centering
@@ -1486,23 +1475,23 @@ true-$2\times$ retention   & 95.1\% & 95.5\% & --- & \textbf{95.9\%} \\
 
 \subsection{Reproducing Inference-Time \texorpdfstring{$\Delta t$}{Delta t}-Rescaling}
 \label{subsec:f2}
-\guide{170}{
-  \item The published claim: rescaling the step at inference gives S5 39.84 at 200\,Hz.
-  \item Table~\ref{tab:dt_comp}: compensation lowered accuracy at every tested point, by 9--13\,mAP at $10\times$, for S5 and both Mamba models.
-  \item The published 39.84 could not be reproduced (best 29.67, uncompensated); the released preprocessing cannot produce a true-rate test set (stride fixed at 50\,ms).
-  \item The robustness itself is reproduced without compensation. Soft wording only: ``not reproducible under the published artefacts''.
+\guide{180}{
+  \item The published claim: adjusting the step size at test time lets S5 keep 39.84 at ten times the rate.
+  \item Table~\ref{tab:dt_comp}: the correction lowered accuracy at every point tested, by 9--13 points at ten times the rate, for all three models.
+  \item The published 39.84 could not be reproduced (best: 29.67, without the correction); the released code cannot produce faster test data.
+  \item The robustness itself was reproduced without the correction. Use soft wording: ``could not be reproduced with the published code and model''.
 }
-Zubi\'{c} et al.~\cite{zubic2024state} report that state-space detectors generalise to unseen event rates
-when the discretisation step is rescaled at inference, giving 39.84~mAP at 200\,Hz for S5 with this
-compensation. This work attempted to reproduce that result with the published checkpoint and code, and
-transferred the compensation to Mamba by rescaling its step $\Delta_t$ by the same factor
-(Table~\ref{tab:dt_comp}). Under the published artefacts the compensation did not recover accuracy at any
-tested operating point: at ten times the rate it lowered mAP by 9.7, 8.9 and 12.7 points for S5-RVT,
-EventSSM and PureSSM. The published 200\,Hz figure could not be reproduced; the best S5 result at a true
-tenfold rate is 29.67, without compensation. The released preprocessing also cannot produce a true-rate
-test set, because its frame stride is fixed at 50~ms, so the published experiment must have used
-preprocessing that was not released, which may account for the difference. The rate robustness itself is
-reproduced: without any compensation, every state-space model keeps 62--70\,\% of its accuracy.
+Zubi\'{c} et al.~\cite{zubic2024state} report that state space detectors can handle event rates they were
+not trained on if their step size is adjusted at test time to match the new rate. They report 39.84~mAP for
+S5 at ten times the normal rate with this correction. This thesis tried to reproduce that result with the
+published code and model, and applied the same correction to the Mamba models (Table~\ref{tab:dt_comp}).
+With the published code and model, the correction lowered accuracy at every point tested. At ten times the
+normal rate it reduced the score by 9.7 points for S5-RVT, 8.9 for EventSSM and 12.7 for PureSSM. The
+published figure of 39.84 could not be reproduced: the best result for S5 at ten times the rate was 29.67,
+obtained without the correction. The released code also cannot produce test data at a faster rate, so the
+published experiment must have used code that was not released, which may explain the difference. The
+robustness itself was reproduced, however: without any correction, every state space model keeps 62 to
+70\,\% of its accuracy.
 
 \begin{table}[htbp]
 \centering
@@ -1526,17 +1515,18 @@ $10\times$ (5\,ms)  & no comp.  & \textbf{29.67} & \textbf{29.09} & \textbf{32.3
 
 \section{Efficiency}
 \label{sec:efficiency}
-\guide{110}{
-  \item Table~\ref{tab:efficiency}: PureSSM fewest parameters (16.33\,M) and FLOPs (10.03\,G), best mAP/GFLOP (4.63).
-  \item But slowest in eager execution (26.86\,ms, 37\,Hz): many small scan kernels, launch-bound; CUDA graphs lift it to 181\,Hz; EventSSM fastest in both modes (79 / 210\,Hz) and lowest energy (0.438\,J).
+\guide{130}{
+  \item Table~\ref{tab:efficiency}: PureSSM has the fewest parameters and FLOPs and the best accuracy per unit of computation.
+  \item But it is the slowest in normal mode (26.86\,ms, 37 frames per second): many small operations, each with a fixed start-up cost; the faster mode raises it to 181 per second.
+  \item EventSSM is the fastest in both modes (79 and 210 per second) and uses the least energy (0.438\,J per frame).
 }
-Table~\ref{tab:efficiency} and Figure~\ref{fig:efficiency} show that efficiency is a trade-space rather than
-a ranking. PureSSM has the fewest parameters (16.33\,M) and FLOPs (10.03\,G) and the best accuracy per
-GFLOP (4.63), yet it is the slowest model in eager execution, at 26.86~ms per frame (37\,Hz). Its backbone
-consists of many small scan operations, so it is bound by kernel-launch overhead rather than by
-arithmetic. CUDA-graph replay removes most of that overhead and lifts it to 181\,Hz, the largest speed-up
-of any model, but EventSSM stays ahead in both modes (79 and 210\,Hz) and draws the least energy per frame
-(0.438~J against 0.723~J for the baseline).
+Table~\ref{tab:efficiency} and Figure~\ref{fig:efficiency} show that no model is best on every measure.
+PureSSM is the smallest model, needs the least computation, and achieves the most accuracy per unit of
+computation. Yet it is the slowest in normal mode, at 26.86~ms per frame, or 37 frames per second. The
+reason is that its spatial mixer consists of many small operations, and each operation on a graphics card
+carries a fixed start-up cost that adds up. In the faster replay mode most of this cost disappears, and
+PureSSM reaches 181 frames per second. Even so, EventSSM is the fastest model in both modes, at 79 and 210
+frames per second, and it also uses the least energy, 0.438~J per frame against 0.723~J for the baseline.
 
 \begin{table}[htbp]
 \centering
@@ -1561,14 +1551,14 @@ Streaming state        & \textbf{4.7\,MB} & 144\,MB & 144\,MB \\
 \end{table}
 
 \guide{80}{
-  \item Event sparsity does not translate into GPU speed: every frame is processed densely.
-  \item Streaming state: 144\,MB for both Mamba models vs 4.7\,MB for the baseline (31$\times$, Mamba's state expansion at every location) --- the number to watch on a memory-limited platform.
+  \item Sparse events do not make a graphics card faster: every frame is processed in full.
+  \item Memory: the Mamba models carry 144\,MB per video stream, 31 times the baseline's 4.7\,MB --- important for a small platform.
 }
-Two further results qualify the picture. Event sparsity does not translate into speed on a GPU, because
-every frame is processed densely whatever its event count; the efficiency claim for the state-space
-models is therefore about computation and robustness, not about sparse inputs being fast. And the Mamba
-models carry a streaming state of 144~MB per stream, 31 times the baseline's 4.7~MB, because Mamba expands
-its state at every spatial location; on a memory-constrained platform this is the number to watch.
+Two further results complete the picture. First, the fact that events are sparse does not make a graphics
+card any faster, because every frame is processed in full no matter how few events it contains. Second,
+the Mamba models must keep 144~MB of memory for each video stream, 31 times the 4.7~MB of the baseline,
+because Mamba stores a large memory at every position in the image. On a small platform with limited
+memory, this is the figure that matters most.
 
 \begin{figure}[htbp]
     \centering
@@ -1583,20 +1573,19 @@ its state at every spatial location; on a memory-constrained platform this is th
 \section{Qualitative Results}
 \label{sec:qualitative}
 \guide{150}{
-  \item How the recording was chosen (most large-car instances; 8 evenly spaced frames, not hand-picked).
-  \item Observations: close moving cars detected confidently (0.81--0.93); detections persist when events vanish (state carries the object); low-confidence false boxes at the start (empty state); ground truth flickers and misses pedestrians.
-  \item The two models look alike, as expected from their identical temporal path; the difference rests on the quantitative $\mathrm{AP}_L$.
+  \item How the example was chosen: the test recording with the most large cars; eight evenly spaced frames, not hand-picked.
+  \item What it shows: close moving cars detected with high confidence; detections continue when events vanish (the memory holds the object); weak false boxes at the start (empty memory); labels flicker and miss pedestrians.
+  \item Both models look alike; the difference rests on the measured scores.
 }
-Figure~\ref{fig:qualitative} shows the test recording with the most large-car instances, as eight evenly
-spaced frames that were not selected by hand. Four behaviours recur across the recordings inspected.
-Close cars that generate events are detected with high confidence (0.81--0.93). Detections persist when
-the scene goes quiet: when almost no events fall on a car, both models keep it at 0.70--0.90 confidence,
-because the object is carried by the recurrent state rather than seen in the current frame. At the start
-of a recording, with an empty state and few events, both models emit low-confidence boxes where there is
-no object. And the ground truth itself flickers and misses visible pedestrians, so a correct detection can
-count as a false positive. The two models behave very similarly on these frames, as expected from their
-identical temporal path; the difference between them rests on the quantitative result of
-Section~\ref{sec:acc_results}.
+Figure~\ref{fig:qualitative} shows the test recording with the most large cars, as eight evenly spaced
+frames that were not picked by hand. Four behaviours appear repeatedly across the recordings examined.
+Close cars that produce events are detected with high confidence. Detections also continue when the scene
+goes quiet: even when almost no events fall on a car, both models keep detecting it, because the object is
+held in the model's memory rather than seen in the current frame. At the start of a recording, when the
+memory is still empty, both models produce a few weak boxes where there is no object. Finally, the labels
+themselves flicker and miss visible pedestrians, so a correct detection can be counted as a mistake. The
+two models look very similar in these frames, as expected since they process time identically. The
+difference between them rests on the measured scores of Section~\ref{sec:acc_results}.
 
 \begin{figure}[htbp]
     \centering
@@ -1613,29 +1602,29 @@ Section~\ref{sec:acc_results}.
 \section{Spiking SSM Detector}
 \label{sec:spiking_results}
 \guide{90}{
-  \item The model is a hybrid (only the temporal readout spikes), so it is not a like-for-like competitor to fully spiking detectors (Table~\ref{tab:snn_landscape}).
-  \item The result is the decomposition of the cost of spiking; the ladder is on the 100k-step schedule against a PureSSM trained on the same schedule; graded also on the full 400k schedule.
+  \item The model is a hybrid (only the time part spikes), so it is not directly comparable with fully spiking detectors (Table~\ref{tab:snn_landscape}).
+  \item The main result is the breakdown of the cost of spiking; the ladder was trained on the short schedule, the graded version also on the full one.
 }
-The spiking model is a hybrid: only its temporal readout spikes, and its spatial backbone is PureSSM's. It is
-therefore not a like-for-like competitor to the fully spiking detectors of Table~\ref{tab:snn_landscape},
-and its accuracy is context rather than a position in that landscape. The result of this section is the
-decomposition of what spiking costs. The three readouts were trained on the 100k-step schedule and are
-compared with a PureSSM trained on the same schedule; the graded readout was also trained on the full
-400k-step schedule (Section~\ref{subsec:spk_full}).
+The spiking model is a hybrid: only its temporal output spikes, while its spatial mixer is the same as
+PureSSM's. It is therefore not directly comparable with the fully spiking detectors in
+Table~\ref{tab:snn_landscape}, and its accuracy is given for context rather than as a ranking. The main
+result of this section is the breakdown of what spiking costs. The three spiking versions were trained on
+the short 100{,}000-step schedule and compared with a PureSSM trained on the same schedule. The graded
+version was also trained on the full schedule (Section~\ref{subsec:spk_full}).
 
 \subsection{Accuracy of the Readouts}
 \label{subsec:spk_accuracy}
-\guide{80}{
-  \item Table~\ref{tab:spiking_ablation}: PureSSM 42.52, analog 42.25, graded 40.72, spike 40.18 (100k steps); total cost of spiking 2.34.
-  \item The cost falls mainly on pedestrians (car $-1.61$, pedestrian $-3.07$).
-  \item Per-arm intervals about 4 points wide and overlapping; the paired steps are what is tested (next subsection).
+\guide{100}{
+  \item Table~\ref{tab:spiking_ablation}: PureSSM 42.52, analog 42.25, graded 40.72, binary 40.18 on the short schedule; binary spikes cost 2.34 points in total.
+  \item Most of the loss is on pedestrians (cars $-1.61$, pedestrians $-3.07$).
+  \item The intervals of the individual models overlap; the paired steps are the real test (next subsection).
 }
-On the 100k-step schedule, the four arms reach 42.52 (PureSSM), 42.25 (analog), 40.72 (graded) and 40.18
-(binary) test mAP (Table~\ref{tab:spiking_ablation}), so making the readout binary costs 2.34 points in
-total. The cost falls mainly on pedestrians: from PureSSM to the binary readout, car AP drops by 1.61 and
-pedestrian AP by 3.07. The per-arm intervals are about 4~points wide and overlap, because each carries the
-difficulty of the particular test recordings; the comparison between arms is therefore made on paired
-differences.
+On the short schedule, PureSSM scores 42.52~mAP, the analog version 42.25, the graded version 40.72 and
+the binary version 40.18 (Table~\ref{tab:spiking_ablation}). Turning the output into binary spikes
+therefore costs 2.34 points in total. Most of this loss falls on pedestrians: from PureSSM to the binary
+version, the score for cars drops by 1.61 points and the score for pedestrians by 3.07. The intervals of the
+individual models are about four points wide and overlap, because each depends on which test recordings
+happen to be included. The models are therefore compared step by step, on the same recordings.
 
 \begin{table}[htbp]
 \centering
@@ -1657,19 +1646,19 @@ spike (binary)     & 40.18 [38.09, 41.88] & 66.40 & 41.14 & 58.82 / 21.55 & 0.41
 
 \subsection{The Readout Ladder}
 \label{subsec:spk_ladder}
-\guide{100}{
-  \item The three steps with intervals: dynamics $-0.28$ $[-0.63, 0.05]$, sparsity $-1.52$ $[-1.98, -1.06]$, binarisation $-0.54$ $[-1.07, -0.07]$.
-  \item H3 held, in the point estimates and the intervals; the dynamics step is not distinguishable from zero.
-  \item Sparsity is the largest step (about 3$\times$ binarisation); paired intervals 4--6$\times$ narrower than per-arm ones.
+\guide{130}{
+  \item The three steps with intervals: neuron behaviour $-0.28$ $[-0.63, 0.05]$, silence $-1.52$ $[-1.98, -1.06]$, single bit $-0.54$ $[-1.07, -0.07]$.
+  \item H3 held: the order was as predicted and the last two steps are clearly below zero; the first is too small to measure.
+  \item Staying silent is the biggest cost, about three times the cost of the single bit.
 }
-The steps of the ladder (Equation~\eqref{eq:ladder}, Figure~\ref{fig:spiking_ladder}) measured
-$\Delta_{\mathrm{dyn}} = -0.28$ $[-0.63, 0.05]$, $\Delta_{\mathrm{sparse}} = -1.52$ $[-1.98, -1.06]$ and
-$\Delta_{\mathrm{bin}} = -0.54$ $[-1.07, -0.07]$~mAP. The pre-registered ordering analog $\geq$ graded $>$
-binary held, in the point estimates and in the intervals: the sparsity and binarisation steps exclude
-zero, while the dynamics step does not, so the cost of the leak and reset is not distinguishable from zero
-on Gen1. The largest step is sparsity, about three times the cost of binarisation. Because every arm is
-scored on the same resampled recordings, the step intervals are four to six times narrower than the
-per-arm intervals.
+Figure~\ref{fig:spiking_ladder} shows the three steps of the ladder of Equation~\eqref{eq:ladder}. Adding
+the neuron's own behaviour, its leak and reset, costs 0.28 points, with an interval from $-0.63$ to $0.05$.
+Making the neurons silent most of the time costs 1.52 points ($-1.98$ to $-1.06$). Reducing each signal to a
+single bit costs a further 0.54 points ($-1.07$ to $-0.07$). The order predicted before training was
+therefore confirmed. The last two steps are clearly below zero, while the first is too small to measure on
+this dataset. The largest cost by far is staying silent, about three times the cost of using a single bit.
+Because all versions are scored on the same recordings, these step intervals are four to six times
+narrower than the intervals of the individual models.
 
 \begin{figure}[htbp]
 \centering
@@ -1683,17 +1672,16 @@ because every arm is scored on the same resampled recordings.}
 \end{figure}
 
 \guide{110}{
-  \item By object size: sparsity costs on small ($-1.88$) and medium ($-1.23$) objects; binarisation on medium ($-1.06$) but not small ($-0.06$); large-object intervals too wide (6--8 points) for any claim.
-  \item Validation curves (Figure~\ref{fig:training_curves}): graded ahead of binary only from 60k steps (binary led at 10--30k and 50k); analog within 1.8 points of the anchor throughout; the binarisation gap shrank from 3.5 (25k pilot) to 0.7 at 100k.
+  \item By object size: silence costs on small and medium objects; the single bit costs on medium objects only; large-object intervals are too wide to say anything.
+  \item During training (Figure~\ref{fig:training_curves}): the graded version only pulled ahead of the binary one after 60{,}000 steps; the single-bit gap shrank from 3.5 points in an early short run to 0.7.
 }
-By object size, sparsity costs on small ($-1.88$ $[-2.24, -1.44]$) and medium objects ($-1.23$
-$[-1.91, -0.53]$), whereas binarisation costs on medium objects ($-1.06$ $[-1.87, -0.37]$) but not on small
-ones ($-0.06$ $[-0.63, 0.32]$); the large-object intervals of every step are 6 to 8 points wide, so no step
-is credited with a large-object effect. On the validation split the full ordering emerged only late in
-training (Figure~\ref{fig:training_curves}): the binary readout was ahead of the graded one at 10--30k and
-50k steps, and behind it from 60k steps on, while the analog readout stayed within 1.8 points of the
-anchor throughout. The binarisation gap narrowed accordingly, from 3.5 points in a 25k-step pilot to 0.7
-at 100k.
+Broken down by object size, staying silent costs accuracy on small objects ($-1.88$) and medium objects
+($-1.23$). Using a single bit costs accuracy on medium objects ($-1.06$) but not on small ones ($-0.06$).
+For large objects the intervals are six to eight points wide, so no conclusion can be drawn. The validation
+scores during training (Figure~\ref{fig:training_curves}) show that the final order only emerged late: the
+binary version was ahead of the graded one early in training, and fell behind it only after 60{,}000
+steps. Over the same period, the cost of using a single bit shrank from 3.5 points in an early short run to
+0.7 points.
 
 \begin{figure}[htbp]
     \centering
@@ -1707,18 +1695,17 @@ at 100k.
 
 \subsection{The Graded Readout on the Full Schedule}
 \label{subsec:spk_full}
-\guide{120}{
-  \item Trained for 400k steps with the full recipe (resumed three times); best checkpoint 350k (validation 47.28).
-  \item Table~\ref{tab:spiking_400k}: 46.24, 0.19 below PureSSM (\res{paired interval}) and level with EventSSM; at 100k it was 1.80 below its anchor $\Rightarrow$ the cost at 100k is mostly slower convergence.
-  \item $\mathrm{AP}_L$ 49.63: highest of the proposed models (+1.98 over PureSSM, \res{interval}), 1.03 below S5-RVT.
+\guide{100}{
+  \item Trained for the full 400{,}000 steps; best checkpoint at 350{,}000 steps.
+  \item Table~\ref{tab:spiking_400k}: 46.24, only 0.19 below PureSSM (\res{interval}) and equal to EventSSM; on the short schedule it was 1.80 behind $\Rightarrow$ the short-schedule cost is mostly slower learning.
+  \item Large objects: 49.63, the best of the new models (+1.98 over PureSSM, \res{interval}), 1.03 below S5-RVT.
 }
-Trained for 400k steps with the same recipe as the other full-schedule models, the graded readout reaches
-46.24~mAP, 0.19 below PureSSM (paired interval \res{[lo, hi]}) and level with EventSSM
-(Table~\ref{tab:spiking_400k}). At 100k steps the same readout was 1.80 below its PureSSM anchor, so most of
-its short-schedule cost is slower convergence rather than lost capacity. Its large-object AP of 49.63 is the
-highest of the proposed models, 1.98 above PureSSM (\res{[lo, hi]}) and 1.03 below S5-RVT. Validation
-mAP was flat between 46.8 and 47.3 from 350k steps on, and the best checkpoint (350k, validation 47.28) is
-the one evaluated; the run was resumed three times, which changes its data order but not its schedule.
+When trained on the full schedule, the graded version scores 46.24~mAP, only 0.19 below PureSSM (interval
+\res{[lo, hi]}) and level with EventSSM (Table~\ref{tab:spiking_400k}). On the short schedule the same
+version was 1.80 points behind PureSSM, so most of its earlier loss came from learning more slowly rather
+than from a lower final accuracy. On large objects it scores 49.63, the best of all the new models: 1.98
+points above PureSSM (interval \res{[lo, hi]}) and only 1.03 below the baseline. Its best checkpoint was
+reached after 350{,}000 steps, after which the validation score stayed steady.
 
 \begin{table}[htbp]
 \centering
@@ -1743,16 +1730,16 @@ Checkpoint (step)       & published & 320k & 310k & 350k \\
 \end{tabular}
 \end{table}
 
-\guide{80}{
-  \item Figure~\ref{fig:training_400k}: the loss curves of the three 400k runs overlap within noise; no instability after the resumes.
-  \item Figure~\ref{fig:training_400k_time}: 55.5\,h for the graded run vs 27.9\,h for EventSSM on the same GPU (activation recomputation in BiMamba + the per-step LIF loop); PureSSM's run was on another GPU.
+\guide{90}{
+  \item Figure~\ref{fig:training_400k}: the training curves of the three full runs overlap; no instability after the restarts.
+  \item Figure~\ref{fig:training_400k_time}: training took 55.5 hours, twice as long as EventSSM's 27.9 hours on the same card.
 }
-The training curves of the three full-schedule runs (Figure~\ref{fig:training_400k}) overlap within their
-noise throughout, with no instability after any of the resumes. Training is slower, however
-(Figure~\ref{fig:training_400k_time}): the graded run took 55.5~h on the RTX~5070~Ti against 27.9~h for
-EventSSM on the same GPU, because the BiMamba blocks are trained with activation recomputation and the LIF
-readout adds a loop over time steps. PureSSM's run was made on a different GPU and is not timed against
-these.
+The training curves of the three full runs overlap closely (Figure~\ref{fig:training_400k}), and the graded
+run remained stable even though it had to be restarted three times. Training was slower, however
+(Figure~\ref{fig:training_400k_time}). The graded run took 55.5 hours on the desktop card, twice the 27.9
+hours of EventSSM, for two reasons: its state space spatial mixer is slower to train than a convolutional
+one, and its spiking neurons must be updated one time step after another. PureSSM was
+trained on a different card, so its training time is not directly comparable.
 
 \begin{figure}[htbp]
     \centering
@@ -1775,19 +1762,19 @@ these.
 
 \subsection{Firing Activity and the Threshold Trade-off}
 \label{subsec:spk_firing}
-\guide{130}{
-  \item Firing rates on a test recording: graded 0.28/0.12/0.10, binary 0.48/0.36/0.39 (stages 2/3/4); binary rates roughly doubled during training, graded rates at stages 3--4 fell (Figure~\ref{fig:spiking_firing}).
-  \item The binary readout appears to compensate for its one-bit output by firing more.
-  \item Sparsity is structural, not event-driven: only graded stage 2 follows scene activity ($r = 0.65$), other stages fire at a near-constant rate (Figure~\ref{fig:firing_pattern}).
+\guide{120}{
+  \item On a test recording, the graded version is active 28/12/10\,\% of the time at stages 2/3/4, the binary one 48/36/39\,\%; binary activity roughly doubled during training, graded activity fell (Figure~\ref{fig:spiking_firing}).
+  \item The binary version seems to make up for its single bit by firing more often.
+  \item Activity barely follows the scene: only one stage responds to how busy the scene is (Figure~\ref{fig:firing_pattern}).
 }
-On a 60-s test recording, after a 32-frame warm-up, the trained readouts fire at mean rates of 0.28, 0.12
-and 0.10 at stages 2, 3 and 4 (graded) and 0.48, 0.36 and 0.39 (binary), the rates the training-time
-monitor showed at the end of training (Figure~\ref{fig:spiking_firing}). The two readouts moved in opposite
-directions during training: the binary rates roughly doubled at every stage, while the graded rates at
-stages 3 and 4 fell, as if the binary readout compensates for its one-bit output by firing more. The
-sparsity is structural rather than event-driven (Figure~\ref{fig:firing_pattern}). Only graded stage~2
-follows the scene activity (Pearson $r=0.65$ with the events per frame); the other stages fire at an almost
-constant rate, because the dense Mamba state upstream keeps driving them when the scene goes quiet.
+On a one-minute test recording, the graded version is active 28, 12 and 10\,\% of the time at stages 2, 3
+and 4, and the binary version 48, 36 and 39\,\% (Figure~\ref{fig:spiking_firing}). The two versions changed in
+opposite directions during training. The activity of the binary version roughly doubled at every stage,
+while the activity of the graded version fell at stages 3 and 4. The binary version seems to make up for
+carrying only one bit by firing more often. The activity also hardly follows what happens in the scene
+(Figure~\ref{fig:firing_pattern}). Only one stage of the graded version becomes more active when the scene is
+busier; the other stages fire at an almost constant rate, because the Mamba memory before them keeps
+driving them even when the scene is quiet.
 
 \begin{figure}[htbp]
     \centering
@@ -1808,23 +1795,21 @@ shaded first 32 frames, in which the recurrent state warms up from zero, are exc
 \label{fig:firing_pattern}
 \end{figure}
 
-\guide{150}{
-  \item The threshold is fixed in training, so the trained weights can be re-run at other thresholds: post-hoc sensitivity, not a trained trade-off (Figure~\ref{fig:threshold_sweep}).
-  \item The training threshold $\vartheta=1$ is the most accurate point for both readouts.
-  \item Lower $\vartheta$: more firing, no gain (graded 40.68 at 21.1\,\% vs 40.72 at 17.3\,\%). Higher $\vartheta$: steep cost, faster for binary ($-2.3$ / $-11.8$ at 1.5 / 2 vs graded $-2.1$ / $-6.1$).
-  \item Binary fires 2.4$\times$ as often as graded at $\vartheta=1$; even the sparsest point (5.3\,\%) would lift the saving only to about 0.99\,\%.
+\guide{130}{
+  \item The threshold was fixed during training, so the trained models can be re-tested with other thresholds; this shows sensitivity, not what a model trained at that threshold would reach (Figure~\ref{fig:threshold_sweep}).
+  \item The training threshold gives the best accuracy for both versions.
+  \item A lower threshold: more activity, no gain. A higher threshold: less activity, but accuracy falls quickly, faster for the binary version.
+  \item Even the quietest setting would only raise the estimated saving from 0.86 to about 0.99\,\%.
 }
-Because the threshold is fixed in training, the trained weights can be re-evaluated at other thresholds
-(Figure~\ref{fig:threshold_sweep}); each point other than $\vartheta=1$ is a post-hoc operating point of the
-same weights, so the curve measures sensitivity to the threshold rather than what a model trained at that
-sparsity would reach. On both readouts the training threshold is the most accurate point. Lowering the
-threshold raises the firing rate without gaining accuracy: at $\vartheta=0.75$ the graded readout drives
-21.1 instead of 17.3\,\% of its spike-fed operations for 40.68 against 40.72~mAP. Raising it lowers the rate
-at a steep cost, faster for the binary readout, which loses 2.3 and 11.8 points at $\vartheta=1.5$ and 2,
-against 2.1 and 6.1 for the graded one. At the training threshold the binary readout fires 2.4 times as
-often as the graded one. The threshold is also no energy lever on this architecture: even the sparsest
-point measured (graded, $\vartheta=3$, 5.3\,\%) would raise the estimated saving of
-Section~\ref{subsec:spk_energy} only from 0.86 to about 0.99\,\%, at a cost of 12.9 points.
+Because the firing threshold was fixed during training, the trained models can be re-tested with other
+thresholds (Figure~\ref{fig:threshold_sweep}). These tests show how sensitive the models are to the
+threshold, not what a model trained with a different threshold would achieve. For both versions, the
+threshold used in training gives the best accuracy. Lowering the threshold makes the neurons more active
+without improving accuracy. Raising it makes them quieter, but accuracy falls quickly, and faster for the
+binary version: at a threshold of 2 it loses 11.8 points, against 6.1 for the graded version. A higher
+threshold is also not a useful way to save energy in this model. Even the quietest setting tested, at
+which the graded version is active only 5.3\,\% of the time, would raise the estimated saving of
+Section~\ref{subsec:spk_energy} only from 0.86 to about 0.99\,\%, while costing 12.9 points of accuracy.
 
 \begin{figure}[htbp]
 \centering
@@ -1839,33 +1824,31 @@ readout.}
 \subsection{Rate Robustness of the Spiking Readouts}
 \label{subsec:spk_rate}
 \guide{60}{
-  \item Same true-rate protocol, uncompensated; the leak and threshold were learned at the 50-ms rate only.
-  \item Graded 400k retention at $10\times$: \res{\%} against 69.7\,\% for PureSSM 400k; at $2\times$: \res{\%}.
-  \item Interpretation: does the LIF readout preserve, reduce or improve the robustness of the recurrence?
-  \item If the 100k readouts were measured: their retention against the PureSSM 100k anchor.
+  \item The same faster-frame test, without correction; the neurons' leak and threshold were learned at the normal rate only.
+  \item Graded version at ten times the rate: \res{\%} against 69.7\,\% for PureSSM; at twice the rate: 94.9\,\% against 95.9\,\%.
+  \item What this means: do the spiking neurons keep, reduce or improve the robustness of the memory?
 }
-Under the true-rate protocol of Section~\ref{subsec:eval_rob}, without compensation, the graded readout
-trained on the full schedule retains \res{\%} of its accuracy at ten times the rate and \res{\%} at twice
-the rate, against 69.7 and 95.9\,\% for PureSSM on the same schedule. Its leak and threshold were learned
-at the 50-ms training rate only, so this measures whether the LIF readout preserves the robustness of the
-uncompensated recurrence. \res{Interpret: preserved, reduced or improved; add the 100k readouts against
-the PureSSM 100k anchor if measured.}
+The spiking model was also tested with frames arriving faster, without any correction. This matters because
+the neurons' leak and threshold were learned at the normal rate only. At twice the normal rate, the graded
+version trained on the full schedule keeps 94.9\,\% of its accuracy, almost the same as PureSSM's 95.9\,\%.
+At ten times the rate it keeps \res{\%}, against 69.7\,\% for PureSSM. \res{Interpret: whether the spiking
+neurons keep, reduce or improve the robustness of the memory before them.}
 
 \subsection{Synaptic Operations and Estimated Energy}
 \label{subsec:spk_energy}
-\guide{110}{
-  \item Table~\ref{tab:sop}: graded 400k drives 10.1 of the 52.4\,M spike-fed MACs $\Rightarrow$ 22.81 vs 23.01\,mJ per frame dense, a saving of 0.84\,\% (ceiling 1.04\,\%).
-  \item The ladder's energy side: analog $-0.01$\,\%, graded 0.86\,\%, binary 0.96\,\% (an AC costs about a fifth of a MAC, so binary saves more despite firing 2.4$\times$ as often).
-  \item Operation-count estimate; memory traffic not modelled.
+\guide{100}{
+  \item Table~\ref{tab:sop}: the graded version activates 10.1 of the 52.4 million spike-fed operations $\Rightarrow$ an estimated saving of 0.84\,\%, out of a maximum of 1.04\,\%.
+  \item Along the ladder: analog saves nothing, graded 0.86\,\%, binary 0.96\,\% (an addition costs about a fifth of a multiply-add, so binary saves more although it fires more).
+  \item It is an estimate from operation counts; memory is not included.
 }
-Equation~\eqref{eq:sop_energy} turns the measured rates into an energy estimate (Table~\ref{tab:sop}). The
-graded 400k-step readout drives 10.1 of the 52.4\,M spike-fed MACs per frame, which gives 22.81~mJ per
-frame against 23.01~mJ for dense execution, a saving of 0.84\,\% against a ceiling of 1.04\,\%. The three
-100k-step readouts give the energy side of the ladder: the dense analog readout saves nothing ($-0.01$\,\%
-once the neuron updates are counted), the graded readout 0.86\,\% and the binary readout 0.96\,\%. The
-binary readout saves slightly more although it fires 2.4 times as often, because an accumulate costs
-about a fifth of a multiply--accumulate. These are operation counts with 45-nm constants; memory traffic,
-which dominates energy on real hardware, is not modelled.
+Using Equation~\eqref{eq:sop_energy}, the measured activity can be turned into an energy estimate
+(Table~\ref{tab:sop}). The graded version on the full schedule activates 10.1 of the 52.4 million
+operations that spikes can reach, which gives 22.81~mJ per frame against 23.01~mJ without spiking. This is
+a saving of 0.84\,\%, out of a maximum possible saving of 1.04\,\%. Along the ladder, the analog version
+saves nothing, the graded version 0.86\,\% and the binary version 0.96\,\%. The binary version saves slightly
+more even though it fires more often, because an addition costs only about a fifth of a multiply-add.
+These figures are estimates from operation counts; the cost of moving data in memory, which dominates on
+real hardware, is not included.
 
 \begin{table}[htbp]
 \centering
@@ -1889,15 +1872,15 @@ binary, 100k (AC)  & 0.484 / 0.357 / 0.391 & 21.7\,M & 22.79 & 23.01 & 0.96\,\% 
 \end{tabular}
 \end{table}
 
-\guide{90}{
-  \item On the GPU (Table~\ref{tab:spiking_bench}, one session): 27.19 vs 26.46\,ms for PureSSM (+0.73\,ms for the LIF loop); state +1.1\,MB.
-  \item GPU energy 0.55--0.69\,J (idle drift), overlapping PureSSM's 0.641\,J: no GPU energy difference claimed; dense kernels cannot exploit the sparsity.
+\guide{80}{
+  \item On a graphics card (Table~\ref{tab:spiking_bench}): 0.73\,ms slower per frame than PureSSM; slightly more memory.
+  \item Measured energy overlaps PureSSM's, so no saving is claimed: a graphics card cannot skip inactive inputs.
 }
-On the GPU the spiking model brings no saving (Table~\ref{tab:spiking_bench}). Measured in one session with
-the non-spiking models, it runs at 27.19~ms per frame against 26.46~ms for PureSSM, the extra 0.73~ms being
-the loop over time steps of the LIF readout, and its streaming state is 1.1~MB larger. Its measured GPU
-energy, 0.55--0.69~J per frame depending on how the drifting idle power is subtracted, overlaps PureSSM's
-0.641~J, so no difference is claimed: dense GPU kernels do not exploit the readout's sparsity.
+On a graphics card, the spiking model brings no saving (Table~\ref{tab:spiking_bench}). It takes 27.19~ms per
+frame, 0.73~ms longer than PureSSM, because the neurons are updated one time step after another, and it
+needs 1.1~MB more memory per stream. Its measured energy, between 0.55 and 0.69~J per frame, overlaps
+PureSSM's 0.641~J, so no difference is claimed. A graphics card processes every input, active or not, so it
+cannot benefit from the silence of the neurons.
 
 \begin{table}[htbp]
 \centering
@@ -1922,188 +1905,184 @@ Streaming state         & 4.7\,MB & 144.5\,MB & 144.5\,MB & 145.6\,MB \\
 
 \subsection{Training Dynamics}
 \label{subsec:spk_dynamics}
-\guide{110}{
-  \item Binarisation slows learning: in the overfit gate, analog and graded reduce the loss 4.0$\times$ and 3.8$\times$ in 150 steps, binary 2.25--2.65$\times$ (passed at 300 steps, 4.95$\times$).
-  \item Gradient test at stage 4: binary passes back 0.31$\times$ the analog gradient, graded 0.51$\times$.
-  \item The learned leak barely moved: every channel within 0.044 of its 0.9 initialisation $\Rightarrow$ the Mamba recurrence upstream appears to do the integration.
+\guide{120}{
+  \item Single bits slow down learning: in a quick learning check, the analog and graded versions learned about 4 times faster than the binary one at first.
+  \item The binary version passes back about a third of the learning signal of the analog one.
+  \item The leak hardly changed (within 0.044 of its starting value of 0.9): the Mamba memory already does the work.
 }
-Binarisation also slows learning. In the single-batch overfitting check that every model must pass, the
-analog and graded readouts reduced the loss 4.0- and 3.8-fold within 150 steps, while the binary readout
-reached only 2.25--2.65-fold in three runs and passed at 300 steps (4.95-fold). A gradient test isolating
-stage~4 found that the binary readout passes back 0.31 times the gradient of the analog readout, and the
-graded readout 0.51 times. The learned leak barely moved: on the final 100k-step checkpoints no channel lies
-more than 0.044 from its initial value of 0.9. The Mamba recurrence upstream appears to supply the temporal
-integration, leaving the membrane's own leak little to do.
+Using single bits also slows down learning. In a quick check that every model must pass, in which the model
+has to memorise one small batch of data, the analog and graded versions reduced their error about four-fold
+within 150 steps. The binary version reached only about 2.5-fold and needed 300 steps to pass. A separate
+test showed why: the binary version passes back only about a third of the learning signal that the analog
+version does. The learned leak also hardly changed during training, staying within 0.044 of its starting
+value of 0.9 in every channel. The Mamba memory before the neurons appears to do the work of remembering,
+leaving little for the neurons' own leak to do.
 
 \section{Summary of Results}
 \label{sec:results_summary}
 \guide{150}{
   \item One paragraph pulling the chapter together, in the order of the aims.
-  \item Reproduction exact; PureSSM equal overall, +2.95 $\mathrm{AP}_L$, explained by a learned wider field; most rate-robust; compensation not reproducible; efficiency a trade-space; spiking costs dominated by sparsity, nearly free on the full schedule, energy saving bounded at about 1\,\%.
+  \item Reproduction exact; PureSSM equal overall, better on large objects thanks to a learned wider view; most robust to faster frames; the published correction not reproduced; no single most efficient model; the cost of spiking mostly from silence, nearly gone on the full schedule, energy saving at most about 1\,\%.
 }
-The baseline reproduced exactly, which validates every comparison that follows. Replacing the
-convolutional spatial mixer with a state-space one left overall accuracy unchanged but raised large-object
-accuracy by 2.95 points, and the receptive-field probe links that gain to a field that the state-space
-mixer learns to make up to twice as wide. The state-space detectors kept 62--70\,\% of their accuracy at a
-true tenfold rate, PureSSM the most, without the inference-time compensation, which lowered accuracy at
-every tested point and whose published result could not be reproduced. Efficiency is a trade-space:
-PureSSM needs the least computation but is the slowest on a GPU in eager execution, and both Mamba models
-carry a streaming state 31 times the baseline's. The cost of spiking is dominated by sparsity rather than by
-binarisation, nearly vanishes on the full schedule, and saves at most about 1\,\% of the detector's
-operations, because the spikes reach only the first layers of the neck.
+The baseline was reproduced exactly, which confirms every comparison that follows. Replacing the
+convolutional spatial mixer with a state space model left overall accuracy unchanged but improved the
+detection of large objects by about three points, and the receptive-field probe links this gain to a wider
+view of the image that the model learns during training. The state space detectors kept between 62 and
+70\,\% of their accuracy when frames arrived ten times faster, PureSSM the most, without any correction. The
+published correction lowered accuracy instead, and its published result could not be reproduced. No model
+was the most efficient on every measure: PureSSM needs the least computation but is the slowest on a
+graphics card, and both Mamba models need much more memory than the baseline. Finally, most of the cost of
+spiking comes from making the neurons silent rather than from using single bits, this cost nearly disappears
+with full training, and the possible energy saving is at most about 1\,\%, because the spikes only reach the
+first layers of the neck.
 
 \chapter{Discussion}
 \label{ch:discussion}
 
 \section{Answering the Research Question}
 \label{sec:answer_rq}
-\guide{130}{
-  \item Answer the main question in two or three sentences: with everything else fixed, the state-space spatial mixer leaves overall accuracy unchanged, improves large objects, is more rate-robust and needs the least computation, at a latency and memory cost on a GPU.
-  \item Answer the second question: spiking costs 2.3 points at 100k, mostly sparsity, nearly nothing on the full schedule; the energy return is bounded at about 1\,\% on this hybrid.
+\guide{120}{
+  \item Answer the main question in plain words: with everything else fixed, the state space mixer gives the same overall accuracy, better large-object detection, more robustness and less computation, but is slower on a graphics card and needs more memory.
+  \item Answer the second question: spiking costs 2.3 points on the short schedule, mostly from silence, almost nothing with full training; the possible energy saving in this hybrid is at most about 1\,\%.
 }
-The research question asked what the backbone's spatial mixer contributes when everything else is held
-fixed. The answer is specific. Replacing a convolutional spatial mixer with a state-space one leaves
-overall accuracy unchanged, improves the detection of large objects by about 3 points, makes the detector
-the most robust of those tested to a true change in event rate, and reduces the computation per frame; it
-pays for this in wall-clock latency on a GPU and, through Mamba's state expansion, in streaming memory. The
-second question receives an equally specific answer. Making the temporal readout spike costs 2.3 points on
-a short schedule, mostly through sparsity rather than binarisation, and almost nothing on the full
-schedule, while its estimated energy return on this hybrid is bounded at about 1\,\% of the detector's
-operations.
+The main research question asked what difference the backbone's spatial mixer makes when every other part
+of the detector stays the same. The answer is clear. Replacing a convolutional spatial mixer with a state
+space model gives the same overall accuracy, but it detects large objects about three points better, copes
+best with faster event rates, and needs the least computation. In return, it runs more slowly on a graphics
+card and needs much more memory. The second question asked what spiking costs. Making the temporal output
+spike costs 2.3 points on the short schedule, mostly because the neurons are silent most of the time, and
+almost nothing after full training. However, the possible energy saving in this hybrid model is at most
+about 1\,\% of the detector's operations.
 
 \guide{140}{
-  \item Each aim: met, partly met or not met, with the evidence (aims 1--3, 5 and 6 met; aim 4 met; the Thesis~A system-integration aim descoped).
-  \item Each hypothesis: H1 supported; H2 supported for the robustness, not reproduced for the compensation; H3 supported, with the dynamics step indistinguishable from zero.
+  \item Each aim: met or not, with the evidence (all six aims met; the Thesis~A integration aim removed from the scope).
+  \item Each hypothesis: H1 supported; H2 supported for the robustness, not for the published correction; H3 supported, although the first step was too small to measure.
 }
-All six aims were met. The baseline reproduced exactly (aim~1); the two detectors were built as controlled
-swaps and compared overall, per class and by size (aim~2); the large-object difference was explained by a
-receptive-field probe (aim~3); robustness was measured in both regimes, with and without compensation
-(aim~4); efficiency was measured on every axis (aim~5); and the spiking variant decomposed the cost of
-spiking (aim~6). Of the hypotheses, H1 is supported: the state-space mixer learns a wider field and detects
-large objects better at equal overall accuracy. H2 is supported for the robustness of the recurrence but
-not for the compensation, which lowered accuracy at every tested point under the published artefacts. H3
-is supported: the ordering analog $\geq$ graded $>$ binary held, although the cost of the neuron dynamics
-is not distinguishable from zero.
+All six aims were met. The baseline was reproduced exactly; the two new detectors were built and compared
+in detail; the difference between them was explained by the receptive-field probe; robustness was tested
+in both settings, with and without the correction; efficiency was measured in every way that matters; and
+the cost of spiking was broken down into its parts. Of the three hypotheses, H1 is supported: the state
+space mixer learns a wider view of the image and detects large objects better. H2 is only partly
+supported. The state space models do cope well with faster event rates, but the published correction made
+them less accurate rather than more. H3 is supported, as the three spiking versions ranked in the predicted
+order, although the first step of the ladder was too small to measure.
 
 \section{What the State-Space Model Contributes}
 \label{sec:what_shown}
 \guide{110}{
-  \item A pure state-space spatial backbone is viable: no attention, almost no local convolution, yet equal accuracy with the fewest parameters and FLOPs.
-  \item Keep it in proportion: 1.3 below the attention baseline; trained with half its batch size.
+  \item A state space model can serve as the spatial backbone, not only for time: no attention, almost no convolution, yet the same accuracy with the fewest parameters and the least computation.
+  \item Keep it in proportion: 1.3 points behind the baseline, and trained with half its batch size.
 }
-The first contribution is evidence that a state-space mixer can serve as the spatial backbone of an event
-detector, not only as its temporal core. PureSSM uses no attention, and apart from strided downsampling its
-only local spatial mixing is a zero-initialised depthwise term in each block. It nonetheless matches the
-convolutional hybrid on overall accuracy with the fewest parameters (16.33\,M) and the fewest FLOPs
-(10.03\,G) of the three models. Two qualifications keep this in proportion: it remains 1.3~mAP below the
-attention-based baseline, and the own models trained with half the baseline's batch size, so the size of
-that gap is not fully attributable to the architecture.
+The first contribution of this thesis is to show that a state space model can do more than process time:
+it can also serve as the spatial backbone of an event-camera detector. PureSSM uses no attention and
+almost no convolution, yet it matches the convolutional model on overall accuracy while having the fewest
+parameters and needing the least computation of the three models. This result should be kept in
+proportion. PureSSM is still 1.3 points behind the attention-based baseline, and since the new models were
+trained with half the baseline's batch size, part of that gap may come from the training settings rather
+than from the design.
 
-\guide{130}{
-  \item The receptive field is the lever: one controlled change raises $\mathrm{AP}_L$ by 2.95 while small and medium barely move; the probe and the class pattern (cars, not pedestrians) agree.
-  \item The two designs are both legitimate: published detectors keep a conventional mixer on one axis (S5-RVT, SMamba~\cite{yang2025smamba}); PureSSM buys accuracy on large objects and robustness, EventSSM latency.
+\guide{150}{
+  \item The receptive field is the key: one change gave +2.95 on large objects while small and medium hardly moved; the probe and the car/pedestrian pattern agree.
+  \item Other published detectors keep a conventional mixer for either space or time (S5-RVT, SMamba~\cite{yang2025smamba}); PureSSM uses state space models for both, gaining large-object accuracy, robustness and efficiency, at the cost of speed on a graphics card.
 }
-The second contribution is the mechanism. One controlled change, the spatial mixer, raised large-object
-accuracy by 2.95 points while small- and medium-object accuracy barely moved ($+0.08$ and $+0.28$), and
-the receptive-field probe explains the pattern: the state-space mixer learns a field up to twice as wide
-as the convolutional stack's. The class-level result agrees, since the gain is in cars, the class with
-large and close instances. Published state-space event detectors keep a conventional mixer on one of the
-two axes, attention in space for S5-RVT~\cite{zubic2024state} and a ConvLSTM in time for
-SMamba~\cite{yang2025smamba}. PureSSM shows that both axes can be state-space, buying large-object
-accuracy, rate robustness and less computation at the price of latency on current GPUs, so the
-convolutional hybrid remains the better choice where latency on conventional hardware binds.
+The second contribution is the explanation of where the gain comes from. Changing only the spatial mixer
+improved large-object accuracy by 2.95 points, while small and medium objects hardly changed. The
+receptive-field probe explains this pattern: the state space mixer learns to draw on an area up to twice as
+wide as the convolutional mixer does. The results by class agree, since the gain appears for cars, which
+are often large and close, and not for pedestrians. Other published state space detectors still use a
+conventional method for one of the two directions, such as attention for space in
+S5-RVT~\cite{zubic2024state} or a ConvLSTM for time in SMamba~\cite{yang2025smamba}. PureSSM shows that both
+directions can be handled by state space models. This brings better large-object detection, more
+robustness and less computation, at the cost of speed on current graphics cards. Where speed on such
+hardware matters most, the convolutional model remains the better choice.
 
 \section{Temporal Robustness and the \texorpdfstring{$\Delta t$}{Delta t}-Rescaling Claim}
 \label{sec:discuss_robustness}
 \guide{120}{
-  \item Robustness is built into the recurrence, not added by the compensation: 62--70\,\% retention at $10\times$ without any compensation; the compensation lowered accuracy everywhere under the published artefacts.
-  \item The regime matters: at a fixed cadence the baseline degrades least at the sparse end; under a true rate change PureSSM is best.
-  \item Mamba's input-dependent step gives at most a marginal edge over S5 (63.0 vs 62.2\,\%).
+  \item The robustness comes from the memory itself, not from the correction: 62--70\,\% at ten times the rate with no correction, while the correction made things worse.
+  \item The test setting matters: the baseline is best with sparse frames at a fixed rate; PureSSM is best when frames really arrive faster.
+  \item Mamba's input-dependent step helps only slightly compared with S5 (63.0 vs 62.2\,\%).
 }
-The robustness that makes state-space models attractive for event data is real, but under the published
-artefacts it is built into the recurrence rather than added by the compensation credited with it. Every
-state-space model kept 62--70\,\% of its accuracy at a true tenfold rate without any compensation, while
-rescaling the step lowered accuracy at every tested point. The regime also matters: with a fixed cadence
-and shorter windows the baseline degrades least at the sparse end, whereas under a true rate change
-PureSSM degrades least. Mamba's input-dependent step, which might be expected to adapt to the rate by
-itself, gives at most a marginal edge over S5: EventSSM retains 63.0\,\% against S5-RVT's 62.2\,\%, and
-the two also differ in their spatial mixers. The decisive factor is recurrence as such rather than
-selectivity.
+The robustness that makes state space models attractive for event data is real, but it comes from the way
+these models remember the past, not from the published correction. Every state space model kept between
+62 and 70\,\% of its accuracy at ten times the normal rate without any correction, while the correction
+lowered accuracy in every test. The test setting also matters. When frames still arrive at the normal rate
+but contain fewer events, the baseline degrades least; when frames really arrive faster, PureSSM degrades
+least. Mamba's ability to adjust its step size to the input might be expected to help with faster rates,
+but its advantage over S5 is small: EventSSM keeps 63.0\,\% against S5-RVT's 62.2\,\%, and the two models
+also differ in their spatial mixers. What matters most is that these models have a memory at all.
 
-\guide{80}{
-  \item Practical consequence for a UAV: the event rate varies with flight speed; a state-space detector degrades gracefully, without per-rate tuning.
-  \item What remains open: whether the compensation behaves differently under the unreleased preprocessing.
+\guide{70}{
+  \item What it means for a drone: the event rate changes with flight speed, and these detectors degrade gradually without any retuning.
+  \item What remains open: the correction might behave differently with the unreleased code.
 }
-For a flying platform, whose event rate rises and falls with its own speed, the practical consequence is
-that a state-space detector degrades gracefully at a rate it was not trained for, and needs no per-rate
-tuning to do so. Whether the compensation behaves differently under the preprocessing used for the
-published experiment, which was not released, cannot be determined from the released material, and the
-conclusion here is limited to what that material supports.
+For a drone, this result is useful in practice. The rate of events changes with the drone's own speed, and
+a state space detector loses accuracy gradually at rates it was never trained on, without any retuning.
+One question remains open: the correction may behave differently with the unreleased code used for the
+published experiment, but this cannot be checked with the material that was released.
 
 \section{Efficiency Trade-offs}
 \label{sec:discuss_efficiency}
-\guide{170}{
-  \item No single winner: FLOPs (PureSSM), latency and energy (EventSSM), streaming memory (S5-RVT).
-  \item Why FLOPs and latency disagree: many small scan kernels are launch-bound; scans use the GPU less well than convolutions.
-  \item Event sparsity is unused on a GPU; 144 vs 4.7\,MB of state.
-  \item The binding constraint of a deployment decides the choice.
+\guide{160}{
+  \item No single winner: least computation (PureSSM), fastest and least energy (EventSSM), least memory (S5-RVT).
+  \item Why computation and speed disagree: many small operations each have a start-up cost; scans use the graphics card less efficiently than convolutions; the faster replay mode removes most of this.
+  \item Two costs remain: sparsity is not used on a graphics card, and the memory is 31 times larger.
+  \item The right choice depends on the main limit of the platform.
 }
-The efficiency results do not produce a single winner. PureSSM needs the least computation and has the
-best accuracy per FLOP; EventSSM is the fastest and draws the least energy per frame; the baseline carries
-by far the smallest streaming state. FLOPs and latency disagree because PureSSM's fourteen bidirectional
-scans launch many small kernels, so its eager execution is bound by launch overhead rather than
-arithmetic, and because state-space scans use the GPU less efficiently than the convolution kernels it was
-built for. CUDA-graph replay recovers most of the overhead, which indicates that the gap is largely an
-implementation property rather than an intrinsic one. Two costs are intrinsic, however. Event sparsity is
-not exploited on a GPU, which processes every frame densely, and Mamba's state expansion makes the
-streaming state 31 times the baseline's, a real cost on a memory-limited embedded platform. Which model
-is most efficient therefore depends on the constraint that binds a given deployment, which is why the
-thesis reports the frontier rather than a winner.
+The efficiency results do not produce a single winner. PureSSM needs the least computation, EventSSM is
+the fastest and uses the least energy, and the baseline needs by far the least memory. Computation and
+speed disagree because PureSSM's spatial mixer consists of many small operations, and each one carries a
+fixed start-up cost on a graphics card. Graphics cards are also built for convolutions and run scans less
+efficiently. The faster replay mode removes most of the start-up cost, which shows that much of the speed
+gap comes from the software rather than from the method itself. Two costs remain, however. A graphics card
+cannot make use of the sparsity of events, and the memory needed by the Mamba models is 31 times larger
+than the baseline's, which is a real problem on a small, memory-limited platform. Which model is most
+efficient therefore depends on the main limit of the platform, whether that is computation, speed, energy
+or memory.
 
 \section{Latency and the Choice of Window}
 \label{sec:latency_window}
 \guide{140}{
-  \item With 50-ms windows, an event waits on average 25\,ms (up to 50) before entering a frame, and inference adds 13--27\,ms: the sensor's microsecond latency is not exploited; the detector updates at 20\,Hz.
-  \item What the sensor still contributes: dynamic range, no motion blur within the 5-ms bins, sparse output.
-  \item The window is a trade-off, not a fixed limit: at 5-ms windows (200\,Hz) the models keep 62--70\,\% without retraining, and CUDA graphs run near 200\,Hz.
+  \item With 50-ms windows, an event waits 25\,ms on average (up to 50\,ms) before it is used, and processing adds 13--27\,ms: the camera's microsecond speed is not used; the detector updates 20 times per second.
+  \item What the camera still offers: a very wide brightness range, no motion blur, sparse output.
+  \item The window can be shortened: with 5-ms windows the models keep 62--70\,\% without retraining, and the faster mode runs close to the 200 frames per second required.
 }
-Every model bins events into 50-ms windows, so its latency is set by the window and the computation
-rather than by the sensor: an event waits on average 25~ms, and up to 50~ms, before it enters a frame, and
-inference adds 13--27~ms on the test GPU. At this setting the microsecond latency of the event camera is
-not exploited, and the detector updates no faster than a 20-Hz frame camera; the advantages that remain
-are the sensor's dynamic range, the absence of motion blur within the 5-ms bins and its sparse output. The
-window is, however, a trade-off rather than a fixed constraint. With 5-ms windows at 200\,Hz and no
-retraining, the state-space models keep 62--70\,\% of their accuracy, and under CUDA-graph replay EventSSM
-and PureSSM run at 210 and 181\,Hz, close to the rate such windows require.
+Every model collects events over 50-ms windows, so its reaction time is set by the window and the
+processing, not by the camera. An event waits 25~ms on average, and up to 50~ms, before it is used, and
+processing adds another 13 to 27~ms. As a result, the camera's microsecond speed is not exploited, and the
+detector updates only 20 times per second, like an ordinary video camera. The camera still offers its very
+wide brightness range, freedom from motion blur and a sparse output. The window, however, is a choice rather
+than a fixed limit. With 5-ms windows and no retraining, the state space models keep 62 to 70\,\% of their
+accuracy, and in the faster replay mode EventSSM and PureSSM process 210 and 181 frames per second, close
+to the 200 that such windows require.
 
 \section{The Neuromorphic Case}
 \label{sec:neuro_case}
-\guide{130}{
-  \item Three properties a GPU cannot exploit: neuromorphic chips compute only on spikes, so energy scales with activity~\cite{davies2021advancing}; a diagonal linear recurrence maps onto neurons (S4D on Loihi~2: about 1000$\times$ less energy than on a Jetson~\cite{meyer2024diagonal}); Loihi~2 supports graded spikes~\cite{orchard2021efficient}.
-  \item Three gaps to silicon: Mamba's input-dependent decay; the non-spiking spatial backbone; Lava archived $\Rightarrow$ NIR~\cite{pedersen2024neuromorphic} as the export boundary~\cite{intel2026lava}.
+\guide{150}{
+  \item Why neuromorphic chips could help: they only work when spikes arrive~\cite{davies2021advancing}; the model's memory fits their neurons (a similar model on Loihi~2 used about 1000 times less energy than on a small GPU~\cite{meyer2024diagonal}); Loihi~2 supports graded spikes~\cite{orchard2021efficient}.
+  \item What stands in the way: Mamba's changing step size; the non-spiking spatial mixer; Intel's software was discontinued, so the model is exported in a vendor-neutral format~\cite{pedersen2024neuromorphic,intel2026lava}.
 }
-The neuromorphic strand rests on properties that a GPU cannot exploit. Neuromorphic processors compute
-only when spikes arrive, so their energy scales with activity rather than frame size~\cite{davies2021advancing};
-the temporal core of the models here is a linear recurrence with a diagonal decay, which decomposes into
-independent per-state updates, and Meyer et al.~\cite{meyer2024diagonal} mapped such a model onto Loihi~2,
-measuring about 1000 times less energy than on a Jetson Orin Nano; and Loihi~2 supports graded spikes, the
-hardware counterpart of the graded readout~\cite{orchard2021efficient}. Three gaps separate this model from
-silicon: Mamba's decay changes with every input, the spatial backbone does not spike, and Intel archived
-its Lava framework in May 2026~\cite{intel2026lava}, so the model is exported through the vendor-neutral
-NIR format~\cite{pedersen2024neuromorphic}.
+Neuromorphic chips could offer what a graphics card cannot. They only do work when spikes arrive, so
+their energy use depends on activity rather than on the size of the input~\cite{davies2021advancing}. The
+memory of the models in this thesis also suits such chips, because it breaks down into many independent
+parts that can each run as a neuron. Meyer et al.~\cite{meyer2024diagonal} ran a similar model on Intel's
+Loihi~2 chip and measured about 1000 times less energy than on a small GPU. Loihi~2 also supports graded
+spikes~\cite{orchard2021efficient}, which match the graded version of this thesis. Three obstacles remain.
+Mamba changes its step size at every input, which such chips cannot easily do. The spatial mixer does not
+spike. And Intel discontinued its Lava software in 2026~\cite{intel2026lava}, so the model is exported in a
+vendor-neutral format~\cite{pedersen2024neuromorphic} that other chips can also read.
 
-\guide{90}{
-  \item What this hybrid can save is small by construction: spikes reach about 1\,\% of the operations (Figure~\ref{fig:spike_fed_ops}).
-  \item Its value is the decomposition: it shows where a fully spiking design should spend effort (sparsity is the expensive property; graded spikes are cheap in accuracy).
-  \item The energy case requires the spatial backbone to spike as well.
+\guide{80}{
+  \item What this hybrid can save is small by design: spikes only reach about 1\,\% of the operations (Figure~\ref{fig:spike_fed_ops}).
+  \item Its value is the breakdown: it shows that silence, not the single bit, is the expensive part, which tells future designs where to focus.
+  \item Real energy savings need the spatial mixer to spike too.
 }
-What the spiking readout of this thesis can save is small, and by construction rather than by result: its
-spikes feed only the first convolutions of the neck, about 1\,\% of the detector's operations
-(Figure~\ref{fig:spike_fed_ops}), so even a silent readout on hardware that skipped every inactive input
-would save at most about 1\,\%. The value of this hybrid is therefore not energy but the decomposition. It
-shows that, on a selective state-space core, the expensive property of spiking is sparsity rather than
-binarisation, which tells a fully spiking design where to spend its effort. The energy case itself
-requires the spatial backbone to spike as well (Section~\ref{sec:future_work}).
+The energy that this hybrid model can save is small by design. Its spikes only reach the first layers of
+the neck, which carry about 1\,\% of the detector's operations (Figure~\ref{fig:spike_fed_ops}). Even if
+the neurons never fired, the saving could not exceed about 1\,\%. The value of the spiking model therefore
+lies elsewhere: it shows that the expensive part of spiking is making the neurons silent, not reducing
+their output to a single bit. This tells the designers of fully spiking detectors where to focus. Real
+energy savings would require the spatial mixer to spike as well (Section~\ref{sec:future_work}).
 
 \begin{figure}[htbp]
     \centering
@@ -2119,13 +2098,13 @@ requires the spatial backbone to spike as well (Section~\ref{sec:future_work}).
 
 \section{Scope Change: the Obstacle-Avoidance Aim}
 \label{sec:scope_change}
-\guide{50}{
-  \item What was descoped: the Thesis~A aim of integration with an obstacle-avoidance controller in simulation and flight; also 1Mpx and embedded latency (Table~\ref{tab:aims}).
+\guide{60}{
+  \item What was removed: connecting the detector to an obstacle-avoidance controller in simulation and flight; also the 1Mpx dataset and tests on embedded hardware (Table~\ref{tab:aims}).
 }
-The fourth aim registered in Thesis~A, integration with an obstacle-avoidance controller in simulation and
-physical micro-UAV testing if feasible, was not undertaken; two parts of the benchmarking aim, the 1Mpx
-dataset and latency on embedded hardware, were also not delivered. Table~\ref{tab:aims} sets every
-registered aim against what this thesis delivers.
+The fourth aim of Thesis~A was to connect the detector to an obstacle-avoidance controller, first in
+simulation and then, if possible, on a real drone. This aim was removed from the scope, together with two
+parts of the benchmarking aim: testing on the larger 1Mpx dataset and measuring speed on embedded hardware.
+Table~\ref{tab:aims} compares every registered aim with what was delivered.
 
 \begin{table}[htbp]
 \centering
@@ -2155,117 +2134,118 @@ registered aim against what this thesis delivers.
 \end{tabularx}
 \end{table}
 
-\guide{150}{
-  \item Why: the detector is trained on a car-mounted dataset; in a simulated UAV loop it would face unseen objects and viewpoints, so a collision rate would measure the domain gap, controller and simulator together, not the backbone.
-  \item The aim also depended on assets outside the project's control (simulation plugins, stereo sensor, UAV hardware, approvals).
-  \item What the effort produced instead; the SWaP motivation is unchanged, only the level of evaluation changed.
+\guide{160}{
+  \item Why: the detector was trained on data from a car; in a drone simulation it would face unfamiliar objects and viewpoints, so a collision rate would mostly measure that mismatch, not the backbone.
+  \item The aim also depended on things outside the project's control (simulation tools, a stereo camera, drone hardware, flight approval).
+  \item What the time produced instead; the motivation is unchanged, only the level of testing changed.
 }
-The descope follows from what a closed-loop demonstration could have measured. The detector is trained on
-Gen1, recorded from a car, with car and pedestrian classes. Integrated in a UAV simulator it would face
-objects and viewpoints it was never trained on, so a collision rate would have measured the domain gap,
-the controller and the simulator together, and could not have isolated the contribution of the backbone,
-which is the question this thesis sets out to answer. The aim also depended on assets outside the
-project's control: event-camera simulation plugins, a stereo event sensor whose integration remained
-unresolved, UAV hardware and flight approvals. The effort was redirected into the controlled study, which
-produced the receptive-field mechanism, the two-regime robustness study and the efficiency frontier, none
-of which a simulated demonstration would have yielded. The micro-UAV motivation is unchanged; what changed
-is that the evaluation is architectural rather than system-level.
+There were two reasons for this decision. First, the detector is trained on Gen1, which was recorded from a
+car and only contains cars and pedestrians. In a drone simulation, it would face objects and viewpoints it
+had never seen. A collision rate measured in that setting would mostly reflect this mismatch, together with
+the controller and the simulator, and could not show what the backbone contributes, which is the question
+of this thesis. Second, the aim depended on things outside the project's control, such as simulation tools
+for event cameras, a stereo event camera that could not be integrated, drone hardware and flight
+approvals. The time was instead spent on the controlled study, which produced the explanation of the
+large-object gain, the two-setting robustness study and the efficiency comparison. None of these would have
+come out of a simulated demonstration. The motivation of making drones see better with less power is
+unchanged; only the level at which the work is tested has changed.
 
 \section{Limitations}
 \label{sec:limitations}
 \guide{230}{
-  \item Single unseeded runs: run-to-run variation unmeasured; only effects above about 1 point reported.
-  \item One dataset with label noise; a fixed representation outside the ablation.
-  \item Initialisation of the spatial mixers differs (ImageNet vs scratch); batch size and precision differ from the baseline.
-  \item Spiking: energy is an estimate, not a measurement; the ladder uses a 100k schedule; resumed runs; threshold and surrogate not varied; the leak was little used.
+  \item Each model trained once: the effect of training randomness is unknown.
+  \item One dataset with incomplete labels; the input format is fixed and not part of the study.
+  \item Different starting points for the spatial mixers (pre-trained vs from scratch); smaller batch and lower precision than the baseline.
+  \item Spiking: energy estimated, not measured; short schedule for the ladder; restarted runs; threshold and training shortcut not varied; the leak was hardly used.
 }
-The results carry the following limitations.
+The results have the following limitations.
 \begin{itemize}
-  \item \textbf{Single runs.} Each model was trained once without a fixed seed, so run-to-run variation is
-        unmeasured; overall differences below about 1~mAP are not treated as findings, and the larger
-        effects also rest on single runs. The bootstrap intervals cover test-set sampling only.
-  \item \textbf{One dataset.} All results are on Gen1: low resolution, an automotive viewpoint, two classes
-        and incomplete labels, which cap the attainable AP. Generalisation to other resolutions, domains and
-        lighting conditions is untested.
-  \item \textbf{Fixed representation.} Every model inherits the stacked histogram, so the representation is
-        not part of the ablation.
-  \item \textbf{Initialisation and recipe.} EventSSM's ResNet-18 starts from ImageNet weights, while
-        PureSSM is trained from scratch, so the comparison isolates the spatial mixer as instantiated,
-        including its initialisation. Pre-training would be expected to favour the convolutional model. The
-        own models also used half the baseline's batch size and bf16 precision, which affects only the
-        comparison with the baseline.
-  \item \textbf{Spiking model.} Its energy is an operation-count estimate with 45-nm constants, not a
-        measurement on neuromorphic silicon, and memory traffic is not modelled. The ladder was trained on a
-        100k-step schedule; the graded runs were resumed after interruptions, which changes their data
-        order; the surrogate gradient and the training threshold were not varied; and the learned leak
-        stayed close to its initial value, so the readout's own temporal dynamics were little used.
+  \item \textbf{Single training runs.} Each model was trained only once, so it is not known how much its
+        result would change with another run. Differences below about one point are therefore not
+        treated as real, and the larger effects also rest on single runs.
+  \item \textbf{One dataset.} All results are on Gen1, which has a low resolution, a car's viewpoint, only
+        two classes and incomplete labels. Whether the findings hold for other cameras, scenes or lighting
+        conditions has not been tested.
+  \item \textbf{Fixed input format.} Every model uses the same stacked histogram, so the input format is not
+        part of the study.
+  \item \textbf{Different starting points and settings.} EventSSM's spatial mixer starts from pre-trained
+        weights, while PureSSM's is trained from scratch, so the comparison includes this difference.
+        Pre-training would normally favour the convolutional model. The new models also used a smaller
+        batch and lower numerical precision than the baseline, which affects only the comparison with the
+        baseline.
+  \item \textbf{Spiking model.} Its energy saving is an estimate from operation counts, not a measurement
+        on a neuromorphic chip, and memory costs are not included. The ladder was trained on a short
+        schedule, the graded runs had to be restarted, and the firing threshold and the training shortcut
+        for spikes were not varied. The neurons' leak also hardly changed, so their own memory was little
+        used.
 \end{itemize}
 
 \section{Future Research Opportunities}
 \label{sec:future_work}
-\guide{210}{
-  \item Four directions, one short paragraph or item each, in order of value.
-  \item 1Mpx~\cite{perot2020learning}: does the large-object advantage grow with resolution? Posed as a falsifiable hypothesis (higher resolution adds temporal noise~\cite{gehrig2022high}); train on it, do not transfer zero-shot.
-  \item Closed-loop evaluation on a UAV once a detector is trained on UAV-view data.
-  \item Neuromorphic deployment on Loihi~2 via INRC and NIR; fixed-step decay.
-  \item Toward a fully spiking detector (SiLIF-type neurons~\cite{fabre2025silif}) and activity-driven tokenisation~\cite{yang2025smamba}; the window latency study.
+\guide{220}{
+  \item Four directions, one short item each, in order of value.
+  \item Higher resolution: train on 1Mpx~\cite{perot2020learning}; test whether the large-object advantage grows; higher-resolution cameras are also noisier~\cite{gehrig2022high}; train rather than transfer.
+  \item A real or simulated drone once a detector is trained on drone-view data.
+  \item Running the spiking model on Loihi~2.
+  \item Fully spiking and event-driven designs (SiLIF~\cite{fabre2025silif}, skipping empty regions~\cite{yang2025smamba}); shorter windows.
 }
 Four directions follow most directly from the results.
 \begin{itemize}
-  \item \textbf{High resolution.} Training on the 1Mpx dataset~\cite{perot2020learning}, with about 12.6
-        times Gen1's pixel count, would test whether the large-object advantage of the state-space mixer
-        grows with resolution. Because higher-resolution event cameras also produce more temporal
-        noise~\cite{gehrig2022high}, the hypothesis is that rate-robust state-space detectors gain most from
-        it; the models should be trained on the new data rather than transferred without retraining.
-  \item \textbf{Closed-loop evaluation.} Once a detector is trained on data from a UAV's viewpoint, an
-        avoidance controller can be evaluated by collision rate and avoidance latency, testing the
-        prediction that the most rate-robust backbone degrades least as flight speed varies.
-  \item \textbf{Neuromorphic deployment.} Running the spiking detector on Loihi~2 through the Intel
-        Neuromorphic Research Community, exported through NIR, requires a fixed-step or on-chip form of the
-        selective decay and a decision on where the non-spiking spatial backbone runs.
-  \item \textbf{Fully spiking and event-driven designs.} Neurons whose state is itself a structured
-        recurrence, such as SiLIF~\cite{fabre2025silif}, could make the temporal axis spiking end to end, and
-        activity-driven tokenisation~\cite{yang2025smamba} could turn the event sparsity that a GPU ignores
-        into saved computation. A sweep of the window from 50 to 5~ms, with fine-tuning, would map the
-        latency--accuracy trade-off of Section~\ref{sec:latency_window}.
+  \item \textbf{Higher resolution.} Training on the 1Mpx dataset~\cite{perot2020learning}, which has about
+        12.6 times as many pixels as Gen1, would show whether the advantage on large objects grows with
+        resolution. Higher-resolution event cameras also produce more noise~\cite{gehrig2022high}, so the
+        robust state space models may benefit most. The models should be trained on the new data rather
+        than reused without retraining.
+  \item \textbf{Testing on a drone.} Once a detector has been trained on data recorded from a drone, it can
+        be connected to an avoidance controller and tested by how often it avoids collisions. This would
+        also test whether the most robust model copes best as flight speed changes.
+  \item \textbf{Neuromorphic hardware.} The spiking model could be run on Loihi~2 through the Intel
+        Neuromorphic Research Community. This would require a fixed step size for the memory and a decision
+        on where the non-spiking spatial mixer should run.
+  \item \textbf{Fully spiking and event-driven designs.} New neuron types whose state works like a state
+        space memory, such as SiLIF~\cite{fabre2025silif}, could make the whole time direction spiking, and
+        processing only the parts of the image where events occur~\cite{yang2025smamba} could turn the
+        sparsity of events into real savings. Testing shorter windows, with retraining, would also show how
+        far the reaction time can be reduced (Section~\ref{sec:latency_window}).
 \end{itemize}
 
 \chapter{Conclusion}
 \label{ch:conclusion}
-\guide{130}{
-  \item Restate what was asked and how it was answered: a controlled study in which only the spatial mixer changes, on a verified baseline.
-  \item The headline numbers: reproduction 47.72; 46.22 vs 46.43; $\mathrm{AP}_L$ +2.95 with a learned field up to twice as wide; 69.7\,\% retention; compensation not reproducible.
+\guide{140}{
+  \item What was asked and how: a controlled study in which only the spatial mixer changes, built on a verified baseline.
+  \item The main results: exact reproduction (47.72); 46.22 vs 46.43; +2.95 on large objects thanks to a learned wider view; 69.7\,\% kept at ten times the rate; the published correction could not be reproduced.
 }
-This thesis asked what a state-space model contributes to event-based object detection once everything
-else in the detector is held fixed. It answered the question with a controlled study on a verified
-baseline: S5-RVT reproduced exactly at 47.72~mAP, and two original detectors that differ only in their
-spatial mixer were trained through the same unmodified pipeline. The convolutional EventSSM reached 46.22
-and the state-space PureSSM 46.43~mAP, equal within single-run variation, but PureSSM detected large
-objects 2.95 points better, and a receptive-field probe linked the gain to a field that the state-space
-mixer learns to make up to twice as wide. PureSSM was also the most robust model tested to a true tenfold
-change in event rate, keeping 69.7\,\% of its accuracy without the inference-time compensation, which, under
-the published artefacts, lowered accuracy rather than raising it.
-
-\guide{90}{
-  \item The efficiency frontier in one sentence; the spiking decomposition in one sentence (costs, sparsity largest, nearly free at 400k, about 1\,\% energy bound).
-}
-The efficiency results form a frontier rather than a ranking: PureSSM needs the least computation, EventSSM
-is the fastest and most energy-efficient on a GPU, and both Mamba models carry a streaming state 31 times
-the baseline's. The spiking variant decomposed the cost of spiking on one membrane into the neuron
-dynamics, sparsity and binarisation, $-0.28$, $-1.52$ and $-0.54$~mAP, with sparsity the only large step;
-on the full schedule its graded readout came within 0.2 points of PureSSM, while its estimated energy
-saving is bounded at about 1\,\% because the spikes reach only the first layers of the neck.
+This thesis asked what a state space model actually contributes to detecting objects with an event camera,
+once every other part of the detector is kept the same. To answer this, it first reproduced the published
+S5-RVT detector exactly, at 47.72~mAP. It then built two new detectors that differ only in their spatial
+mixer and trained them in the same way. The convolutional EventSSM scored 46.22 and the state space PureSSM
+46.43~mAP, which is effectively equal. However, PureSSM detected large objects 2.95 points better, and a
+receptive-field probe showed that it learns to draw on an area of the image up to twice as wide. PureSSM
+was also the most robust model when events arrived ten times faster, keeping 69.7\,\% of its accuracy without
+any correction. The correction proposed in the literature made the models less accurate, and its published
+result could not be reproduced.
 
 \guide{100}{
-  \item The main limitation (single runs on one dataset) and the most important next step (a fully spiking or event-driven backbone, and evaluation beyond Gen1).
-  \item One closing sentence on what the thesis establishes.
+  \item Efficiency in one sentence; the spiking breakdown in one sentence (costs, silence the largest, nearly free with full training, about 1\,\% energy limit).
 }
-The main limitation is that every result rests on single runs on one low-resolution automotive dataset,
-so the next steps are a second seed, training on high-resolution data, and a backbone whose spatial axis is
-also event-driven, which is what the energy case for neuromorphic hardware requires. Within those limits,
-the thesis establishes that a state-space model can serve as the spatial as well as the temporal mixer of
-an event-camera detector, that its advantage lies where its learned receptive field predicts, and that its
-efficiency must be judged against the constraint that binds a given deployment.
+No model was the most efficient on every measure. PureSSM needs the least computation, EventSSM is the
+fastest and uses the least energy on a graphics card, and both Mamba models need 31 times more memory than
+the baseline. The spiking version broke down the cost of spiking into three parts, 0.28, 1.52 and 0.54
+points, and showed that making the neurons silent is the only large cost. After full training, the graded
+version came within 0.2 points of PureSSM, but its possible energy saving is limited to about 1\,\%,
+because its spikes only reach the first layers of the neck.
+
+\guide{110}{
+  \item The main limitation (single runs, one dataset) and the most important next steps (more runs, higher resolution, a spiking or event-driven spatial mixer).
+  \item One closing sentence on what the thesis shows.
+}
+The main limitation is that every result comes from a single training run on one low-resolution dataset
+recorded from a car. The most important next steps are therefore to repeat the training, to train on
+higher-resolution data, and to build a spatial mixer that also works with events or spikes, which is what
+real energy savings on neuromorphic hardware would require. Within these limits, this thesis shows that a
+state space model can process space as well as time in an event-camera detector, that its advantage
+appears exactly where its wider view of the image predicts, and that its efficiency must be judged against
+the main limit of the platform it will run on.
 
 % ===================================================================== BACK MATTER (roman, continuing)
 \clearpage
@@ -2282,11 +2262,12 @@ efficiency must be judged against the constraint that binds a given deployment.
 \label{app:maths}
 
 \section{Continuous-Time SSM}
-\guide{30}{
-  \item The continuous-time linear state-space model; define $u$, $h$, $y$, $A$, $B$, $C$, $D$.
+\guide{60}{
+  \item The basic state space model in continuous time; say what each symbol means in words.
 }
-A linear time-invariant state-space model maps an input signal $u(t)$ to an output $y(t)$ through a hidden
-state $h(t)$, with a state matrix $A$, input matrix $B$, output matrix $C$ and direct feed-through $D$:
+A state space model describes how a hidden state $h(t)$ changes over time in response to an input $u(t)$,
+and how the output $y(t)$ is read from that state. The matrix $A$ controls how the state evolves, $B$ how the
+input enters it, $C$ how the output is read, and $D$ passes part of the input straight to the output:
 
 \begin{align}
     h'(t) &= A h(t) + B u(t) \\
@@ -2295,11 +2276,11 @@ state $h(t)$, with a state matrix $A$, input matrix $B$, output matrix $C$ and d
 
 \section{Discretisation}
 \guide{30}{
-  \item Zero-order-hold discretisation with step $\Delta$ gives $\overline{A}$, $\overline{B}$, then the discrete recurrence.
-  \item The step $\Delta$ is the quantity that inference-time rescaling changes.
+  \item To run on a computer, the model is converted to steps of size $\Delta$; the resulting step-by-step update.
+  \item $\Delta$ is the value that the published correction changes.
 }
-With a zero-order hold over a step $\Delta$, the continuous model becomes the discrete recurrence below;
-the step $\Delta$ is the quantity that the inference-time rescaling of Section~\ref{subsec:f2} changes.
+To run on a computer, the model is converted into a step-by-step update with a step size $\Delta$. The
+step size is the value that the correction tested in Section~\ref{subsec:f2} adjusts.
 
 \begin{align}
     \overline{A} &= \exp(\Delta A) \\
@@ -2312,12 +2293,12 @@ the step $\Delta$ is the quantity that the inference-time rescaling of Section~\
 \end{align}
 
 \section{Mamba Selective Scan}
-\guide{40}{
-  \item In Mamba the step and the projections are functions of the input; the full recurrence is Equation~\eqref{eq:mamba2_state}.
+\guide{50}{
+  \item In Mamba, the step size and the input and output matrices are computed from the input at every step; the full version is Equation~\eqref{eq:mamba2_state}.
 }
-In a selective state-space model such as Mamba, the step and the input and output projections are
-computed from the input at every step, so the decay $\exp(\Delta_k A)$ varies with the data; the Mamba-2
-form used in this thesis is given in Equations~\eqref{eq:mamba2_state}--\eqref{eq:mamba2_out}.
+In Mamba, the step size and the input and output matrices are computed from the current input at every
+step, so the model can decide how much to remember at each moment. The Mamba-2 version used in this thesis
+is given in Equations~\eqref{eq:mamba2_state} and~\eqref{eq:mamba2_out}.
 
 \begin{equation}
     \Delta_k, B_k, C_k = f_\theta(u_k)
@@ -2325,19 +2306,18 @@ form used in this thesis is given in Equations~\eqref{eq:mamba2_state}--\eqref{e
 
 \section{Event Representations}
 \guide{20}{
-  \item One sentence: the representation used, and the one planned in Thesis~A.
+  \item One sentence: the input format used, and the one planned in Thesis~A.
 }
-This section defines the representation used by every model and the one proposed in Thesis~A.
+This section defines the input format used by every model and the one planned in Thesis~A.
 
 \subsection{Stacked Histogram}
 \label{subsec:stacked_hist}
 \guide{60}{
-  \item Each event $k$ (time $t_k$, position $x_k, y_k$, polarity $p_k$) is assigned a bin $b_k$ within its window; counts per polarity and bin, capped at $c = 10$; channels stacked polarity-major (channel $pB+b$); stored as 8-bit integers.
+  \item Each event is placed in one of 10 time slices of its window; events are counted per polarity, slice and pixel, up to 10; the 20 resulting images are stacked and stored as small integers.
 }
-Each event $k$ with timestamp $t_k$, position $(x_k, y_k)$ and polarity $p_k$ is assigned to one of $B=10$
-bins of its window, and the events are counted per polarity, bin and pixel, with the count capped at
-$c=10$. The two polarities and ten bins are stacked polarity-major into $2B = 20$ channels (channel
-$pB+b$) and stored as 8-bit integers.
+Each event $k$, with time $t_k$, position $(x_k, y_k)$ and polarity $p_k$, is placed into one of $B=10$ time
+slices of its window. The events are then counted for each polarity, time slice and pixel, with each count
+capped at $c=10$. The resulting 20 count images are stacked into one input and stored as small integers.
 
 \begin{equation}
   b_k = \min\!\left(\left\lfloor B\,\frac{t_k - t_{\min}}{\max(t_{\max}-t_{\min},\,1)}\right\rfloor,\; B-1\right),
@@ -2351,10 +2331,10 @@ $pB+b$) and stored as 8-bit integers.
 
 \subsection{Voxel Grid (proposed in Thesis A; not used)}
 \guide{40}{
-  \item The voxel grid interpolates each event's signed polarity between neighbouring bins; proposed in Thesis~A, not used (Section~\ref{sec:repr}).
+  \item The voxel grid spreads each event over the two nearest time slices; planned in Thesis~A, not used (Section~\ref{sec:repr}).
 }
-The voxel grid proposed in Thesis~A instead interpolates each event's signed polarity linearly between the
-two nearest of $B$ bins. It was not used, because every model inherits the stacked histogram of the frozen
+The voxel grid planned in Thesis~A instead spreads each event over the two nearest time slices, weighted
+by how close it is to each. It was not used, because every model uses the stacked histogram of the shared
 pipeline (Section~\ref{sec:repr}).
 
 \begin{equation}
@@ -2364,21 +2344,21 @@ pipeline (Section~\ref{sec:repr}).
 \chapter{Reproducibility}
 \label{app:repro}
 \guide{160}{
-  \item Pinned environment in \texttt{env/} (Table~\ref{tab:env}); the runbooks in \texttt{docs/runbooks/}.
-  \item Two pitfalls: install the Mamba kernels with \texttt{--no-deps}; set \texttt{TORCH\_FORCE\_NO\_WEIGHTS\_ONLY\_LOAD=1} to load Lightning checkpoints.
-  \item The reference implementation is cloned at a pinned revision; every local change is kept as a patch; the evaluated checkpoints and their hashes (Table~\ref{tab:ckpts}); the test suite.
+  \item The fixed software versions in \texttt{env/} (Table~\ref{tab:env}); step-by-step guides in \texttt{docs/runbooks/}.
+  \item Two common pitfalls when installing and loading the models.
+  \item The original code is kept at a fixed version with every change saved as a patch; the trained models and their checksums (Table~\ref{tab:ckpts}); the automated tests.
 }
-Everything needed to reproduce the results is in the project repository. The software environment is
-pinned in \texttt{env/} (Table~\ref{tab:env}), and runbooks in \texttt{docs/runbooks/} cover environment
-setup on a clean machine, re-running the baseline reproduction and training on a rented GPU. Two
-environment pitfalls are documented there because they fail silently or confusingly: the Mamba kernels
-must be installed without dependency resolution (\texttt{--no-deps --no-build-isolation}), since a default
-install replaces PyTorch and breaks the Blackwell build, and loading full Lightning checkpoints under
-PyTorch~2.6 or later requires \texttt{TORCH\_FORCE\_NO\_WEIGHTS\_ONLY\_LOAD=1}. The reference implementation
-is cloned at a pinned revision, and every local change to it is stored as a patch and re-applied after a
-re-clone; the frozen pipeline itself is not edited. The evaluated checkpoints are identified by their
-hashes in Table~\ref{tab:ckpts}, and an automated test suite of about 500 tests checks the state handling,
-the agreement of training and streaming evaluation, and the null test of the spiking model.
+Everything needed to repeat the experiments is stored in the project repository. The exact software
+versions are fixed in the \texttt{env/} folder (Table~\ref{tab:env}), and step-by-step guides in
+\texttt{docs/runbooks/} explain how to set up a new computer, repeat the baseline reproduction and train on
+a rented graphics card. Two pitfalls are documented there because they fail in confusing ways. The Mamba
+code must be installed without letting the installer change other packages, because a default
+installation replaces PyTorch with an incompatible version. Loading the trained models with recent
+versions of PyTorch also requires a specific setting (\texttt{TORCH\_FORCE\_NO\_WEIGHTS\_ONLY\_LOAD=1}). The
+original S5-RVT code is kept at a fixed version, and every change made to it is saved as a patch that can
+be applied again. The trained models are identified by checksums in Table~\ref{tab:ckpts}, and the exact
+settings of every model are stored with the code. About 500 automated tests check that the code behaves as
+intended.
 
 \begin{table}[htbp]
 \centering
@@ -2420,12 +2400,12 @@ PureSSM & run \texttt{aekvsalq}, rented RTX~5090 & 310k (best val.) & \texttt{a0
 \chapter{Project Timeline}
 \label{app:timeline}
 \guide{50}{
-  \item The plan registered in Thesis~A (Table~\ref{tab:timeline}, Figure~\ref{fig:gantt}) against the timeline as executed (Figure~\ref{fig:gantt_actual}); the main deviation: the integration phases replaced by the controlled study and the spiking model.
+  \item The plan from Thesis~A (Table~\ref{tab:timeline}, Figure~\ref{fig:gantt}) against what actually happened (Figure~\ref{fig:gantt_actual}); the main change: the drone integration phases were replaced by the controlled study and the spiking model.
 }
 Table~\ref{tab:timeline} and Figure~\ref{fig:gantt} show the plan registered in Thesis~A, and
-Figure~\ref{fig:gantt_actual} the timeline as executed, reconstructed from the repository history. The main
-deviation is that the simulation-integration and hardware-testing phases were replaced by the controlled
-architectural study and the spiking model (Section~\ref{sec:scope_change}).
+Figure~\ref{fig:gantt_actual} shows what actually happened, reconstructed from the project's history. The
+main change is that the planned simulation and drone-testing phases were replaced by the controlled study
+of the backbones and by the spiking model (Section~\ref{sec:scope_change}).
 
 \begin{table}[htbp]
     \centering
@@ -2463,10 +2443,10 @@ architectural study and the spiking model (Section~\ref{sec:scope_change}).
 \chapter{Risk Assessment}
 \label{app:risk}
 \guide{20}{
-  \item The main risks of Thesis~C, their likelihood and impact, and how each was mitigated (Table~\ref{tab:risk_assessment}).
+  \item The main risks of Thesis~C, how likely and serious each was, and how each was handled (Table~\ref{tab:risk_assessment}).
 }
-Table~\ref{tab:risk_assessment} lists the main risks of Thesis~C with their likelihood, impact and
-mitigation, as assessed during the project.
+Table~\ref{tab:risk_assessment} lists the main risks of Thesis~C, how likely and how serious each one was,
+and how each was handled during the project.
 
 \begin{table}[htbp]
     \centering
