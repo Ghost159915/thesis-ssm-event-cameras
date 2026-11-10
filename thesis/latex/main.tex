@@ -1109,7 +1109,7 @@ Checkpoint (step)       & published & 320k & 310k & 350k \\
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{images/fig_training_400k.pdf}
-    \caption{The 400k-step runs of EventSSM and the graded readout against training step: validation (a) mAP,
+    \caption{The 400k-step runs of EventSSM, PureSSM and the graded readout against training step: validation (a) mAP,
     (b) large-object and (c) small-object AP; training (d) total, (e) IoU and (f) objectness loss, raw (faint)
     and smoothed. Triangles in (d) mark the steps from which the graded run was resumed (180k and 340k).}
     \label{fig:training_400k}
@@ -1117,9 +1117,10 @@ Checkpoint (step)       & published & 320k & 310k & 350k \\
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{images/fig_training_400k_time.pdf}
-    \caption{(a) Validation mAP of the same two runs against training wall-clock time on the RTX~5070~Ti; the
-    steps repeated after each resume are excluded. (b) The learning-rate schedule (OneCycle over 400k steps),
-    identical for both runs.}
+    \caption{(a) Validation mAP of the same three runs against training wall-clock time; EventSSM and the graded
+    readout trained on the local RTX~5070~Ti, PureSSM on a rented RTX~5090, so its hours are not directly comparable.
+    The steps repeated after each resume are excluded. (b) The learning-rate schedule (OneCycle over 400k steps),
+    identical for all three runs.}
     \label{fig:training_400k_time}
 \end{figure}
 
