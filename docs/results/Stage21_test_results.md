@@ -108,3 +108,75 @@ session variation; compare models within one session only.
   sparse MACs) the driven ops are 10.1 M ⇒ estimated **saving 0.84 %** (22.81 vs 23.01 mJ/frame; ceiling 1.04 %).
   Confirms the pre-registered bound: the energy case for choice C is not an op-count saving on dense hardware; it is
   neuromorphic deployment of the temporal readout (future work). Memory traffic is not modelled.
+
+## 6. Overnight 2026-10-17 chain: bootstrap CIs, threshold sweeps, per-arm SOP (read 2026-11-10)
+
+Chain: `code/event_ssm/scripts/overnight_2026-10-17_{gpu,bootstrap}.sh` (sha `279a8d8`). **Three of five parts
+finished; two did not** (see 6.4).
+
+### 6.1 Bootstrap CIs on the 100k ladder (`results/stage21_bootstrap/ladder_100k/bootstrap.{md,json}`)
+
+Paired sequence-level bootstrap, B = 1000, seed 0, 470 test recordings, 95 % percentile intervals (test-set sampling
+uncertainty only; one training seed per arm). Point estimates reproduce §1 exactly.
+
+| Rung (b − a) | What it costs | ΔAP [95 % CI] | ΔAP_S | ΔAP_M | ΔAP_L |
+|---|---|---|---|---|---|
+| PureSSM → analog | LIF dynamics (leak + reset) | **−0.28 [−0.63, +0.05]** | −0.78 [−1.08, −0.45] | +0.03 [−0.74, +0.70] | −0.21 [−2.90, +3.01] |
+| analog → graded | sparsity | **−1.52 [−1.98, −1.06]** | −1.88 [−2.24, −1.44] | −1.23 [−1.91, −0.53] | −4.00 [−7.93, +0.45] |
+| graded → spike | binarisation | **−0.54 [−1.07, −0.07]** | −0.06 [−0.63, +0.32] | −1.06 [−1.87, −0.37] | +2.74 [−0.14, +6.19] |
+
+- The pre-registered ordering **analog ≥ graded > spike holds with both strict steps' intervals excluding zero**.
+  The dynamics rung's interval includes zero ⇒ the LIF dynamics cost is not distinguishable from zero on this test set.
+- Sparsity is the dominant cost (≈ 3× binarisation). AP_L intervals are wide (±3–4 AP) ⇒ no AP_L claim per rung.
+- Per-arm AP with CIs: PureSSM 42.52 [40.40, 44.39], analog 42.25 [40.14, 43.99], graded 40.72 [38.66, 42.33],
+  spike 40.18 [38.09, 41.88]. Per-arm intervals overlap; only the *paired* gaps are tight.
+
+### 6.2 Post-hoc threshold sweeps, 100k spike + graded (`results/stage22/threshold_sweep/`)
+
+Same weights re-evaluated at θ ∈ {0.5, 0.75, 1.0, 1.5, 2.0, 3.0} (trained at θ = 1.0 only). θ = 1.0 reproduces the
+canonical test AP for both arms (40.18 / 40.72) ⇒ preflight identity holds. Figure: `threshold_pareto.{png,svg,json}`.
+
+| θ | spike AP | spike rate | graded AP | graded rate |
+|---|---|---|---|---|
+| 0.5 | 38.57 | 47.6 % | 39.87 | 26.5 % |
+| 0.75 | 39.97 | 44.5 % | 40.68 | 21.1 % |
+| **1.0** | **40.18** | **41.5 %** | **40.72** | **17.3 %** |
+| 1.5 | 37.84 | 35.8 % | 38.66 | 12.2 % |
+| 2.0 | 28.35 | 30.9 % | 34.61 | 8.9 % |
+| 3.0 | 23.04 | 23.7 % | 27.79 | 5.3 % |
+
+(rate = spike-weighted nonzero rate, i.e. the fraction of spike-fed operations driven.)
+- **The trained threshold is the AP maximum for both arms**; lowering θ adds firing without accuracy, raising θ cuts
+  firing at a steep accuracy cost (spike −2.3 AP at θ = 1.5, −11.8 at θ = 2). No post-hoc operating point dominates
+  the trained one ⇒ a lower-rate operating point would need retraining at that θ, not a post-hoc change.
+- The binary arm fires ≈ 2.4× more than graded at θ = 1 (41.5 vs 17.3 %): binarisation is compensated by rate.
+
+### 6.3 Per-arm SOP benchmarks, 100k (`results/stage22/{analog,graded,spike}_100k/`)
+
+Spiking model only, one session, VS Code closed, no idle-drift flag. Tables `efficiency_table.md` + `sop_table.md`
+(written 2026-11-10 by `stage10_report.py --json … --out …`).
+
+| Arm | Op class | Nonzero rate s2 / s3 / s4 | Driven ops (M of 52.4) | Est. mJ/frame (dense twin 23.007) | Saving | p50 full | GPU J/frame |
+|---|---|---|---|---|---|---|---|
+| analog | MAC | 1.000 / 1.000 / 1.000 | 52.43 | 23.009 | −0.01 % | 27.34 ms | 0.716 |
+| graded | sparse MAC | 0.257 / 0.125 / 0.100 | 9.05 | 22.809 | 0.86 % | 27.10 ms | 0.704 |
+| spike | AC | 0.484 / 0.357 / 0.391 | 21.74 | 22.787 | 0.96 % | 27.52 ms | 0.714 |
+
+- Ceiling 1.04 % (spike-fed share 1.05 % of 5.00 G MACs) for every arm. The energy side of the ladder is
+  analog ≈ 0 → graded 0.86 % → spike 0.96 %: the spike arm saves slightly more than graded despite 2.4× the firing
+  because its ops are accumulates (0.9 pJ) rather than MACs (4.6 pJ).
+- Latency and measured GPU energy are identical across arms within noise (27.1–27.5 ms, 0.70–0.72 J) ⇒ on a GPU the
+  sparsity is invisible, as pre-registered. Do not compare these absolute numbers with §5 (different session).
+- ⚠️ The `mAP/GFLOP` column in these per-arm tables is AP-fraction / GFLOP (0.040–0.042) because `--spikingssm-test-ap`
+  was given as a fraction; in the report's convention (AP × 100) it is 4.21 / 4.06 / 4.01.
+
+### 6.4 What did not finish
+
+1. **True-rate sweeps (graded 100k, spike 100k, graded 400k, PureSSM 100k): no output.** `data/gen1_stage9/` (the
+   raw test `.dat.h5` and the `preproc_tr/` 2×/10× renders) no longer exists on GhostMachine, so
+   `stage9_truerate_sweep.sh` found 0/469 rendered sequences and skipped every eval (it skips unrendered rates by
+   design, so the chain moved on silently). Redo = `stage9_prep_test.sh` (extract `data/test_{a,b}.7z` + dat→h5) →
+   `stage9_render_truerate.sh` (2× ≈ 26 GB, 10× ≈ 35 GB) → the four sweeps (≈ 3 h each at 10×).
+2. **`models_400k` bootstrap: no output.** `ladder_100k` finished 06:43; `models_400k` (≈ 5 h) was then running when
+   the machine went down (next boot 2026-10-17 12:05; the system journal keeps no entries for that night, so the
+   cause is unknown). Redo = the second command of `overnight_2026-10-17_bootstrap.sh` (CPU only; all captures intact).

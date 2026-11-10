@@ -1,0 +1,5 @@
+| Model | Op class | Nonzero rate per stage (min–max over clips) | Spike-fed MACs (M) | Driven ops (M) | Dense MACs (G) | Est. energy (mJ/frame) | Dense twin (mJ/frame) | Saving (%) | Ceiling (%) |
+|---|---|---|---|---|---|---|---|---|---|
+| SpikingSSM (ours, BiMamba + LIF) [graded_s234] | MAC | s2 0.257 (0.215–0.285) non-binary, s3 0.125 (0.122–0.125) non-binary, s4 0.100 (0.100–0.100) non-binary | 52.43 | 9.05 | 5.002 | 22.809 | 23.007 | 0.86 | 1.04 |
+
+*Operation-count estimate. Driven ops = nonzero rate × spike-fed MACs, priced as accumulates (AC: binary spikes, no residual) or as MACs (graded, analog, residual). Each LIF neuron costs one MAC per frame. Dense twin = the same network priced dense (PureSSM-equivalent). Ceiling = the saving at zero activity. Memory traffic is not modelled; sparse-MAC savings assume zero-skipping hardware. Constants: Horowitz, ISSCC 2014, 45 nm, 32-bit float: MAC 4.6 pJ (3.7 mult + 0.9 add), AC 0.9 pJ; operation-count estimate, memory traffic not modelled.*
