@@ -641,14 +641,44 @@ designed to measure exactly that decomposition (Section~\ref{sec:spiking_results
 
 \chapter{Methodology}
 \label{ch:method}
+This chapter covers how the detectors were built, trained and evaluated. Section~\ref{sec:repr} explains how
+the event data is represented for the models, Section~\ref{sec:frozen_pipeline} covers the pipeline that all
+models share, and Section~\ref{sec:models} describes the individual models. Sections~\ref{sec:dataset},
+\ref{sec:training} and~\ref{sec:eval_protocol} then cover the data, how the models are trained, and how
+accuracy, robustness and efficiency are measured. Section~\ref{sec:implementation} describes the hardware
+and software used.
 
 \section{Event Representation}
 \label{sec:repr}
-% TODO-Event Representation
+Every model takes as input the stacked-histogram representation of RVT~\cite{gehrig2023recurrent}. The
+asynchronous event stream is cut into 50-ms windows, and within each window the events are counted per
+pixel, separately for each polarity and for each of ten equal time bins. This gives $2 \times 10 = 20$
+channels at the sensor's resolution, $(20, 240, 304)$
+(Equations~\eqref{eq:sh_bin}--\eqref{eq:sh_count}, Appendix~\ref{app:maths}). Each count is capped at 10,
+and the pipeline zero-pads the tensor to $(20, 256, 320)$. The feature maps passed to the detection neck
+are then $32\times40$, $16\times20$ and $8\times10$ at strides 8, 16 and 32. The representation is sparse:
+on average only 1.5\,\% of its entries are non-zero (between 0.2 and 4.0\,\% per recording, depending on
+scene activity), and the cap is reached by only about 0.2\,\% of the non-zero entries.
 
+This representation was chosen to keep the architectural study controlled. Stacked histograms are the
+input of the S5-RVT baseline, which was reproduced in Thesis~A, and keeping the same representation is
+essential for a fair comparison between the backbones of the baseline and the new models. Alternative
+representations are reviewed in Chapter~\ref{ch:lit}. The choice has two main consequences. The detector
+makes one prediction every 50~ms, or 20 times per second, and its response can never be faster than one
+window (Section~\ref{sec:latency_window}).
 \section{The Frozen Detection Pipeline}
 \label{sec:frozen_pipeline}
-% TODO-The Frozen Detection Pipeline
+A key design choice of this thesis is that the detection pipeline around the backbone never changes. Every
+model reuses the same S5-RVT pipeline: the data loading, the neck, the detection head, the loss, the
+evaluation and the training loop are all frozen and kept the same for every model. Through a configuration
+setting and a short registration step, the baseline's backbone can be replaced with a new one, while the
+original baseline code stays unedited. Figure~\ref{fig:spiking_arch}(a) shows the shared pipeline. Because
+nothing else in the pipeline changes, any difference in results can only come from the backbone. EventSSM
+and PureSSM differ only in their spatial mixer, so a difference between them can be traced back to that
+single component. The comparison between the baseline and the new models is less strict than the
+comparison between the new models themselves. Both of the baseline's mixers differ from those of the new
+models, and the new models were trained with a batch size of 4 instead of 8, to fit the memory of the local
+graphics card, and with a lower numerical precision (Section~\ref{sec:training}).
 
 \begin{figure}[htbp]
     \centering
@@ -664,10 +694,34 @@ designed to measure exactly that decomposition (Section~\ref{sec:spiking_results
 \end{figure}
 
 \subsection{Neck, Head and Loss}
-% TODO-Neck, Head and Loss
+\label{subsec:neck_head}
+The neck combines the feature maps from backbone stages 2, 3 and 4. It passes information back and forth
+between the coarse and the fine maps, so that every output combines precise location with wider context.
+YOLOX is used as the detection head~\cite{ge2021yolox}. At every cell of each feature map, it predicts how
+likely it is that an object is present, which class the object belongs to, and where its box lies. During
+training, a matching rule called SimOTA decides which cells are responsible for which object. The training
+loss is the sum of three terms:
+\begin{equation}
+  \mathcal{L} \;=\; \mathcal{L}^{\mathrm{BCE}}_{\mathrm{obj}} + \mathcal{L}^{\mathrm{BCE}}_{\mathrm{cls}}
+  + 5\,\big(1 - \mathrm{IoU}^2\big).
+  \label{eq:loss}
+\end{equation}
+The first two terms measure the errors in the object and class predictions, while the third measures how
+well the predicted box overlaps the true bounding box from the dataset. The third term is weighted five
+times more strongly than the other two.
 
 \subsection{The Two Mixing Axes}
-% TODO-The Two Mixing Axes
+\label{subsec:two_axes}
+Each stage of the backbone processes information in two separate directions. The spatial mixer looks
+across the image one frame at a time and does not keep a memory between frames. The temporal mixer, on the
+other hand, looks along the time axis at each position in the image. It only looks at past frames, not
+future ones, and keeps a memory that is carried from one clip of frames to the next. Because the two mixers
+are completely separate, either one can be changed without affecting the other, and this is how the models
+in Section~\ref{sec:models} differ from each other. Because only stages 2, 3 and 4 feed the neck, the
+temporal blocks are only present on those stages. Each temporal block branches off its stage: its output
+goes to the neck, while the next spatial stage continues from the frame-by-frame features. This differs
+from RVT~\cite{gehrig2023recurrent}, where the memory output of each stage feeds the next stage. The design
+is the same in all of the new models, so it does not affect the comparison between them.
 
 \section{Model Architectures}
 \label{sec:models}
