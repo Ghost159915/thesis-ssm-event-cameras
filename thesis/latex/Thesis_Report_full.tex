@@ -345,7 +345,8 @@ A notable limitation of current event cameras, however, is their relatively low 
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.75\textwidth]{images/fig_event_camera_principle.png}
-    \caption[Operating principle of a dynamic vision sensor]{Operating principle of a Dynamic Vision Sensor (DVS). Each pixel independently and asynchronously fires an event when the change in log luminance exceeds a contrast threshold $C$, producing a stream of events $(x, y, t, p)$ with microsecond temporal resolution. Adapted from \cite{gallego2020event}.}
+    \caption[How an event camera works]{How an event camera works. Each pixel reports an event $(x, y, t, p)$ on its own whenever its brightness
+        changes by more than a threshold $C$. Adapted from \cite{gallego2020event}.}
     \label{fig:dvs_principle}
 \end{figure}
 
@@ -359,7 +360,8 @@ Voxel grids, proposed by Zhu et al. \cite{zhu2019unsupervised}, address this lim
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.75\textwidth]{images/fig_voxel_grid.png}
-    \caption[Voxel grid event representation]{Voxel grid event representation. Events within a fixed time window are accumulated into $B$ temporal bins, producing a tensor of shape $B \times H \times W$ that preserves temporal ordering. Adapted from \cite{zhu2019unsupervised}.}
+    \caption[Voxel grid event representation]{A voxel grid: the events of a time window are sorted into $B$ time bins, giving a $B \times H \times W$
+        input. Adapted from \cite{zhu2019unsupervised}.}
     \label{fig:voxel_grid}
 \end{figure}
 
@@ -430,7 +432,9 @@ Because the parameters now vary with the input, the model can no longer be compu
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.85\textwidth]{images/fig_mamba_architecture.png}
-    \caption[The Mamba selective state-space architecture]{The Mamba selective state space model architecture. Input-dependent parameters $\Delta_t$, $B_t$, and $C_t$ are computed as functions of the input $x_t$, enabling content-aware selective retention of long-range temporal context while maintaining linear computational complexity. Adapted from \cite{gu2023mamba}.}
+    \caption[The Mamba block]{The Mamba block. Its parameters $\Delta_t$, $B_t$ and $C_t$ depend on the input $x_t$, so the model chooses
+        what to remember, at a cost that grows only linearly with sequence length. Adapted from
+        \cite{gu2023mamba}.}
     \label{fig:mamba_arch}
 \end{figure}
 
@@ -519,10 +523,8 @@ reported on Gen1 against the non-spiking models of this thesis.
 \begin{table}[htbp]
 \centering
 \small
-\caption[Spiking and non-spiking detectors on Gen1]{Object detection on Prophesee Gen1, COCO mAP@[0.50:0.95] on the test split. Ranges span the
-reported model sizes. $T\times D$: timesteps $\times$ virtual timesteps of integer-valued training
-($D=1$: binary spikes throughout). SpikeDet is a preprint (version 5, 2026); its first version, under
-the title SpikSSD, reported 40.8.}
+\caption[Spiking and non-spiking detectors on Gen1]{Published detectors on the Gen1 test set (mAP). Ranges cover different model sizes. $T\times D$: time steps
+    $\times$ sub-steps of a spiking model ($D=1$: plain binary spikes).}
 \label{tab:snn_landscape}
 \begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}Xccl@{}}
 \toprule
@@ -588,7 +590,8 @@ summarised in Table~\ref{tab:spiking_ssm}.
 \begin{table}[htbp]
 \centering
 \small
-\caption[Spiking state-space models]{Spiking state-space models. All except the last row target one-dimensional sequence tasks.}
+\caption[Spiking state space models]{Spiking state space models in the literature. All but the last were built for one-dimensional sequences, not
+    images.}
 \label{tab:spiking_ssm}
 \begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}Xl@{}}
 \toprule
@@ -767,13 +770,8 @@ lower numerical precision (Section~\ref{sec:training}).
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{images/fig_spiking_architecture.png}
-    \caption[Detector pipeline, mixing axes and LIF readout]{(a) The shared detector pipeline. The backbone is the only part that differs between
-    models; the neck, head, loss, data pipeline and evaluator are frozen. Within a backbone stage
-    there are two orthogonal mixing axes: a \emph{spatial} mixer acting within a frame (time folded
-    into the batch, stateless) and a \emph{temporal} mixer acting across frames at each pixel (causal,
-    state carried across clips). (b) Where each model intervenes: PureSSM changes the spatial axis,
-    the spiking model changes the temporal one. (c) The LIF readout; the membrane trace is generated
-    by executing the implementation itself rather than drawn by hand.}
+    \caption[The detector and the spiking readout]{The detector. (a) The pipeline shared by all models. (b) The part each model changes. (c) The spiking (LIF)
+        readout.}
     \label{fig:spiking_arch}
 \end{figure}
 
@@ -835,8 +833,8 @@ convolutional mixer with a state space one. SpikingSSM adds a spiking output to 
 
 \begin{table}[htbp]
 \centering
-\caption[The five models compared]{The five models. For the own models, the component in bold is what changes relative to the row
-above; S5-RVT and EventSSM differ in both mixers.}
+\caption[The five models compared]{The five models compared. Bold: the one part that changes from the row above. EventSSM differs from S5-RVT
+    in both parts.}
 \label{tab:four_models}
 \begin{tabularx}{\textwidth}{@{}lXXX@{}}
 \toprule
@@ -1045,8 +1043,7 @@ boxes too small to detect reliably~\cite{gehrig2023recurrent}. In total there ar
 \begin{table}[htbp]
 \centering
 \small
-\caption[The Prophesee Gen1 dataset]{Gen1 splits as consumed by the training and evaluation pipeline (after RVT preprocessing and
-the size filter). ``Timestamps'' counts the distinct annotated instants.}
+\caption[The Gen1 dataset]{The Gen1 dataset after preprocessing. Timestamps: moments that have labelled boxes.}
 \label{tab:gen1_stats}
 \begin{tabular}{lrrrrrr}
 \toprule
@@ -1105,9 +1102,8 @@ stopped, keeping the model's memory. The other half start at a random point with
 \begin{table}[htbp]
 \centering
 \small
-\caption[Training recipe]{Training recipe of the own models against the published S5-RVT baseline (published column
-from~\cite{gehrig2023recurrent,zubic2024state} and the authors' released configuration). Rows marked
-$\dagger$ are the only differences.}
+\caption[Training settings]{Training settings of the new models and of the published S5-RVT~\cite{gehrig2023recurrent,zubic2024state}.
+    Only the rows marked $\dagger$ differ.}
 \label{tab:recipe}
 \begin{tabularx}{\textwidth}{l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X}
 \toprule
@@ -1301,7 +1297,7 @@ appear large.
 
 \begin{table}[htbp]
 \centering
-\caption[Gen1 test accuracy of S5-RVT, EventSSM and PureSSM]{Gen1 test-set accuracy. Best own-model per row in bold.}
+\caption[Test accuracy of S5-RVT, EventSSM and PureSSM]{Accuracy on the Gen1 test set (mAP; higher is better). Bold: best of the new models.}
 \label{tab:accuracy}
 \begin{tabular}{lccc}
 \toprule
@@ -1334,10 +1330,9 @@ why it occurs.
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{images/fig_accuracy_by_size.pdf}
-    \caption[Test accuracy by object size relative to S5-RVT]{Gen1 test AP of the own 400k-step models minus that of S5-RVT, over all objects and by object size
-    (COCO mAP@[0.50:0.95]); S5-RVT's own AP is given under each group. The three models are within 0.5 of each
-    other on small and medium objects; on large objects PureSSM's gap ($-3.0$) is half of EventSSM's ($-6.0$), and
-    the graded SpikingSSM's ($-1.0$) is the smallest (Section~\ref{subsec:spk_full}).}
+    \caption[Accuracy by object size, relative to S5-RVT]{Test mAP of the new models minus that of S5-RVT, overall and by object size; below zero is worse. On small
+        and medium objects all models are close. On large objects PureSSM halves EventSSM's gap, and the
+        spiking model's gap is the smallest.}
     \label{fig:acc_by_size}
 \end{figure}
 
@@ -1357,8 +1352,8 @@ the convolutional mixer hardly changed.
 
 \begin{table}[htbp]
 \centering
-\caption[Effective receptive field extent by stage]{Trained effective receptive field, and the change induced by training, measured against a
-random initialisation of the same architecture.}
+\caption[Receptive field size by stage]{How wide an area of the image each backbone draws on ($\sigma$, in pixels), and how much training widened
+    it.}
 \label{tab:erf}
 \begin{tabular}{lccc}
 \toprule
@@ -1389,10 +1384,8 @@ it was compared with is not the ImageNet version that EventSSM started from.
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.85\textwidth]{images/fig_erf_trained.png}
-    \caption[Effective receptive fields of the trained backbones]{Effective receptive field of the trained spatial backbones at the frame centre, stages 3
-    and 4: gradient magnitude of the centre feature with respect to the input (log colour scale, averaged
-    over 8 random inputs). $\sigma$ is the RMS spatial spread in input pixels. The BiMamba field is wider
-    at both stages and less concentrated on the centre.}
+    \caption[Receptive fields of the trained backbones]{Which input pixels influence the centre of the image in each trained backbone (brighter: more influence).
+        $\sigma$ measures the spread. The state space backbone (BiMamba) draws on a wider area.}
     \label{fig:erf}
 \end{figure}
 
@@ -1420,9 +1413,8 @@ therefore copes best with crowded frames, and the baseline with sparse ones.
 
 \begin{table}[htbp]
 \centering
-\caption[Robustness at a fixed cadence with a varied window]{Accumulation-window sweep (COCO mAP $\times$ 100). Training operating point is $1\times$.
-PureSSM is given to two decimals; its $1\times$ value (46.45) is measured on the re-preprocessed test set
-used for the sweep and differs from the canonical 46.43 only through that preprocessing.}
+\caption[Robustness when the window length changes]{Setting 1: a frame every 50~ms, each collecting events over a shorter or longer window (mAP). Training used
+    $1\times$. PureSSM's $1\times$ value comes from the rebuilt test data (46.43 on the original).}
 \label{tab:regime1}
 \begin{tabular}{llccc}
 \toprule
@@ -1457,12 +1449,9 @@ directly.
 
 \begin{table}[htbp]
 \centering
-\caption[Robustness under a true event-rate change]{True event-rate change without $\Delta t$ compensation (Gen1 test set, COCO mAP $\times$ 100).
-Retention $=\mathrm{mAP}@\text{rate} \div \mathrm{mAP}@1\times$. The $1\times$ values of the state space
-models are measured on the re-preprocessed test set used for the sweep (Table~\ref{tab:regime1}). RVT's
-ConvLSTM is the published checkpoint~\cite{gehrig2023recurrent}, evaluated here on the same true-rate test
-set; Zubi\'{c} et al.~\cite{zubic2024state} report 8.35~mAP (17.7\,\%) for it at 200\,Hz, obtained with
-preprocessing that was not released (Section~\ref{subsec:f2}).}
+\caption[Robustness when frames arrive faster]{Setting 2: frames really arrive 2 or 10 times faster (mAP, no correction). Retention: share of the model's
+    own $1\times$ accuracy that is kept. The ConvLSTM is RVT's published model~\cite{gehrig2023recurrent};
+    Zubi\'{c} et al.~\cite{zubic2024state} report that it keeps only 17.7\,\%, which is not reproduced here.}
 \label{tab:regime2}
 \begin{tabular}{lcccc}
 \toprule
@@ -1480,13 +1469,10 @@ true-$10\times$ retention     & 80.3\% & 62.2\% & 63.0\% & 69.7\% \\
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{images/fig_robustness.pdf}
-    \caption[Temporal robustness under event-rate change]{Temporal robustness as retention, the mAP at each operating point as a percentage of the model's
-    own $1\times$ mAP. (a) Fixed 50-ms cadence with a shortened or lengthened accumulation window
-    (Table~\ref{tab:regime1}). (b) True event-rate change (Tables~\ref{tab:regime2} and~\ref{tab:dt_comp}):
-    solid lines without and dashed lines with inference-time $\Delta t$ compensation; the black line is RVT's
-    ConvLSTM (published checkpoint) measured on the same test set. Stars are the values published by
-    Zubi\'{c} et al.~\cite{zubic2024state} for a tenfold rate, not reproduced on this test set: S5 with
-    compensation (83.5\,\%) and RVT's ConvLSTM (17.7\,\%).}
+    \caption[Robustness to changes in event rate]{Share of each model's normal accuracy that is kept when the event rate changes. (a) Setting 1: longer or
+        shorter windows. (b) Setting 2: frames really arrive faster; dashed lines use the published
+        correction, the black line is RVT's ConvLSTM. Stars: published values~\cite{zubic2024state}, not
+        reproduced here.}
     \label{fig:robustness}
 \end{figure}
 
@@ -1514,9 +1500,8 @@ models it keeps 80.3\,\% (Table~\ref{tab:regime2}).
 
 \begin{table}[htbp]
 \centering
-\caption[Effect of inference-time \texorpdfstring{$\Delta t$}{Delta t} compensation]{Inference-time $\Delta t$ compensation under a true rate change (regime~2), mAP on the Gen1
-test split. ``Comp.'' rescales the step by the window ratio, the convention of~\cite{zubic2024state}.
-The published reference is S5 with compensation at 200\,Hz.}
+\caption[Effect of the published time-step correction]{Effect of the published time-step correction~\cite{zubic2024state} when frames arrive faster (mAP). At
+    $10\times$ it lowers accuracy by 9--13 points, and the published 39.84 is not reproduced.}
 \label{tab:dt_comp}
 \begin{tabular}{llcccc}
 \toprule
@@ -1554,12 +1539,10 @@ are therefore an advantage over the S5 baseline, not over recurrent detectors in
 
 \begin{table}[htbp]
 \centering
-\caption[Efficiency of the non-spiking models]{Full-pipeline streaming inference, RTX 5070 Ti, idle-GPU-guarded harness. FLOPs per frame
-are counted as defined in Section~\ref{sec:eval_protocol}; mAP per GFLOP uses the test AP of
-Table~\ref{tab:accuracy} (47.14 for the ConvLSTM). $^{\dagger}$Published RVT-B checkpoint
-\cite{gehrig2023recurrent}, measured in a later session of the same harness together with the other three
-models, whose latency and energy in that session lie within 3\,\% of the values shown; CUDA-graph replay is
-captured for the new models only.}
+\caption[Efficiency of the non-spiking models]{Size, computation, speed, energy and memory on one RTX 5070 Ti graphics card, one frame at a time. Bold:
+    best. The faster CUDA-graph mode was set up for the new models only. $^{\dagger}$Published
+    model~\cite{gehrig2023recurrent}, measured later with the same setup (the other models, measured again
+    then, agreed within 3\,\%).}
 \label{tab:efficiency}
 \begin{tabular}{lcccc}
 \toprule
@@ -1590,10 +1573,9 @@ memory, this is the figure that matters most.
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{images/fig_efficiency.pdf}
-    \caption[Efficiency of the non-spiking models]{Efficiency of the non-spiking models (values of Table~\ref{tab:efficiency}; parameters and
-    GFLOPs per frame in the row labels; top row: RVT's ConvLSTM, measured in a later session). (a) Eager p50 latency per frame, split into backbone, neck and head,
-    and post-processing; the marker is the latency with CUDA-graph replay of the network plus eager
-    post-processing. (b) Measured GPU energy per frame. (c) Streaming state carried per stream.}
+    \caption[Efficiency of the non-spiking models]{Efficiency of the four non-spiking models (Table~\ref{tab:efficiency}). (a) Time per frame, split into its
+        parts; the triangle marks the faster CUDA-graph mode. (b) Energy per frame. (c) Memory kept per
+        video stream.}
     \label{fig:efficiency}
 \end{figure}
 
@@ -1617,12 +1599,9 @@ difference between them rests on the measured scores of Section~\ref{sec:acc_res
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{images/fig_qualitative_large_car.png}
-    \caption[Ground truth and predictions on a large-car recording]{Ground truth against predictions on the test recording with the most large-car instances
-    (\texttt{18-03-29\_13-15-02\_500000\_60500000}), eight evenly spaced frames from its 60~s; top
-    EventSSM, bottom PureSSM. Events of 33~ms are drawn by polarity (red/blue). Solid boxes are ground
-    truth (car green, pedestrian orange), each held for up to 250~ms after its annotation; dashed boxes
-    are predictions with their confidence (car magenta, pedestrian yellow), shown down to RVT's
-    default inference threshold of 0.1 (the AP evaluation itself uses 0.001).}
+    \caption[Ground truth and predictions on a large-car recording]{Eight evenly spaced frames from the test recording with the most large cars. Top: EventSSM; bottom: PureSSM.
+        Solid boxes: ground truth (car green, pedestrian orange). Dashed boxes: predictions with confidence
+        (car magenta, pedestrian yellow). Red and blue dots are events.}
     \label{fig:qualitative}
 \end{figure}
 
@@ -1655,9 +1634,8 @@ happen to be included. The models are therefore compared step by step, on the sa
 
 \begin{table}[htbp]
 \centering
-\caption[Accuracy of the spiking readouts (100k steps)]{Spiking readouts on Gen1 (test set, 100k-step schedule, spiking stages 2--4). Intervals: 95\,\%
-paired bootstrap over the 470 test recordings. Firing rate: share of nonzero readout outputs, weighted by the
-neck operations each stage feeds, on the final checkpoint.}
+\caption[Accuracy of the spiking readouts (100k steps)]{The three spiking readouts and PureSSM, all trained for 100k steps (Gen1 test set). CI: 95\,\% confidence
+    interval. Firing rate: share of readout outputs that are not zero.}
 \label{tab:spiking_ablation}
 \begin{tabular}{lccccc}
 \toprule
@@ -1690,11 +1668,9 @@ narrower than the intervals of the individual models.
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\textwidth]{images/fig_ladder.pdf}
-\caption[The cost of spiking, step by step]{The cost of spiking, step by step (100k-step schedule, Gen1 test set). (a) Test mAP per arm. (b) The
-paired change at each step of the ladder: LIF dynamics (PureSSM $\rightarrow$ analog), sparsity (analog
-$\rightarrow$ graded) and binarisation (graded $\rightarrow$ spike). Whiskers are 95\,\% bootstrap intervals
-over the 470 test recordings; the paired intervals in (b) are narrower than the per-arm intervals in (a)
-because every arm is scored on the same resampled recordings.}
+\caption[The cost of spiking, step by step]{The cost of spiking, step by step (100k-step models). (a) Accuracy of each model. (b) Change in accuracy at
+    each step; a step whose interval does not cross zero is a clear cost. Intervals: 95\,\%. Those in (b)
+    are narrower because each step compares the same test recordings.}
 \label{fig:spiking_ladder}
 \end{figure}
 
@@ -1713,10 +1689,8 @@ steps. Over the same period, the cost of using a single bit shrank from 3.5 poin
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{images/fig_training_curves.pdf}
-    \caption[Validation mAP during training]{Validation mAP during training. (a) The three 100k-step readouts minus the PureSSM anchor trained
-    on the same schedule, at every 10k-step validation; end labels are the final differences. (b) The
-    400k-step runs of EventSSM, PureSSM and the graded readout (PureSSM trained on a rented RTX~5090, the
-    others on the local RTX~5070~Ti; the schedule is identical).}
+    \caption[Validation mAP during training]{Validation accuracy during training. (a) The three spiking readouts minus PureSSM, all trained for 100k
+        steps. (b) The 400k-step runs.}
     \label{fig:training_curves}
 \end{figure}
 
@@ -1737,10 +1711,9 @@ reached after 350{,}000 steps, after which the validation score stayed steady.
 
 \begin{table}[htbp]
 \centering
-\caption[The graded readout on the full schedule]{The graded readout trained on the full 400k-step schedule, against the 400k-step models of
-Table~\ref{tab:accuracy} (Gen1 test set, best-validation checkpoint of each run). Single runs; the paired
-95\,\% bootstrap interval of the graded--PureSSM difference is $-0.19$~[$-0.66$, $+0.09$]~mAP, and
-$+1.98$~[$-0.40$, $+3.59$] for $\mathrm{AP}_L$.}
+\caption[The graded readout on the full schedule]{The graded spiking readout trained for the full 400k steps, against the other 400k-step models (Gen1 test
+    set). Its difference from PureSSM is $-0.19$~mAP (95\,\% interval $-0.66$ to $+0.09$), and $+1.98$ on
+    large objects ($-0.40$ to $+3.59$).}
 \label{tab:spiking_400k}
 \begin{tabular}{lcccc}
 \toprule
@@ -1773,19 +1746,16 @@ trained on a different card, so its training time is not directly comparable.
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{images/fig_training_400k.pdf}
-    \caption[Validation accuracy and training losses of the 400k-step runs]{The 400k-step runs of EventSSM, PureSSM and the graded readout against training step: validation (a) mAP,
-    (b) large-object and (c) small-object AP; training (d) total, (e) IoU and (f) objectness loss, raw (faint)
-    and smoothed. Triangles in (d) mark the steps from which the graded run was resumed (180k and 340k).}
+    \caption[Validation accuracy and training losses of the 400k-step runs]{The 400k-step runs during training: validation accuracy (a) overall, (b) on large and (c) on small objects;
+        training losses (d)--(f). Triangles: points where the graded run was restarted.}
     \label{fig:training_400k}
 \end{figure}
 
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{images/fig_training_400k_time.pdf}
-    \caption[Validation mAP against wall-clock time]{(a) Validation mAP of the same three runs against training wall-clock time; EventSSM and the graded
-    readout trained on the local RTX~5070~Ti, PureSSM on a rented RTX~5090, so its hours are not directly comparable.
-    The steps repeated after each resume are excluded. (b) The learning-rate schedule (OneCycle over 400k steps),
-    identical for all three runs.}
+    \caption[Validation mAP against training time]{(a) Validation accuracy against training hours; PureSSM trained on a faster rented graphics card, so its
+        hours are not comparable. (b) The learning-rate schedule, the same for all three runs.}
     \label{fig:training_400k_time}
 \end{figure}
 
@@ -1808,19 +1778,17 @@ driving them even when the scene is quiet.
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{images/fig_spiking_firing.pdf}
-    \caption[Readout firing rates during training]{Threshold-crossing rate of the LIF readout during training at spiking stages (a) 2, (b) 3 and (c) 4,
-    from the training-time monitor, against the share of the schedule completed; 100k-step readouts solid,
-    graded 400k-step run dashed. End labels are the final rates.}
+    \caption[Readout firing rates during training]{How often the spiking readout fires during training, at stages (a) 2, (b) 3 and (c) 4. Solid: 100k-step
+        runs; dashed: the graded 400k-step run.}
     \label{fig:spiking_firing}
 \end{figure}
 
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\textwidth]{images/fig_firing_pattern.pdf}
-\caption[Readout activity over one test recording]{The readouts' activity over one 60-s test recording (\texttt{18-03-29\_13-15-02}, 1{,}200 frames of
-50\,ms), 100k-step graded and binary checkpoints. (a) Events per frame. (b)--(d) Share of nonzero readout outputs
-at spiking stages 2, 3 and 4, on one shared scale; $r$ is the Pearson correlation with the events per frame. The
-shaded first 32 frames, in which the recurrent state warms up from zero, are excluded from $r$.}
+\caption[Readout activity over one test recording]{Readout activity over one 60-s test recording. (a) Events per frame. (b)--(d) Share of non-zero readout
+    outputs at stages 2--4; $r$: correlation with (a). Shaded: the first 32 frames, while the memory warms
+    up (left out of $r$).}
 \label{fig:firing_pattern}
 \end{figure}
 
@@ -1843,10 +1811,9 @@ Section~\ref{subsec:spk_energy} only from 0.86 to about 0.99\,\%, while costing 
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.75\textwidth]{images/fig_threshold.pdf}
-\caption[Post-hoc threshold sensitivity]{Post-hoc threshold sensitivity of the 100k-step graded and binary readouts (Gen1 test set). Each point
-re-evaluates the trained weights at another firing threshold; the ringed point is the training threshold
-$\vartheta = 1$. Firing rate: share of the spike-fed neck operations driven. The dashed line is the dense analog
-readout.}
+\caption[Changing the firing threshold after training]{Changing the firing threshold after training (100k-step graded and binary readouts). Ringed point: the
+    training value $\vartheta = 1$. Dashed line: the analog readout. Firing rate: share of the spike-fed
+    operations that are active.}
 \label{fig:threshold_sweep}
 \end{figure}
 
@@ -1876,12 +1843,8 @@ so differences of a few points are indicative only.
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.75\textwidth]{images/fig_robustness_spiking.pdf}
-    \caption[Rate robustness of the spiking readouts]{Rate robustness of the spiking readouts under a true event-rate change,
-    without compensation (retention as in Figure~\ref{fig:robustness}). Each line runs from the retention at twice
-    the rate (small marker, 25-ms windows) to that at ten times the rate (large marker, 5-ms windows); each
-    model's $1\times$ reference is its Gen1 test mAP. Filled markers, solid lines: the 100k-step ladder, PureSSM
-    and the analog, graded and binary readouts trained on the same schedule. Hollow markers, dashed lines: the
-    400k-step PureSSM and graded readout. Single runs, without intervals.}
+    \caption[Rate robustness of the spiking readouts]{Share of normal accuracy kept when frames arrive 2 times (small marker) and 10 times faster (large marker),
+        without correction. Filled: models trained for 100k steps; hollow: 400k steps. Single runs.}
     \label{fig:robustness_spiking}
 \end{figure}
 
@@ -1904,11 +1867,9 @@ real hardware, is not included.
 
 \begin{table}[htbp]
 \centering
-\caption[Operation-count energy estimate per readout]{Operation-count energy estimate per frame (Equation~\eqref{eq:sop_energy}; 45-nm constants,
-$E_{\mathrm{MAC}} = 4.6$\,pJ, $E_{\mathrm{AC}} = 0.9$\,pJ~\cite{horowitz2014computing}). Rates: share of nonzero
-readout outputs over 16 test clips after a 32-frame warm-up. Every arm has 52.4\,M spike-fed of 5.00\,G MACs
-per frame, so the saving is capped at 1.04\,\%. Active inputs of a graded or analog readout carry a value and
-are priced as multiply--accumulates (MAC), binary spikes as accumulates (AC). Memory traffic is not modelled.}
+\caption[Estimated energy saving per readout]{Estimated energy per frame from operation counts (Equation~\eqref{eq:sop_energy}). Nonzero rate: share of
+    active readout outputs at stages 2, 3 and 4. Spikes reach only 52.4\,M of the 5.00\,G operations, so no
+    readout can save more than 1.04\,\%.}
 \label{tab:sop}
 \small
 \setlength{\tabcolsep}{3.5pt}
@@ -1936,10 +1897,8 @@ cannot benefit from the silence of the neurons.
 
 \begin{table}[htbp]
 \centering
-\caption[Benchmark of the graded readout and the non-spiking models]{The graded 400k-step SpikingSSM and the non-spiking models measured in one benchmark session
-(harness of Table~\ref{tab:efficiency}, whose session gave 1--4\,\% higher latencies; models are compared within
-a session only). $^{*}$The idle power drifted during these runs; the range spans subtraction of the idle power
-measured before and after the run.}
+\caption[Benchmark of the graded readout and the non-spiking models]{The graded spiking model and the non-spiking models, measured in one session; compare values within this
+    table only. $^{*}$Idle power drifted; the range uses the idle power before and after the run.}
 \label{tab:spiking_bench}
 \begin{tabular}{lcccc}
 \toprule
@@ -2147,12 +2106,9 @@ energy savings would require the spatial mixer to spike as well (Section~\ref{se
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{images/fig_spike_fed_ops.pdf}
-    \caption[Share of operations reached by spikes]{How much of the detector's arithmetic the spikes reach. (a) Dense multiply--accumulates (MACs) per
-    frame: the readout feeds only the first $1\times1$ convolutions of the neck, 1.05\,\% of the total. (b) Zoom
-    on the spike-fed MACs: the share driven at each readout's measured nonzero rate (16 test clips, 32-frame
-    warm-up) and the estimated saving of Equation~\eqref{eq:sop_energy} (operation counts with 45-nm constants;
-    memory traffic not modelled), for the graded 400k-step readout and the three 100k-step readouts. Even a
-    silent readout would save at most 1.04\,\%.}
+    \caption[Share of operations reached by spikes]{How much of the detector's arithmetic the spikes reach. (a) All operations per frame: spikes reach only
+        1.05\,\%. (b) Zoom on that 1.05\,\%: the share each readout drives and its estimated saving. Even a
+        silent readout would save at most 1.04\,\%.}
     \label{fig:spike_fed_ops}
 \end{figure}
 
@@ -2169,7 +2125,7 @@ Table~\ref{tab:aims} compares every registered aim with what was delivered.
 \begin{table}[htbp]
 \centering
 \small
-\caption[Thesis A aims against what was delivered]{Aims registered in Thesis~A against what was delivered.}
+\caption[Thesis A aims against what was delivered]{The aims registered in Thesis~A and what was delivered.}
 \label{tab:aims}
 \begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
 \toprule
@@ -2444,7 +2400,7 @@ Reference implementation & \texttt{ssms\_event\_cameras} at commit \texttt{7c871
 \begin{table}[htbp]
 \centering
 \small
-\caption[Checkpoints evaluated]{Checkpoints behind the reported results (SHA-256, first 16 hex digits).}
+\caption[Checkpoints evaluated]{Model checkpoints behind the reported results (first 16 digits of the SHA-256 hash).}
 \label{tab:ckpts}
 \begin{tabular}{llll}
 \toprule
@@ -2469,7 +2425,7 @@ of the backbones and by the spiking model (Section~\ref{sec:scope_change}).
 
 \begin{table}[htbp]
     \centering
-    \caption[Planned timeline and milestones (Thesis A)]{Summary of the thesis timeline and major milestones, as registered in Thesis~A.}
+    \caption[Planned timeline and milestones (Thesis A)]{Planned timeline and milestones, as registered in Thesis~A.}
     \label{tab:timeline}
     \renewcommand{\arraystretch}{1.4}
     \begin{tabularx}{\textwidth}{|l|X|l|}
@@ -2489,14 +2445,17 @@ of the backbones and by the spiking model (Section~\ref{sec:scope_change}).
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{images/fig_gantt.pdf}
-    \caption[Planned project timeline]{Project Gantt chart showing the week-by-week schedule across all thesis phases. Thesis~A (Weeks 1--12) covers the literature review and MVP baseline reproduction. Thesis~B (Weeks 13--27) covers architecture design, dataset preparation, model training and benchmarking, temporal generalisation evaluation, and simulation integration. Thesis~C (Weeks 28--40) covers thesis writing and final submission. Diamond markers (M1--M5) indicate key milestone deliverables. The chart and Table~\ref{tab:timeline} were prepared separately in Thesis~A and differ in some week ranges; both are reproduced as registered.}
+    \caption[Planned project timeline]{Planned schedule from Thesis~A, week by week; diamonds are milestones (M1--M5). Some week ranges differ from
+        Table~\ref{tab:timeline}; both are shown as registered.}
     \label{fig:gantt}
 \end{figure}
 
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{images/fig_gantt_actual.pdf}
-    \caption[Project timeline as executed]{Project timeline as executed, February to November 2026, reconstructed from the repository history for comparison with the plan of Figure~\ref{fig:gantt}. Each bar is a work period of one stream, from its first to its last commit; a period continues through quiet spells of up to four weeks, and short bursts are drawn at least ten days long. The literature review before the first commit (15 April 2026) has no repository record and is shown as an inferred period. The bottom row shows the span of every training run, taken from the run logs (the two cloud PureSSM runs to day precision). Diamonds mark dated results; shading marks the three thesis terms (UNSW T1--T3 2026).}
+    \caption[Project timeline as executed]{The project as it actually ran, February to November 2026, rebuilt from the code history for comparison with
+        the plan in Figure~\ref{fig:gantt}. The literature review before the first commit is estimated.
+        Bottom row: training runs. Diamonds: dated results. Shading: the three thesis terms.}
     \label{fig:gantt_actual}
 \end{figure}
 
