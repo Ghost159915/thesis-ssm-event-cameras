@@ -1039,24 +1039,52 @@ computation (mAP per GFLOP). Speed is the typical (median) time to process one f
 mode and in a faster mode in which the sequence of graphics-card operations is recorded once and replayed
 (CUDA graphs). Energy per frame is derived from the card's power use above idle. The memory that each video
 stream must carry between frames is also reported. The benchmark only starts on an idle card, and models
-are compared only within one session.
+are compared within one session. The ConvLSTM was measured in a later session, in which the other models
+were measured again and agreed within 3\,\%.
 
 \subsection{Spiking Activity and Energy}
-% TODO-Spiking Activity and Energy
+\label{subsec:eval_spk}
+For the spiking model, two more things were measured. The first is how active the readout is: the share
+of its outputs that are not zero, at each stage, over 16 test clips. The first 32 frames of each clip are
+skipped while the memory warms up. When one rate is given for the whole model, each stage counts in
+proportion to the operations it feeds.
 
+The second is how much energy spiking could save. The spikes only feed the first layers of the neck,
+52.4 million of the detector's 5.00 billion multiply--add operations (MACs) per frame. The energy per frame
+is estimated by counting operations and pricing them with standard costs for a 45-nm
+chip~\cite{horowitz2014computing}:
 \begin{equation}
   E \;=\; E_{\mathrm{MAC}}\big(M_{\mathrm{total}} - M_{\mathrm{fed}}\big)
      \;+\; e_{\mathrm{op}} \sum_{s} r_s\, M_{\mathrm{fed},s}
      \;+\; E_{\mathrm{MAC}}\, N_{\mathrm{LIF}},
   \label{eq:sop_energy}
 \end{equation}
+where $M_{\mathrm{total}}$ is the number of MACs per frame, $M_{\mathrm{fed},s}$ the number fed by the
+readout of stage $s$ ($M_{\mathrm{fed}}$ is their sum), $r_s$ the share of that readout's outputs that are
+not zero, and $N_{\mathrm{LIF}}$ the number of neuron updates. Operations fed by a zero output are assumed to
+be skipped. Each operation fed by an active output costs $e_{\mathrm{op}}$: a full MAC
+($E_{\mathrm{MAC}} = 4.6$~pJ) for the graded and analog readouts, which carry a value, but only an addition
+($E_{\mathrm{AC}} = 0.9$~pJ) for a binary spike. The cost of moving data in memory is not included.
 
 \subsection{Statistical Treatment}
-% TODO-Statistical Treatment
+\label{subsec:eval_stats}
+Each model was trained only once, so the effect of training randomness is unknown, and differences in
+overall accuracy below about one point are not treated as real. Where intervals are given, they come from a
+bootstrap~\cite{efron1993introduction}: the 470 test recordings are resampled 1{,}000 times, every model is
+scored on the same samples, and the middle 95\,\% of the results forms the interval. Because the models
+share the samples, the interval of a difference between two models is much narrower than each model's own
+interval. The intervals cover the choice of test recordings only, not the randomness of training.
 
 \section{Implementation and Hardware}
 \label{sec:implementation}
-% TODO-Implementation and Hardware
+All testing and benchmarking, and most of the training, ran on a desktop computer with one NVIDIA RTX~5070~Ti
+graphics card (16~GB). The 400k-step PureSSM was trained on a rented RTX~5090 of the same generation, which
+runs the same software. The models are written in PyTorch and reuse the published S5-RVT
+code~\cite{zubic2024state} for everything except the backbone. The Mamba code had to be compiled for this
+generation of graphics card. Thesis~A had planned to use the UNSW Katana computing cluster, but it was not
+used: the Mamba code would have had to be rebuilt for its older cards, and its 12-hour job limit would have
+split each 30-hour training run into several jobs. The code is checked by 573 automated tests, and
+Appendix~\ref{app:repro} lists the software versions and the trained models.
 
 \chapter{Results}
 \label{ch:results}
