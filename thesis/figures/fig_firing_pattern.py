@@ -52,7 +52,7 @@ def main() -> None:
     ev_ax, stage_axes = axes[0], axes[1:]
     ev_ax.fill_between(t, events / 1e3, color=EVENTS_FILL, linewidth=0)
     ev_ax.plot(t, events / 1e3, color=EVENTS_EDGE, linewidth=0.8)
-    ev_ax.set_ylabel("Events per\nframe (k)")
+    ev_ax.set_ylabel("Events per frame\n(thousands)")
     ev_ax.set_ylim(0, None)
     rs.panel_tag(ev_ax, "a", "input activity")
 
@@ -72,7 +72,7 @@ def main() -> None:
                      for i, (ti, e, v) in enumerate(zip(t, events, rate))]
         ax.set_ylim(0, 0.55)
         ax.set_yticks([0, 0.25, 0.5])
-        ax.set_ylabel("Nonzero\nrate")
+        ax.set_ylabel("Firing\nrate")
         rs.panel_tag(ax, tag, f"stage {stage}")
     for ax in axes:
         ax.axvspan(t[0], warm_end, color=rs.GRID, alpha=0.6, linewidth=0, zorder=0)

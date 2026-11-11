@@ -37,15 +37,15 @@ from report_style import plt
 NEUTRAL = "#4a4945"                      # cross-cutting work (not one model): dark neutral, distinct from S5-RVT grey
 STREAMS = [  # key, label, colour
     ("litreview", "Literature review, Thesis-A report", NEUTRAL),
-    ("mvp", "S5-RVT reproduction (MVP)", rs.colour("s5rvt")),
+    ("mvp", "S5-RVT reproduction", rs.colour("s5rvt")),
     ("eventssm", "EventSSM: build, train, test", rs.colour("eventssm")),
-    ("temporal", "Temporal-generalisation study", NEUTRAL),
+    ("temporal", "Event-rate study", NEUTRAL),
     ("efficiency", "Efficiency benchmark", NEUTRAL),
     ("puressm", "PureSSM: build, cloud training, test", rs.colour("puressm")),
-    ("spike_build", "SpikingSSM: build, smoke, pilots", rs.colour("graded")),
-    ("spike_train", "SpikingSSM: training ladder, analysis", rs.colour("graded")),
+    ("spike_build", "SpikingSSM: build, first tests", rs.colour("graded")),
+    ("spike_train", "SpikingSSM: training, analysis", rs.colour("graded")),
     ("research", "Research and planning", NEUTRAL),
-    ("inrc", "Neuromorphic track (INRC proposal)", NEUTRAL),
+    ("inrc", "Neuromorphic-chip proposal (Intel)", NEUTRAL),
     ("writing", "Report writing, supervisor reports", NEUTRAL),
 ]
 STREAM_RULES = [  # (stream, regex on the commit subject), first match wins; "stage[- ]?N" covers stage9/Stage-9/Stage 9
@@ -81,13 +81,13 @@ GPU_RUNS = [  # (start, end, colour key, what) — W&B offline folders unless ma
 MILESTONES = [  # (date, stream, label, side l/r): the label sits beyond the end of the bar that holds the milestone
     ("2026-06-05", "mvp", "reproduced, 47.7", "r"),
     ("2026-06-19", "eventssm", "test 46.2", "r"),
-    ("2026-07-11", "temporal", "Δt rescaling not reproducible", "r"),
+    ("2026-07-11", "temporal", "correction not reproduced", "r"),
     ("2026-07-11", "efficiency", "first efficiency results", "r"),
-    ("2026-07-15", "puressm", "test 46.4, AP$_L$ +3.0", "r"),
+    ("2026-07-15", "puressm", "46.4, large objects +3.0", "r"),
     ("2026-09-07", "research", "Thesis-C plan", "l"),
-    ("2026-10-07", "spike_build", "kill-switch passed", "r"),
+    ("2026-10-07", "spike_build", "go/no-go check passed", "r"),
     ("2026-10-12", "spike_train", "", "l"),
-    ("2026-10-16", "spike_train", "100k ladder (12 Oct), 400k (16 Oct)", "l"),
+    ("2026-10-16", "spike_train", "100k runs (12 Oct), 400k run (16 Oct)", "l"),
     ("2026-07-16", "inrc", "proposal drafted", "r"),
     ("2026-10-11", "inrc", "finalised", "r"),
     ("2026-10-13", "writing", "restructured", "r"),
@@ -135,6 +135,8 @@ def main() -> None:
     days: dict[str, set[date]] = {k: set() for k, _, _ in STREAMS}
     audit = []
     for d, subject in commits():
+        if d > TODAY:                                  # the figure shows the project as of TODAY
+            continue
         stream = classify(subject)
         audit.append({"date": d.isoformat(), "stream": stream or "", "subject": subject})
         if stream:
@@ -202,10 +204,10 @@ def main() -> None:
     ax.grid(axis="x", which="major", color=rs.GRID, linewidth=0.6)
     ax.spines["left"].set_visible(False)
     ax.set_xlabel("2026")
-    key = [Line2D([], [], color=NEUTRAL, linewidth=BAR_PT, solid_capstyle="round", label="work period (commits)"),
+    key = [Line2D([], [], color=NEUTRAL, linewidth=BAR_PT, solid_capstyle="round", label="active work (from code history)"),
            Line2D([], [], color=NEUTRAL, alpha=0.3, linewidth=BAR_PT, solid_capstyle="round",
-                  label="inferred, before the repository"),
-           Line2D([], [], marker="D", color=rs.INK, linestyle="none", markersize=4.6, label="result / milestone")]
+                  label="estimated (before code history)"),
+           Line2D([], [], marker="D", color=rs.INK, linestyle="none", markersize=4.6, label="result")]
     ax.legend(handles=key, loc="upper center", bbox_to_anchor=(0.5, -0.13), ncol=3, fontsize=7.5,
               handlelength=1.6, columnspacing=1.6)
     rs.save(fig, "fig_gantt_actual", rows)

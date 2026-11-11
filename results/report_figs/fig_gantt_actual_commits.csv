@@ -1,4 +1,12 @@
 date,stream,subject
+2026-10-16,writing,feat(report-figs): firing-pattern and spike-fed-ops figures; graded 400k in accuracy-by-size; label tidying
+2026-10-16,writing,docs(thesis): fill spiking results with Stage-21/22 point estimates; add new figures and tables to the report skeleton
+2026-10-16,,"docs(runbooks): overnight 2026-10-16 plan, commands and morning checklist"
+2026-10-16,spike_train,docs: CLAUDE.md next steps after the Stage-21/22 evals and benchmark
+2026-10-16,spike_train,docs(stage22): benchmark and SOP energy accounting of graded 400k; all bootstrap captures recorded
+2026-10-16,spike_train,"docs(stage22): firing pattern on a test recording; sparsity is structural, not event-driven"
+2026-10-16,spike_train,docs(stage21): test results of the 100k ladder and graded 400k; training-comparison figures
+2026-10-16,writing,feat(report-figs): as-executed Gantt over Feb-Nov with Thesis A/B/C terms and continuous work periods
 2026-10-16,writing,"feat(report-figs): as-executed Gantt chart from the repository history, beside the Thesis-A plan"
 2026-10-16,writing,fix(report-figs): redraw the Thesis-A Gantt chart (task labels no longer under the bars)
 2026-10-16,writing,"feat(report-figs): shared figure style and four results figures (accuracy by size, training curves, efficiency, robustness)"

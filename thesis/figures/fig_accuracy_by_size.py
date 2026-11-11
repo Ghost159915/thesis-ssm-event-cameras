@@ -47,7 +47,7 @@ def main() -> None:
     ax.axhline(0, color=rs.INK, linewidth=0.9, zorder=3)
     ax.text(len(METRICS) - 0.5, 0.15, "S5-RVT", ha="right", va="bottom", fontsize=7.5, color=rs.INK_2)
     ax.set_xticks(x, [f"{name}\n(S5-RVT {base[m]:.1f})" for m, name in METRICS])
-    ax.set_ylabel("Test AP difference to S5-RVT\n(points, COCO 0.50:0.95)")
+    ax.set_ylabel("Test mAP minus S5-RVT")
     ax.set_ylim(min(r["delta"] for r in rows) - 1.2, 1.5)
     ax.grid(axis="x", visible=False)
     ax.legend(loc="lower left", ncol=len(series))

@@ -35,7 +35,7 @@ MODELS = [("baseline", "s5rvt"), ("eventssm", "eventssm"), ("puressm", "puressm"
 WINDOWS = [(200, 0.25), (100, 0.5), (50, 1.0), (25, 2.0), (12, 4.0)]                     # regime 1: dt ms, mult
 TRUE_RATE = [(25, 2.0, "0.5000"), (5, 10.0, "0.1000")]                                   # regime 2: dt, mult, step scale
 # Zubic et al. 2024, Table 2 (Gen1 test): S5 47.71 -> 39.84 and RVT 47.16 -> 8.35 from 20 to 200 Hz.
-PUBLISHED = {"S5 + comp.": 39.84 / 47.71 * 100, "ConvLSTM": 8.35 / 47.16 * 100}
+PUBLISHED = {"S5\n(corrected) ": 39.84 / 47.71 * 100, "ConvLSTM\n": 8.35 / 47.16 * 100}
 # (sweep_tr log key, test_metrics key, style key, arm position on the x axis, schedule)
 SPIKING = [("puressm_100k", "puressm_100k", "puressm", 0, "100k"),
            ("analog_s234_100k", "analog_100k", "analog", 1, "100k"),
@@ -97,12 +97,12 @@ def main() -> None:
         rows += [{"regime": 1, "model": style, "mult": m, "dt_ms": dt, "comp": "none", "AP": round(a, 2),
                   "retention_pct": round(r, 1)} for (dt, m), a, r in zip(WINDOWS, aps, ret)]
     ax.set_xscale("log", base=2)
-    ax.set_xticks([m for _, m in WINDOWS], ["0.25×\n200 ms", "0.5×", "1×\n50 ms", "2×", "4×\n12 ms"])
-    ax.set_xlabel("Accumulation window (rate multiplier)")
-    ax.set_ylabel("Retention (% of own 1× AP)")
+    ax.set_xticks([m for _, m in WINDOWS], ["200", "100", "50\nnormal", "25", "12"])
+    ax.set_xlabel("Time window per frame (ms)")
+    ax.set_ylabel("Accuracy kept (%)")
     ax.set_ylim(70, 102)
     ax.legend(loc="lower center", fontsize=7.5)
-    rs.panel_tag(ax, "a", "fixed cadence")
+    rs.panel_tag(ax, "a", "longer or shorter windows")
 
     labels_b = []
     xs = [1.0] + [m for _, m, _ in TRUE_RATE]
@@ -123,26 +123,26 @@ def main() -> None:
     if None not in lstm:                                                             # measured ConvLSTM, same test set
         ret = [a / lstm[0] * 100 for a in lstm]
         bx.plot(xs, ret, "-", color=rs.colour("convlstm"), marker=rs.marker("convlstm"), markeredgecolor="white",
-                markeredgewidth=0.6, label="RVT ConvLSTM, measured")
+                markeredgewidth=0.6, label=rs.label("convlstm"))
         labels_b.append((xs[-1], ret[-1], f"ConvLSTM {ret[-1]:.1f} %"))
         rows += [{"regime": 2, "model": "convlstm", "mult": x, "dt_ms": round(50 / x, 1), "comp": "none",
                   "AP": round(a, 2), "retention_pct": round(r, 1)} for x, a, r in zip(xs, lstm, ret)]
     comp10 = [r["retention_pct"] for r in rows if r["regime"] == 2 and r["comp"] == "dt" and r["mult"] == 10]
-    labels_b.append((10, sum(comp10) / len(comp10), f"{min(comp10):.1f}–{max(comp10):.1f} %\nwith comp."))
+    labels_b.append((10, sum(comp10) / len(comp10), f"{min(comp10):.1f}–{max(comp10):.1f} %\nwith correction"))
     for name, r in PUBLISHED.items():
         bx.plot(10, r, "*", color=rs.INK_2, markersize=8, markerfacecolor="white", markeredgewidth=0.9)
-        labels_b.append((10, r, f"published {name}\n{r:.1f} %"))
-        rows.append({"regime": 2, "model": f"{name} (Zubic et al.)", "mult": 10, "dt_ms": 5, "comp": "published",
+        labels_b.append((10, r, f"published {name}{r:.1f} %"))
+        rows.append({"regime": 2, "model": f"{name.split()[0]}{' with correction' if 'corrected' in name else ''} (Zubic et al.)", "mult": 10, "dt_ms": 5, "comp": "published",
                      "AP": "", "retention_pct": round(r, 1)})
-    bx.plot([], [], "-", color=rs.INK_2, label="no compensation")
-    bx.plot([], [], "--", color=rs.INK_2, label="Δt compensation")
+    bx.plot([], [], "-", color=rs.INK_2, label="no correction")
+    bx.plot([], [], "--", color=rs.INK_2, label="with correction")
     bx.set_xscale("log")
-    bx.set_xticks([1, 2, 10], ["1×\n50 ms", "2×\n25 ms", "10×\n5 ms"])
+    bx.set_xticks([1, 2, 10], ["normal", "2×", "10×"])
     bx.set_xlim(0.85, 70)
     bx.set_ylim(10, 102)
-    bx.set_xlabel("True event rate (rate multiplier)")
+    bx.set_xlabel("Frame rate (times normal)")
     bx.legend(loc="lower left", fontsize=7.5)
-    rs.panel_tag(bx, "b", "true rate change")
+    rs.panel_tag(bx, "b", "frames arrive faster")
 
     for a in axes:
         a.minorticks_off()
@@ -172,19 +172,19 @@ def main() -> None:
             srows += [{"model": tkey, "schedule": sched, "mult": x_, "dt_ms": round(50 / x_, 1), "comp": "none",
                        "AP": round(a, 2), "retention_pct": round(r, 1)} for x_, a, r in zip(xs, aps, ret)]
         right = len(ARM_TICKS) - 1 + 0.55
-        cx.text(right, 100.4, "1×  50 ms", ha="left", va="bottom", fontsize=7, color=rs.MUTED)
-        for (_, mult, _), text in zip(TRUE_RATE, ("2×  25 ms", "10×  5 ms")):
+        cx.text(right, 100.4, "normal", ha="left", va="bottom", fontsize=7, color=rs.MUTED)
+        for (_, mult, _), text in zip(TRUE_RATE, ("2× faster", "10× faster")):
             cx.text(right, sum(by_rate[mult]) / len(by_rate[mult]), text, ha="left", va="center", fontsize=7,
                     color=rs.MUTED)
         cx.legend(handles=[Line2D([], [], color=rs.INK_2, marker="o", ms=5, markeredgecolor="white",
-                                  linewidth=1.6, label="100k-step schedule"),
+                                  linewidth=1.6, label="100k training steps"),
                            Line2D([], [], color=rs.INK_2, marker="o", ms=5, markerfacecolor="white",
-                                  linestyle="--", linewidth=1.1, label="400k-step schedule")],
+                                  linestyle="--", linewidth=1.1, label="400k training steps")],
                   loc="lower center", ncol=2, fontsize=7.5)
         cx.set_xticks(range(len(ARM_TICKS)), ARM_TICKS)
         cx.set_xlim(-0.55, len(ARM_TICKS) - 1 + 1.25)
         cx.set_ylim(50, 103)
-        cx.set_ylabel("Retention (% of own 1× AP)")
+        cx.set_ylabel("Accuracy kept (%)")
         cx.grid(axis="x", visible=False)
         cx.minorticks_off()
         rs.save(fig, "fig_robustness_spiking", srows)

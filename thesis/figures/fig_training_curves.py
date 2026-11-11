@@ -54,15 +54,15 @@ def main() -> None:
     ax.set_xlim(5, 128)
     ax.set_xticks(range(10, 101, 30))
     ax.set_xlabel("Training step (thousands)")
-    ax.set_ylabel("Val AP minus PureSSM (points)")
-    rs.panel_tag(ax, "a", "100k-step schedule")
+    ax.set_ylabel("Validation mAP minus PureSSM")
+    rs.panel_tag(ax, "a", "100k training steps")
 
     # (b) 400k runs
-    for key, style, name in (("eventssm_400k", "eventssm", "EventSSM"), ("graded_400k", "graded", "Graded")):
+    for key, style, name in (("eventssm_400k", "eventssm", "EventSSM"), ("graded_400k", "graded", "SpikingSSM (graded)")):
         steps, ap = curve(hist, key)
         best = max(range(len(ap)), key=ap.__getitem__)
         bx.plot(steps, ap, color=rs.colour(style), marker=rs.marker(style), markersize=3.5, markeredgewidth=0,
-                linewidth=1.5, label=f"{name} (best {ap[best]:.1f} @ {steps[best]}k)")
+                linewidth=1.5, label=f"{name}, best {ap[best]:.1f}")
         rows += [{"panel": "b", "run": key, "step_k": s, "val_AP": round(a, 2)} for s, a in zip(steps, ap)]
     train = rs.DATA / "train_histories.json"
     cloud = json.loads(train.read_text()).get("puressm_400k") if train.exists() else None
@@ -72,20 +72,20 @@ def main() -> None:
         best = max(range(len(ap)), key=ap.__getitem__)
         assert abs(ap[best] - PURESSM_400K_BEST[1]) < 1e-3, "cloud history disagrees with the checkpoint's best score"
         bx.plot(steps, ap, color=rs.colour("puressm"), marker=rs.marker("puressm"), markersize=3.5,
-                markeredgewidth=0, linewidth=1.5, label=f"PureSSM (best {ap[best]:.1f} @ {steps[best]}k)")
+                markeredgewidth=0, linewidth=1.5, label=f"PureSSM, best {ap[best]:.1f}")
         rows += [{"panel": "b", "run": "puressm_400k", "step_k": s, "val_AP": round(a, 2)} for s, a in zip(steps, ap)]
     else:
         s, v = PURESSM_400K_BEST
         bx.plot(s // 1000, v, rs.marker("puressm"), color=rs.colour("puressm"), markersize=7, markeredgecolor="white",
-                markeredgewidth=0.8, zorder=4, label=f"PureSSM (best {v:.1f} @ {s // 1000}k)")
+                markeredgewidth=0.8, zorder=4, label=f"PureSSM, best {v:.1f}")
         rows.append({"panel": "b", "run": "puressm_400k_best", "step_k": s // 1000, "val_AP": v})
     bx.set_ylim(20, 50)
     bx.set_xlim(0, 410)
     bx.set_xticks(range(0, 401, 100))
     bx.set_xlabel("Training step (thousands)")
-    bx.set_ylabel("Val AP (points)")
+    bx.set_ylabel("Validation mAP")
     bx.legend(loc="lower right", handlelength=1.3, fontsize=7.5, borderaxespad=0.2)
-    rs.panel_tag(bx, "b", "400k-step schedule")
+    rs.panel_tag(bx, "b", "400k training steps")
     rs.save(fig, "fig_training_curves", rows)
 
 

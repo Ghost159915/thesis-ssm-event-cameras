@@ -32,13 +32,13 @@ gpu,2026-10-15T19:02,2026-10-15T20:15,"graded 400k (resumed, stopped)"
 gpu,2026-10-16T01:52,2026-10-16T10:06,graded 400k (finished)
 mvp,2026-06-05,2026-06-05,"milestone: reproduced, 47.7"
 eventssm,2026-06-19,2026-06-19,milestone: test 46.2
-temporal,2026-07-11,2026-07-11,milestone: Δt rescaling not reproducible
+temporal,2026-07-11,2026-07-11,milestone: correction not reproduced
 efficiency,2026-07-11,2026-07-11,milestone: first efficiency results
-puressm,2026-07-15,2026-07-15,"milestone: test 46.4, AP$_L$ +3.0"
+puressm,2026-07-15,2026-07-15,"milestone: 46.4, large objects +3.0"
 research,2026-09-07,2026-09-07,milestone: Thesis-C plan
-spike_build,2026-10-07,2026-10-07,milestone: kill-switch passed
+spike_build,2026-10-07,2026-10-07,milestone: go/no-go check passed
 spike_train,2026-10-12,2026-10-12,milestone: see next
-spike_train,2026-10-16,2026-10-16,"milestone: 100k ladder (12 Oct), 400k (16 Oct)"
+spike_train,2026-10-16,2026-10-16,"milestone: 100k runs (12 Oct), 400k run (16 Oct)"
 inrc,2026-07-16,2026-07-16,milestone: proposal drafted
 inrc,2026-10-11,2026-10-11,milestone: finalised
 writing,2026-10-13,2026-10-13,milestone: restructured

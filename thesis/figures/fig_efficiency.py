@@ -59,14 +59,14 @@ def main() -> None:
         energy = m["energy"]["j_per_frame"]
         gflops = m["flops"]["total_gflops"]
         name = rs.label(style).replace(" (baseline)", "")
-        ticks.append(f"{name}\n{m['params_m']['total']:.1f} M · {gflops:.1f} GFLOPs")
+        ticks.append(name)                                       # size and FLOPs: Table tab:efficiency
 
         left = 0
         for part, w, c in (("backbone", comp["backbone"], rs.colour(style)), ("neck+head", comp["neck_head"], NECK),
                            ("post-processing", comp["postprocess"], POST)):
             ax.barh(y, w, left=left, height=0.62, color=c, edgecolor="white", linewidth=1)
             if key == "baseline" and part != "post-processing":   # direct labels on the widest backbone, no legend
-                ax.text(left + w / 2, y, part.replace("+", "+\n"), ha="center", va="center", fontsize=6.5,
+                ax.text(left + w / 2, y, part.replace("+", " +\n"), ha="center", va="center", fontsize=6.5,
                         linespacing=1.0,
                         color="white" if part == "backbone" else rs.INK)
             left += w
@@ -89,11 +89,11 @@ def main() -> None:
 
     ax.set_yticks(range(len(order)), ticks)
     ax.invert_yaxis()
-    ax.set_xlabel("Latency per frame, p50 (ms)")
+    ax.set_xlabel("Time per frame (ms)")
     ax.set_xlim(0, 33)
-    bx.set_xlabel("Energy (J/frame)")
+    bx.set_xlabel("Energy (J)")
     bx.set_xlim(0, 0.95)
-    cx.set_xlabel("State (MB/stream)")
+    cx.set_xlabel("Memory (MB)")
     cx.set_xlim(0, 200)
     for a, t in ((ax, "a"), (bx, "b"), (cx, "c")):
         a.grid(axis="y", visible=False)

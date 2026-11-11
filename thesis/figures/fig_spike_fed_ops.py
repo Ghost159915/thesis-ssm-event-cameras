@@ -55,9 +55,9 @@ def main() -> None:
     # (a) the whole frame, in G MACs
     ax.barh(0, (total - fed) / 1e9, height=0.6, color=DENSE, edgecolor="white", linewidth=1)
     ax.barh(0, fed / 1e9, left=(total - fed) / 1e9, height=0.6, color=FED, edgecolor="white", linewidth=0.3)
-    ax.text((total - fed) / 2e9, 0, f"never spike-fed: {(total - fed) / 1e9:.2f} G ({(1 - fed / total) * 100:.2f} %)",
+    ax.text((total - fed) / 2e9, 0, f"not reached by spikes: {(total - fed) / 1e9:.2f} billion ({(1 - fed / total) * 100:.2f} %)",
             ha="center", va="center", fontsize=8, color=rs.INK)
-    ax.annotate(f"spike-fed: {fed / 1e6:.1f} M ({fed / total * 100:.2f} %)", xy=((total - fed / 2) / 1e9, 0.32),
+    ax.annotate(f"reached by spikes: {fed / 1e6:.1f} million ({fed / total * 100:.2f} %)", xy=((total - fed / 2) / 1e9, 0.32),
                 xytext=((total - fed / 2) / 1e9, 1.0), ha="right", va="bottom", fontsize=8, color=rs.INK,
                 arrowprops={"arrowstyle": "-", "color": rs.INK, "linewidth": 0.8, "relpos": (1, 0),
                             "shrinkA": 0, "shrinkB": 0})
@@ -66,7 +66,7 @@ def main() -> None:
     ax.set_yticks([])
     ax.spines["left"].set_visible(False)
     ax.grid(axis="y", visible=False)
-    ax.set_xlabel("Dense MACs per frame (G)")
+    ax.set_xlabel("Operations per frame (billions)")
     rs.panel_tag(ax, "a", "the whole detector")
 
     # (b) zoom on the spike-fed MACs, in M MACs
@@ -78,7 +78,7 @@ def main() -> None:
         bx.barh(y, (fed - driven) / 1e6, left=driven / 1e6, height=0.6, color=IDLE, edgecolor="white", linewidth=1)
         inside = driven / fed > 0.6                        # a dense readout: label inside its own bar instead
         bx.text(0.8 if inside else driven / 1e6 + 0.8, y,
-                f"{driven / 1e6:.1f} M driven ({driven / fed * 100:.0f} %, priced as {op})",
+                f"{driven / 1e6:.1f} million active ({driven / fed * 100:.0f} %)" + (", cheaper additions" if op == "AC" else ""),
                 ha="left", va="center", fontsize=7.5, color=rs.INK)
         bx.text(fed / 1e6 + 0.8, y, f"saving {saving * 100:.2f} %".replace("-", "−"), ha="left", va="center", fontsize=7.5,
                 color=rs.INK)
@@ -92,8 +92,8 @@ def main() -> None:
     bx.set_ylim(len(arms) - 0.5, -0.5)
     bx.set_xlim(0, fed / 1e6)
     bx.grid(axis="y", visible=False)
-    bx.set_xlabel("Spike-fed MACs per frame (M)")
-    rs.panel_tag(bx, "b", f"zoom on the spike-fed {fed / 1e6:.1f} M; ceiling {ref['ceiling'] * 100:.2f} %")
+    bx.set_xlabel("Operations reached by spikes (millions)")
+    rs.panel_tag(bx, "b", f"zoom on the {fed / 1e6:.1f} million")
     for name, *_ in arms:
         print(f"{name}: driven {[r for r in rows if r['arm'] == name][0]['driven_ops'] / 1e6:.2f} M")
     rs.save(fig, "fig_spike_fed_ops", rows)

@@ -71,8 +71,8 @@ def legend_top(fig, handles, labels, y=1.0):
 def fig_main(data, runs) -> None:
     fig, axes = plt.subplots(2, 3, figsize=(rs.TEXT_WIDTH, 4.6), gridspec_kw={"hspace": 0.55, "wspace": 0.34})
     rows = []
-    val_panels = [("val/AP", "Validation AP", "a"), ("val/AP_L", "Validation AP, large objects", "b"),
-                  ("val/AP_S", "Validation AP, small objects", "c")]
+    val_panels = [("val/AP", "overall", "a"), ("val/AP_L", "large objects", "b"),
+                  ("val/AP_S", "small objects", "c")]
     for ax, (key, title, tag) in zip(axes[0], val_panels):
         for run, style, name in runs:
             x, y, _ = series(data, run, key, 100)
@@ -85,10 +85,10 @@ def fig_main(data, runs) -> None:
                             va=va, fontsize=7, color=rs.INK)
             rows += [{"panel": tag, "run": run, "metric": key, "step_k": float(a), "value": round(float(b_), 3)}
                      for a, b_ in zip(x, y)]
-        ax.set_ylabel(title, fontsize=8)
-        rs.panel_tag(ax, tag)
-    loss_panels = [("train/loss_step", "Training loss (total)", "d"), ("train/iou_loss_step", "IoU (box) loss", "e"),
-                   ("train/conf_loss_step", "Objectness loss", "f")]
+        ax.set_ylabel("Validation mAP", fontsize=8)
+        rs.panel_tag(ax, tag, title)
+    loss_panels = [("train/loss_step", "Total loss", "d"), ("train/iou_loss_step", "Box loss", "e"),
+                   ("train/conf_loss_step", "Object loss", "f")]
     for ax, (key, title, tag) in zip(axes[1], loss_panels):
         for run, style, name in runs:
             x, y, _ = series(data, run, key)
@@ -129,14 +129,14 @@ def fig_time(data, runs) -> None:
         rows += [{"panel": "a", "run": run, "hours": round(float(a), 3), "val_AP": round(float(b), 3)}
                  for a, b in zip(h, y)]
         rows += [{"panel": "b", "run": run, "step_k": float(a), "lr_x1e4": float(b)} for a, b in zip(lx, ly * 1e4)]
-    ax.set_xlabel("Training wall-clock (hours)", fontsize=8)
-    ax.set_ylabel("Validation AP", fontsize=8)
+    ax.set_xlabel("Training time (hours)", fontsize=8)
+    ax.set_ylabel("Validation mAP", fontsize=8)
     ax.set_xlim(0, None)
     rs.panel_tag(ax, "a")
     bx.set_xlabel("Training step (thousands)", fontsize=8)
     bx.set_ylabel("Learning rate (×10⁻⁴)", fontsize=8)
     bx.set_xlim(0, 410)
-    rs.panel_tag(bx, "b", "identical OneCycle")
+    rs.panel_tag(bx, "b", "same for all three runs")
     h, lab = ax.get_legend_handles_labels()
     legend_top(fig, h, lab, 0.98)
     rs.save(fig, "fig_training_400k_time", rows)
@@ -162,9 +162,9 @@ def fig_firing(data) -> None:
                         color=rs.INK)
         ax.set_xlim(0, 112)
         ax.set_xticks([0, 25, 50, 75, 100])
-        ax.set_xlabel("Schedule completed (%)", fontsize=8)
+        ax.set_xlabel("Training progress (%)", fontsize=8)
         rs.panel_tag(ax, tag, f"stage {stage}")
-    axes[0].set_ylabel("Threshold-crossing rate", fontsize=8)
+    axes[0].set_ylabel("Firing rate", fontsize=8)
     axes[0].set_ylim(0, None)
     h, lab = axes[0].get_legend_handles_labels()
     legend_top(fig, h, lab, 0.98)

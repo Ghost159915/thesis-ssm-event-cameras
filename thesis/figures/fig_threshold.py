@@ -36,7 +36,7 @@ def main() -> None:
     analog = 100 * json.loads(BOOT.read_text())["arms"]["analog"]["AP"]["point"]
     fig, ax = plt.subplots(figsize=(rs.TEXT_WIDTH * 0.72, 2.9))
     ax.axhline(analog, color=rs.MUTED, linewidth=1, linestyle=(0, (4, 3)), zorder=1)
-    ax.text(1, analog + 0.35, f"analog readout (dense, rate 100 %): {analog:.2f}", ha="left", va="bottom",
+    ax.text(1, analog + 0.35, f"analog readout: {analog:.2f}", ha="left", va="bottom",
             fontsize=7.5, color=rs.INK_2)
     rows = []
     for key, style, name, (lx, ly) in ARMS:
@@ -50,7 +50,7 @@ def main() -> None:
             if th == 1.0:
                 ax.plot(xi, yi, "o", ms=10, markerfacecolor="none", markeredgecolor=rs.INK, markeredgewidth=1.2,
                         zorder=4)
-            ax.annotate(f"θ={th:g}", (xi, yi), xytext=OFFSETS[key][th], textcoords="offset points",
+            ax.annotate(f"ϑ={th:g}", (xi, yi), xytext=OFFSETS[key][th], textcoords="offset points",
                         ha="center", va="center", fontsize=7, color=rs.INK if th == 1.0 else rs.INK_2,
                         fontweight="bold" if th == 1.0 else "normal")
             rows.append({"arm": key, "threshold": th, "weighted_rate_pct": round(xi, 2), "test_map": round(yi, 2),
@@ -58,10 +58,10 @@ def main() -> None:
         ax.text(lx, ly, name, ha="center", va="center", fontsize=8.5, fontweight="bold", color=rs.colour(style))
     ax.set_xlim(0, 56)
     ax.set_ylim(21, 44.5)
-    ax.set_xlabel("Firing rate (% of spike-fed operations driven)")
-    ax.set_ylabel("Test mAP (100k steps)")
+    ax.set_xlabel("Firing rate (%)")
+    ax.set_ylabel("Test mAP")
     ax.plot([], [], "o", ms=8, markerfacecolor="none", markeredgecolor=rs.INK, markeredgewidth=1.2,
-            label="training threshold θ = 1")
+            label="training value ϑ = 1")
     ax.legend(loc="lower right")
     rs.save(fig, "fig_threshold", rows)
 

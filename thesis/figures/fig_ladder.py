@@ -46,9 +46,9 @@ def main() -> None:
         rows.append({"panel": "a", "item": name, "ap": round(p, 2), "ci_lo": round(lo, 2), "ci_hi": round(hi, 2)})
     ax.set_xticks(range(len(ARMS)), [t for _, _, t in ARMS])
     ax.set_xlim(-0.4, len(ARMS) - 0.3)
-    ax.set_ylabel("Test mAP (100k steps)")
+    ax.set_ylabel("Test mAP")
     ax.grid(axis="x", visible=False)
-    rs.panel_tag(ax, "a", "per arm, 95 % interval")
+    rs.panel_tag(ax, "a", "each model")
 
     # (b) paired step costs
     bx.axhline(0, color=rs.INK_2, linewidth=0.9, zorder=1)
@@ -57,17 +57,17 @@ def main() -> None:
         p, lo, hi = (100 * s[k] for k in ("point", "ci_lo", "ci_hi"))
         bx.errorbar(x, p, yerr=[[p - lo], [hi - p]], fmt=rs.marker(style), color=rs.colour(style), ms=6,
                     capsize=3, elinewidth=1.2, markeredgecolor="white", markeredgewidth=0.6, zorder=3)
-        verdict = "includes 0" if lo <= 0 <= hi else "excludes 0"
-        bx.text(x + 0.12, p, f"{rs.signed(p, 2)}\n[{rs.signed(lo, 2)}, {rs.signed(hi, 2)}]\n{verdict}",
+        verdict = "not clear" if lo <= 0 <= hi else "clear cost"
+        bx.text(x + 0.12, p, f"{rs.signed(p, 2)}\n{verdict}",
                 ha="left", va="center", fontsize=7, color=rs.INK, linespacing=1.15)    # right of the point
         rows.append({"panel": "b", "item": pair, "ap": round(p, 2), "ci_lo": round(lo, 2), "ci_hi": round(hi, 2),
                      "frac_reps_ge_0": s["frac_reps_ge_0"]})
     bx.set_xticks(range(len(STEPS)), [t for _, _, t in STEPS])
     bx.set_xlim(-0.35, len(STEPS) - 0.05)
     bx.set_ylim(-2.3, 0.6)
-    bx.set_ylabel("Paired change in test mAP")
+    bx.set_ylabel("Change in test mAP")
     bx.grid(axis="x", visible=False)
-    rs.panel_tag(bx, "b", "per step, paired 95 % interval")
+    rs.panel_tag(bx, "b", "each step")
     rs.save(fig, "fig_ladder", rows)
 
 
