@@ -226,7 +226,7 @@ hardware offer in return?}
 
 \guide{190}{
   \item One lead-in sentence.
-  \item Six numbered, measurable aims: (1) reproduce S5-RVT; (2) two controlled detectors, compared overall, per class and by size; (3) explain the difference; (4) robustness in two regimes, with and without the published correction; (5) efficiency on every axis; (6) spiking variant and the breakdown of its cost.
+  \item Six numbered, measurable aims: (1) reproduce S5-RVT; (2) two controlled detectors, compared overall, per class and by size; (3) explain the difference; (4) robustness in two regimes, with and without the published correction, against a ConvLSTM; (5) efficiency on every axis; (6) spiking variant and the breakdown of its cost.
   \item One sentence linking the aims to the Thesis~A aims, pointing to Table~\ref{tab:aims}.
 }
 To answer these questions, the thesis sets six aims:
@@ -236,8 +236,9 @@ To answer these questions, the thesis sets six aims:
   \item Build two new detectors, EventSSM and PureSSM, that differ from each other only in their spatial
         mixer, and compare their accuracy overall, for each object class and for each object size.
   \item Explain why any difference in accuracy occurs, rather than only reporting it.
-  \item Measure how well the detectors cope when the rate of incoming events changes, in two different
-        test settings, both with and without the correction proposed in the literature.
+  \item Measure how well the detectors cope when the rate of incoming events changes, in two test
+        settings, with and without the correction proposed in the literature, and compare them with a
+        published ConvLSTM detector on the same test data.
   \item Measure efficiency in every way that matters for a small, battery-powered platform: model size,
         amount of computation, speed, energy use and memory.
   \item Build a spiking version of the detector and break down the accuracy it loses into separate,
@@ -249,22 +250,27 @@ Section~\ref{sec:scope_change} and summarised in Table~\ref{tab:aims}.
 
 \section{Hypotheses}
 \label{sec:hypotheses}
-\guide{120}{
-  \item Three hypotheses, each a clear prediction that an experiment could prove wrong.
-  \item H1: wider view of the image $\rightarrow$ better large objects. H2: state space models cope with rate changes, and the published correction helps further. H3: analog $\geq$ graded $>$ binary.
+\guide{150}{
+  \item Four hypotheses, each a clear prediction that an experiment could prove wrong; a short name for each.
+  \item H1: wider view of the image $\rightarrow$ better large objects. H2: state space models cope with rate changes better than a ConvLSTM. H3: the published correction helps further. H4: analog $\geq$ graded $>$ binary.
   \item For each hypothesis, the section that tests it.
-  \item Say that H3 was fixed before the spiking models were trained. Do not add ``binarisation is the largest cost'': that was not registered.
+  \item Say that H4 was fixed before the spiking models were trained. Do not add ``binarisation is the largest cost'': that was not registered.
 }
-The aims lead to three hypotheses, each of which the experiments could prove wrong:
+The aims lead to four hypotheses. Each one is a clear prediction that the experiments could prove wrong:
 \begin{description}
-  \item[H1] A state space model used as the spatial mixer can draw on a wider area of the image than a
-            convolutional network, and should therefore detect large objects better
-            (Sections~\ref{sec:acc_results} and~\ref{sec:erf}).
-  \item[H2] State space models stay accurate when the event rate changes, and the correction proposed by
-            Zubi\'{c} et al.~\cite{zubic2024state} makes them even more robust (Section~\ref{sec:robustness}).
-  \item[H3] Among the three spiking versions of the detector, the analog version is at least as accurate as
-            the graded version, which is more accurate than the binary version (Section~\ref{subsec:spk_ladder}).
-            This prediction was written down before the spiking models were trained.
+  \item[H1] \emph{Large objects.} A state space model used as the spatial mixer can draw on a wider area
+            of the image than a convolutional network, so PureSSM should detect large objects better than
+            EventSSM (Sections~\ref{sec:acc_results} and~\ref{sec:erf}).
+  \item[H2] \emph{Changes in event rate.} State space models should stay accurate when events arrive
+            faster than in training, and lose less accuracy than a detector whose memory is a ConvLSTM, as
+            Zubi\'{c} et al.~\cite{zubic2024state} report (Section~\ref{sec:robustness}).
+  \item[H3] \emph{The published correction.} Adjusting the state space model's time step to the new event
+            rate, as Zubi\'{c} et al.\ propose, should make the models more robust still
+            (Section~\ref{subsec:f2}).
+  \item[H4] \emph{The cost of spiking.} Among the three spiking versions of the detector, the analog
+            version should be at least as accurate as the graded version, and the graded version more
+            accurate than the binary version (Section~\ref{subsec:spk_ladder}). This prediction was written
+            down before the spiking models were trained.
 \end{description}
 Section~\ref{sec:answer_rq} reports which hypotheses held.
 
@@ -1669,7 +1675,7 @@ spike (binary)     & 40.18 [38.09, 41.88] & 66.40 & 41.14 & 58.82 / 21.55 & 0.41
 \label{subsec:spk_ladder}
 \guide{130}{
   \item The three steps with intervals: neuron behaviour $-0.28$ $[-0.63, 0.05]$, silence $-1.52$ $[-1.98, -1.06]$, single bit $-0.54$ $[-1.07, -0.07]$.
-  \item H3 held: the order was as predicted and the last two steps are clearly below zero; the first is too small to measure.
+  \item H4 held: the order was as predicted and the last two steps are clearly below zero; the first is too small to measure.
   \item Staying silent is the biggest cost, about three times the cost of the single bit.
 }
 Figure~\ref{fig:spiking_ladder} shows the three steps of the ladder of Equation~\eqref{eq:ladder}. Adding
@@ -2000,18 +2006,21 @@ spike costs 2.3 points on the short schedule, mostly because the neurons are sil
 almost nothing after full training. However, the possible energy saving in this hybrid model is at most
 about 1\,\% of the detector's operations.
 
-\guide{140}{
+\guide{170}{
   \item Each aim: met or not, with the evidence (all six aims met; the Thesis~A integration aim removed from the scope).
-  \item Each hypothesis: H1 supported; H2 supported for the robustness, not for the published correction; H3 supported, although the first step was too small to measure.
+  \item Each hypothesis: H1 supported by the probe, large-object gain not certain; H2 not supported against the ConvLSTM, although the robustness itself is there; H3 not supported; H4 supported, although the first step was too small to measure.
 }
 All six aims were met. The baseline was reproduced exactly; the two new detectors were built and compared
 in detail; the difference between them was explained by the receptive-field probe; robustness was tested
-in both settings, with and without the correction; efficiency was measured in every way that matters; and
-the cost of spiking was broken down into its parts. Of the three hypotheses, H1 is supported: the state
-space mixer learns a wider view of the image and detects large objects better. H2 is only partly
-supported. The state space models do cope well with faster event rates, but the published correction made
-them less accurate rather than more. H3 is supported, as the three spiking versions ranked in the predicted
-order, although the first step of the ladder was too small to measure.
+in both settings, with and without the correction and against a ConvLSTM; efficiency was measured in
+every way that matters; and the cost of spiking was broken down into its parts. Of the four hypotheses, H1
+is supported, with one reservation: the state space mixer learns a wider view of the image and PureSSM
+detects large objects 2.9 points better, but the 95\,\% interval of that gain just includes zero. H2 is
+not supported. The state space models do cope well with faster event rates, keeping 62--70\,\% of their
+accuracy at ten times the rate, but the ConvLSTM keeps more, 80.3\,\%. H3 is not supported either: the
+published correction made the models less accurate rather than more. H4 is supported, as the three
+spiking versions ranked in the predicted order, although the first step of the ladder was too small to
+measure.
 
 \section{What the State-Space Model Contributes}
 \label{sec:what_shown}

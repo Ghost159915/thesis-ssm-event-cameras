@@ -193,7 +193,6 @@ This thesis investigates state space models for event-based object detection, mo
 
 \section{Research Question and Aims}
 \label{sec:rq}
-% TODO-Research Question and Aims: add the numbered aims after the question
 Prior work establishes that state space models are \emph{competitive} on event-camera detection, but
 every published comparison changes several things at once --- backbone, tokeniser and training recipe
 together --- so the contribution of the sequence model itself cannot be read off the result. This
@@ -209,8 +208,44 @@ A second question follows from the first, and motivates the neuromorphic strand 
 \emph{what does it cost to make such a detector spiking, and what does neuromorphic hardware give back
 in return?}
 
+To answer these questions, the thesis sets six aims:
+\begin{enumerate}
+  \item Reproduce the published S5-RVT detector and confirm that it reaches its reported accuracy of
+        47.7~mAP, so that every later comparison rests on a verified starting point.
+  \item Build two new detectors, EventSSM and PureSSM, that differ from each other only in their spatial
+        mixer, and compare their accuracy overall, for each object class and for each object size.
+  \item Explain why any difference in accuracy occurs, rather than only reporting it.
+  \item Measure how well the detectors cope when the rate of incoming events changes, in two test
+        settings, with and without the correction proposed in the literature, and compare them with a
+        published ConvLSTM detector on the same test data.
+  \item Measure efficiency in every way that matters for a small, battery-powered platform: model size,
+        amount of computation, speed, energy use and memory.
+  \item Build a spiking version of the detector and break down the accuracy it loses into separate,
+        measurable causes.
+\end{enumerate}
+These aims refine the aims registered in Thesis~A. The Thesis~A aim of connecting the detector to an
+obstacle-avoidance controller was later removed from the scope, as explained in
+Section~\ref{sec:scope_change} and summarised in Table~\ref{tab:aims}.
+
 \section{Hypotheses}
-% TODO-Hypotheses
+\label{sec:hypotheses}
+The aims lead to four hypotheses. Each one is a clear prediction that the experiments could prove wrong:
+\begin{description}
+  \item[H1] \emph{Large objects.} A state space model used as the spatial mixer can draw on a wider area
+            of the image than a convolutional network, so PureSSM should detect large objects better than
+            EventSSM (Sections~\ref{sec:acc_results} and~\ref{sec:erf}).
+  \item[H2] \emph{Changes in event rate.} State space models should stay accurate when events arrive
+            faster than in training, and lose less accuracy than a detector whose memory is a ConvLSTM, as
+            Zubi\'{c} et al.~\cite{zubic2024state} report (Section~\ref{sec:robustness}).
+  \item[H3] \emph{The published correction.} Adjusting the state space model's time step to the new event
+            rate, as Zubi\'{c} et al.\ propose, should make the models more robust still
+            (Section~\ref{subsec:f2}).
+  \item[H4] \emph{The cost of spiking.} Among the three spiking versions of the detector, the analog
+            version should be at least as accurate as the graded version, and the graded version more
+            accurate than the binary version (Section~\ref{subsec:spk_ladder}). This prediction was written
+            down before the spiking models were trained.
+\end{description}
+Chapter~\ref{ch:discussion} reports which hypotheses held.
 
 \section{Contributions}
 \label{sec:contributions}
