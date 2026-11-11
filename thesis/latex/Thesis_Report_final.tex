@@ -1369,11 +1369,13 @@ readout.}
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.62\textwidth]{images/fig_robustness_spiking.pdf}
+    \includegraphics[width=0.75\textwidth]{images/fig_robustness_spiking.pdf}
     \caption[Rate robustness of the spiking readouts]{Rate robustness of the spiking readouts under a true event-rate change,
-    without compensation (retention as in Figure~\ref{fig:robustness}). Solid: the 100k-step models, PureSSM
-    and the graded and binary readouts trained on the same schedule. Dashed: the 400k-step PureSSM and graded
-    readout. Each model's $1\times$ reference is its Gen1 test mAP. Single runs, without intervals.}
+    without compensation (retention as in Figure~\ref{fig:robustness}). Each line runs from the retention at twice
+    the rate (small marker, 25-ms windows) to that at ten times the rate (large marker, 5-ms windows); each
+    model's $1\times$ reference is its Gen1 test mAP. Filled markers, solid lines: the 100k-step ladder, PureSSM
+    and the analog, graded and binary readouts trained on the same schedule. Hollow markers, dashed lines: the
+    400k-step PureSSM and graded readout. Single runs, without intervals.}
     \label{fig:robustness_spiking}
 \end{figure}
 

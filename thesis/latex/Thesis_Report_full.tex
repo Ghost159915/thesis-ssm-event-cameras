@@ -1838,33 +1838,36 @@ readout.}
 
 \subsection{Rate Robustness of the Spiking Readouts}
 \label{subsec:spk_rate}
-\guide{150}{
+\guide{180}{
   \item The same faster-frame test, without correction; the neurons' leak and threshold were learned at the normal rate only.
   \item Graded version (400k) at ten times the rate: 65.2\,\% against 69.7\,\% for PureSSM; at twice the rate: 94.9\,\% against 95.9\,\%.
-  \item Same short schedule (Figure~\ref{fig:robustness_spiking}): PureSSM 69.1\,\%, graded 63.2\,\%, binary 70.3\,\%; binary beats graded by 2.5~mAP at ten times the rate although 0.54 lower at the normal rate.
-  \item What this means: the sparse graded output costs some robustness, the binary output keeps all of it; single runs, so indicative only.
+  \item Same short schedule (Figure~\ref{fig:robustness_spiking}): PureSSM 69.1\,\%, analog 67.6\,\%, graded 63.2\,\%, binary 70.3\,\%; binary beats graded by 2.5~mAP at ten times the rate although 0.54 lower at the normal rate.
+  \item What this means: the neuron's leak and reset cost a little robustness, the sparse graded output costs more, the binary output wins it all back; single runs, so indicative only.
 }
 The spiking model was also tested with frames arriving faster, without any correction. This matters because
 the neurons' leak and threshold were learned at the normal rate only. At twice the normal rate, the graded
 version trained on the full schedule keeps 94.9\,\% of its accuracy, almost the same as PureSSM's 95.9\,\%.
 At ten times the rate it keeps 65.2\,\%, against 69.7\,\% for PureSSM. The models trained on the short
 schedule show where this loss comes from (Figure~\ref{fig:robustness_spiking}). Against PureSSM trained
-on the same schedule, which keeps 69.1\,\%, the graded version keeps 63.2\,\% and the binary version
-70.3\,\%, the most of any state space model tested. At ten times the rate the binary version scores 2.5
+on the same schedule, which keeps 69.1\,\%, the analog version keeps 67.6\,\%, the graded version 63.2\,\%
+and the binary version 70.3\,\%, the most of any state space model tested. Each step of the ladder
+therefore has its own effect: the neuron's leak and reset cost a little robustness, making the output
+sparse costs more, and making it binary wins it all back. At ten times the rate the binary version scores 2.5
 points more than the graded one (28.26 against 25.73~mAP), although it is 0.54 points lower at the normal
-rate. The spiking neurons therefore do not remove the robustness of the memory before them: the sparse
-graded output reduces it somewhat, and the binary output keeps all of it. One possible reason, not tested
-here, is that a binary spike always has the same size: when frames carry fewer events, the binary output
+rate. The spiking neurons therefore do not remove the robustness of the memory before them. One possible
+reason, not tested here, is that a binary spike always has the same size: when frames carry fewer events, the binary output
 loses spikes, whereas the graded output also becomes smaller. These are single runs without intervals,
 so differences of a few points are indicative only.
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.62\textwidth]{images/fig_robustness_spiking.pdf}
+    \includegraphics[width=0.75\textwidth]{images/fig_robustness_spiking.pdf}
     \caption[Rate robustness of the spiking readouts]{Rate robustness of the spiking readouts under a true event-rate change,
-    without compensation (retention as in Figure~\ref{fig:robustness}). Solid: the 100k-step models, PureSSM
-    and the graded and binary readouts trained on the same schedule. Dashed: the 400k-step PureSSM and graded
-    readout. Each model's $1\times$ reference is its Gen1 test mAP. Single runs, without intervals.}
+    without compensation (retention as in Figure~\ref{fig:robustness}). Each line runs from the retention at twice
+    the rate (small marker, 25-ms windows) to that at ten times the rate (large marker, 5-ms windows); each
+    model's $1\times$ reference is its Gen1 test mAP. Filled markers, solid lines: the 100k-step ladder, PureSSM
+    and the analog, graded and binary readouts trained on the same schedule. Hollow markers, dashed lines: the
+    400k-step PureSSM and graded readout. Single runs, without intervals.}
     \label{fig:robustness_spiking}
 \end{figure}
 

@@ -9,9 +9,11 @@
     compensation the SSMs keep 62-70 % at 10x and the ConvLSTM 80 %; the compensation costs 9-13 points at 10x for all
     three SSMs; neither published 10x value (S5 + comp. 83.5 %, ConvLSTM 17.7 %) is reproduced.
 Second figure, fig_robustness_spiking (only when the true-rate logs of the spiking arms exist): the same
-    uncompensated protocol for the 100k ladder (PureSSM 100k anchor, graded, spike; same schedule = the fair
-    comparison; solid) and the 400k graded run against PureSSM 400k (dashed). Each arm's 1x reference is its
-    canonical Stage-21 test AP. Separate figure because three panels do not fit the text width legibly.
+    uncompensated protocol for the readout ladder, one x position per arm in ladder order (PureSSM, analog, graded,
+    spike) as in fig_ladder. Each arm is a drop from its 2x retention (small marker) to its 10x retention (large
+    marker): 100k-step schedule filled + solid (the fair ladder comparison), 400k-step PureSSM and graded hollow +
+    dashed to the right of their 100k run (values right of each marker). Each arm's 1x reference is its canonical Stage-21 test AP. One x position per arm keeps
+    analog yellow away from PureSSM orange (report_style: never two adjacent lines in that pair).
 Values are read from the eval logs of results/stage9/{sweep,sweep_tr}/ and results/stage9_rvt_lstm/ (Tables
 tab:regime1, tab:regime2, tab:dt_comp).
 
@@ -34,12 +36,15 @@ WINDOWS = [(200, 0.25), (100, 0.5), (50, 1.0), (25, 2.0), (12, 4.0)]            
 TRUE_RATE = [(25, 2.0, "0.5000"), (5, 10.0, "0.1000")]                                   # regime 2: dt, mult, step scale
 # Zubic et al. 2024, Table 2 (Gen1 test): S5 47.71 -> 39.84 and RVT 47.16 -> 8.35 from 20 to 200 Hz.
 PUBLISHED = {"S5 + comp.": 39.84 / 47.71 * 100, "ConvLSTM": 8.35 / 47.16 * 100}
-# (sweep_tr log key, test_metrics key, style, legend name, dashed)
-SPIKING = [("puressm_100k", "puressm_100k", "puressm", "PureSSM 100k", False),
-           ("graded_s234_100k", "graded_100k", "graded", "Graded 100k", False),
-           ("spike_s234_100k", "spike_100k", "spike", "Spike 100k", False),
-           ("puressm", "puressm", "puressm", "PureSSM 400k", True),
-           ("graded_s234_400k", "graded_400k", "graded", "Graded 400k", True)]
+# (sweep_tr log key, test_metrics key, style key, arm position on the x axis, schedule)
+SPIKING = [("puressm_100k", "puressm_100k", "puressm", 0, "100k"),
+           ("analog_s234_100k", "analog_100k", "analog", 1, "100k"),
+           ("graded_s234_100k", "graded_100k", "graded", 2, "100k"),
+           ("spike_s234_100k", "spike_100k", "spike", 3, "100k"),
+           ("puressm", "puressm", "puressm", 0, "400k"),
+           ("graded_s234_400k", "graded_400k", "graded", 2, "400k")]
+ARM_TICKS = ["PureSSM", "Analog", "Graded", "Spike"]                                    # tick labels as fig_ladder
+PAIR = 0.25                                                                              # 100k/400k pair: ±PAIR about the tick
 ROW = re.compile(r"│\s*test/AP\s*│\s*([0-9.]+)\s*│")
 LINE_PT = 9.0                                                                            # one 7.5-pt label line + leading
 
@@ -145,34 +150,44 @@ def main() -> None:
     spread_labels(bx, labels_b)
     rs.save(fig, "fig_robustness", rows)
 
-    if spiking:                                                                      # second figure: spiking arms
-        fig, cx = plt.subplots(figsize=(0.62 * rs.TEXT_WIDTH, 2.6))
-        labels_c, srows = [], []
-        for key, tkey, style, name, dashed in spiking:
+    if spiking:                                                                      # second figure: spiking ladder
+        from matplotlib.lines import Line2D
+        fig, cx = plt.subplots(figsize=(0.75 * rs.TEXT_WIDTH, 2.7))
+        cx.axhline(100, color=rs.AXIS, linewidth=0.9, zorder=1)
+        srows, by_rate = [], {2.0: [], 10.0: []}
+        for key, tkey, style, arm, sched in spiking:
             ref = test[tkey]["AP"]
             aps = [ref] + [ap(S9 / f"sweep_tr/{key}_dt{dt}_nc.log") for dt, _, _ in TRUE_RATE]
             ret = [a / ref * 100 for a in aps]
-            cx.plot(xs, ret, "--" if dashed else "-", color=rs.colour(style), marker=rs.marker(style),
-                    markerfacecolor="white" if dashed else None,
-                    markeredgecolor=rs.colour(style) if dashed else "white", markeredgewidth=0.8,
-                    linewidth=1.2 if dashed else 1.8)
-            labels_c.append((xs[-1], ret[-1], f"{name}  {ret[-1]:.1f} %"))
-            srows += [{"model": tkey, "mult": x, "dt_ms": round(50 / x, 1), "comp": "none", "AP": round(a, 2),
-                       "retention_pct": round(r, 1)} for x, a, r in zip(xs, aps, ret)]
-        cx.plot([], [], "-", color=rs.INK_2, label="100k-step schedule")
-        cx.plot([], [], "--", color=rs.INK_2, linewidth=1.2, label="400k-step schedule")
-        cx.set_xscale("log")
-        cx.set_xticks([1, 2, 10], ["1×\n50 ms", "2×\n25 ms", "10×\n5 ms"])
-        cx.set_xlim(0.85, 60)
-        cx.set_ylim(55, 102)
-        cx.set_xlabel("True event rate (rate multiplier)")
+            long, c = sched == "400k", rs.colour(style)
+            paired = sum(1 for s in spiking if s[3] == arm) == 2                    # arms with a 400k run
+            x = arm + (PAIR if long else -PAIR) * paired                              # 100k left, 400k right
+            cx.plot([x, x], ret[1:], "--" if long else "-", color=c, linewidth=1.1 if long else 1.6, zorder=2)
+            for (_, mult, _), r, ms in zip(TRUE_RATE, ret[1:], (4.0, 6.5)):           # small = 2x, large = 10x
+                cx.plot(x, r, rs.marker(style), ms=ms, color=c, markerfacecolor="white" if long else c,
+                        markeredgecolor=c if long else "white", markeredgewidth=0.9 if long else 0.6, zorder=3)
+                cx.annotate(f"{r:.1f}", (x, r), xytext=(5, 0), textcoords="offset points", ha="left",
+                            va="center", fontsize=7, color=rs.INK)
+                by_rate[mult].append(r)
+            srows += [{"model": tkey, "schedule": sched, "mult": x_, "dt_ms": round(50 / x_, 1), "comp": "none",
+                       "AP": round(a, 2), "retention_pct": round(r, 1)} for x_, a, r in zip(xs, aps, ret)]
+        right = len(ARM_TICKS) - 1 + 0.55
+        cx.text(right, 100.4, "1×  50 ms", ha="left", va="bottom", fontsize=7, color=rs.MUTED)
+        for (_, mult, _), text in zip(TRUE_RATE, ("2×  25 ms", "10×  5 ms")):
+            cx.text(right, sum(by_rate[mult]) / len(by_rate[mult]), text, ha="left", va="center", fontsize=7,
+                    color=rs.MUTED)
+        cx.legend(handles=[Line2D([], [], color=rs.INK_2, marker="o", ms=5, markeredgecolor="white",
+                                  linewidth=1.6, label="100k-step schedule"),
+                           Line2D([], [], color=rs.INK_2, marker="o", ms=5, markerfacecolor="white",
+                                  linestyle="--", linewidth=1.1, label="400k-step schedule")],
+                  loc="lower center", ncol=2, fontsize=7.5)
+        cx.set_xticks(range(len(ARM_TICKS)), ARM_TICKS)
+        cx.set_xlim(-0.55, len(ARM_TICKS) - 1 + 1.25)
+        cx.set_ylim(50, 103)
         cx.set_ylabel("Retention (% of own 1× AP)")
-        cx.legend(loc="lower left", fontsize=7.5)
+        cx.grid(axis="x", visible=False)
         cx.minorticks_off()
-        fig.canvas.draw()
-        spread_labels(cx, labels_c)
         rs.save(fig, "fig_robustness_spiking", srows)
-
 
 if __name__ == "__main__":
     main()

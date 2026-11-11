@@ -1510,25 +1510,30 @@ readout.}
 \subsection{Rate robustness of the spiking readouts}
 \label{subsec:spk_rate}
 Under the true-rate protocol of Section~\ref{sec:robustness} (5-ms windows at 200\,Hz, no compensation), the
-graded and binary readouts retain 63.2\,\% and 70.3\,\% of their 1$\times$ test mAP, against 69.1\,\% for
-the PureSSM 100k anchor under the same protocol (Figure~\ref{fig:robustness_spiking}). (The 69.7\,\% of
-Table~\ref{tab:regime2} belongs to the 400k-step PureSSM; against it the 400k graded readout retains
-65.2\,\%.) The leak and threshold were learned at the 50-ms training rate only, so this measures whether
-the LIF readout preserves the robustness of the uncompensated recurrence. Sparsity reduces it: the graded
-readout loses 5.9 points of retention against its anchor. Binarisation recovers it: the binary readout
-retains slightly more than the anchor and, at the tenfold rate, scores 2.5~mAP above the graded readout
-(28.26 against 25.73) although it is 0.54~mAP below it at 1$\times$. A plausible but untested explanation
-is the fixed spike amplitude: when sparser frames reduce the membrane input, the binary output loses
-spikes but not their size, whereas the graded output, which carries the membrane value, shrinks in both.
+analog, graded and binary readouts retain 67.6\,\%, 63.2\,\% and 70.3\,\% of their 1$\times$ test mAP, against
+69.1\,\% for the PureSSM 100k anchor under the same protocol (Figure~\ref{fig:robustness_spiking}). (The
+69.7\,\% of Table~\ref{tab:regime2} belongs to the 400k-step PureSSM; against it the 400k graded readout
+retains 65.2\,\%.) The leak and threshold were learned at the 50-ms training rate only, so this measures
+whether the LIF readout preserves the robustness of the uncompensated recurrence. Read along the ladder,
+retention falls with the LIF dynamics (analog) and further with sparsity (graded), and binarisation recovers
+it: the binary readout retains slightly more than the anchor. In absolute terms the three steps at the
+tenfold rate are $-0.86$, $-2.81$ and $+2.53$~mAP (29.40, 28.54, 25.73 and 28.26~mAP), against $-0.28$,
+$-1.52$ and $-0.54$ at 1$\times$: the costs of the dynamics and of sparsity grow with the rate, and the
+binarisation step changes sign, so that the binary readout scores 2.5~mAP above the graded one at the
+tenfold rate although it is 0.54~mAP below it at 1$\times$. A plausible but untested explanation is the
+fixed spike amplitude: when sparser frames reduce the membrane input, the binary output loses spikes but
+not their size, whereas the graded output, which carries the membrane value, shrinks in both.
 These are single runs without intervals, so the differences are indicative only.
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.62\textwidth]{images/fig_robustness_spiking.pdf}
+    \includegraphics[width=0.75\textwidth]{images/fig_robustness_spiking.pdf}
     \caption{Rate robustness of the spiking readouts under a true event-rate change,
-    without compensation (retention as in Table~\ref{tab:regime2}). Solid: the 100k-step models, PureSSM
-    and the graded and binary readouts trained on the same schedule. Dashed: the 400k-step PureSSM and graded
-    readout. Each model's $1\times$ reference is its Gen1 test mAP. Single runs, without intervals.}
+    without compensation (retention as in Table~\ref{tab:regime2}). Each line runs from the retention at twice
+    the rate (small marker, 25-ms windows) to that at ten times the rate (large marker, 5-ms windows); each
+    model's $1\times$ reference is its Gen1 test mAP. Filled markers, solid lines: the 100k-step ladder, PureSSM
+    and the analog, graded and binary readouts trained on the same schedule. Hollow markers, dashed lines: the
+    400k-step PureSSM and graded readout. Single runs, without intervals.}
     \label{fig:robustness_spiking}
 \end{figure}
 
