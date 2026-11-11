@@ -125,7 +125,7 @@ Engineering at UNSW Sydney for their support.
 \chapter*{Nomenclature}
 \addcontentsline{toc}{chapter}{Nomenclature}
 \begin{tabular}{ll}
-\multicolumn{2}{l}{\textit{Latin Symbols}} \\[4pt]
+\multicolumn{2}{l}{\textbf{Latin Symbols}} \\[4pt]
 $A$ & state transition matrix \\
 $\bar{A}$ & discretised state matrix \\
 $B$ & input projection matrix \\
@@ -141,9 +141,9 @@ $I$ & identity matrix \\
 $t$ & time, s \\
 $u(t)$ & input signal \\
 $x, y$ & pixel coordinates \\[8pt]
-\multicolumn{2}{l}{\textit{Greek Symbols}} \\[4pt]
+\multicolumn{2}{l}{\textbf{Greek Symbols}} \\[4pt]
 $\Delta$, $\Delta t$ & SSM discretisation step size (used interchangeably) \\[8pt]
-\multicolumn{2}{l}{\textit{Acronyms}} \\[4pt]
+\multicolumn{2}{l}{\textbf{Acronyms}} \\[4pt]
 CNN & Convolutional Neural Network \\
 DAVIS & Dynamic and Active-pixel Vision Sensor \\
 DVS & Dynamic Vision Sensor \\
@@ -193,7 +193,7 @@ This thesis investigates state space models for event-based object detection, mo
 
 \section{Research Question and Aims}
 \label{sec:rq}
-Prior work establishes that state space models are \emph{competitive} on event-camera detection, but
+Prior work establishes that state space models are competitive on event-camera detection, but
 every published comparison changes several things at once --- backbone, tokeniser and training recipe
 together --- so the contribution of the sequence model itself cannot be read off the result. This
 thesis narrows the question until it is answerable:
@@ -205,8 +205,8 @@ for event-based object detection?}
 \end{quote}
 
 A second question follows from the first, and motivates the neuromorphic strand of the work:
-\emph{what does it cost to make such a detector spiking, and what does neuromorphic hardware give back
-in return?}
+what does it cost to make such a detector spiking, and what does neuromorphic hardware give back
+in return?
 
 To answer these questions, the thesis sets six aims:
 \begin{enumerate}
@@ -231,16 +231,16 @@ Section~\ref{sec:scope_change} and summarised in Table~\ref{tab:aims}.
 \label{sec:hypotheses}
 The aims lead to four hypotheses. Each one is a clear prediction that the experiments could prove wrong:
 \begin{description}
-  \item[H1] \emph{Large objects.} A state space model used as the spatial mixer can draw on a wider area
+  \item[H1 Large objects.] A state space model used as the spatial mixer can draw on a wider area
             of the image than a convolutional network, so PureSSM should detect large objects better than
             EventSSM (Sections~\ref{sec:acc_results} and~\ref{sec:erf}).
-  \item[H2] \emph{Changes in event rate.} State space models should stay accurate when events arrive
+  \item[H2 Changes in event rate.] State space models should stay accurate when events arrive
             faster than in training, and lose less accuracy than a detector whose memory is a ConvLSTM, as
             Zubi\'{c} et al.~\cite{zubic2024state} report (Section~\ref{sec:robustness}).
-  \item[H3] \emph{The published correction.} Adjusting the state space model's time step to the new event
+  \item[H3 The published correction.] Adjusting the state space model's time step to the new event
             rate, as Zubi\'{c} et al.\ propose, should make the models more robust still
             (Section~\ref{subsec:f2}).
-  \item[H4] \emph{The cost of spiking.} Among the three spiking versions of the detector, the analog
+  \item[H4 The cost of spiking.] Among the three spiking versions of the detector, the analog
             version should be at least as accurate as the graded version, and the graded version more
             accurate than the binary version (Section~\ref{subsec:spk_ladder}). This prediction was written
             down before the spiking models were trained.
@@ -259,7 +259,7 @@ Chapter~\ref{ch:discussion} reports which hypotheses held.
         training settings differ.
   \item \textbf{A causal mechanism for the large-object result:} a gradient-based effective-receptive-field
         probe showing that the state-space spatial mixer sees up to twice as far as the convolutional
-        stack, and --- unlike the convolutional stack --- \emph{widens its field through training}.
+        stack, and --- unlike the convolutional stack --- widens its field through training.
   \item \textbf{A reproduction study of $\Delta t$-rescaling:} under the published checkpoint and code,
         the inference-time compensation reported to give SSMs their temporal generalisation does not
         recover accuracy at any tested operating point (at a true tenfold rate it costs 9--13~mAP), and
@@ -525,11 +525,11 @@ On this benchmark a spiking detector is therefore no longer necessarily a less a
 for the neuromorphic strand rests on energy and deployment rather than accuracy.
 
 Second, the mechanisms behind that progress are identifiable, and both are native to a state-space neuron.
-\emph{More information per spike:} SpikeYOLO's I-LIF neuron emits integer values in $\{0,\dots,D\}$ during
+\textbf{More information per spike:} SpikeYOLO's I-LIF neuron emits integer values in $\{0,\dots,D\}$ during
 training and, at inference, expands each integer into $D$ binary spikes over virtual timesteps, so that
 inference remains spike-driven (binary, accumulate-only) while training sees a multi-bit
 signal~\cite{luo2024integer}. SpikeDet uses the same integer-valued scheme, and for both detectors the
-$4\times2$ configuration, with fewer timesteps each carrying a two-level value, outperforms $5\times1$. \emph{Temporal state:}
+$4\times2$ configuration, with fewer timesteps each carrying a two-level value, outperforms $5\times1$. \textbf{Temporal state:}
 EAS-SNN uses recurrent convolutional SNNs with temporal memory as an adaptive event sampler~\cite{wang2024eas},
 and HsVT combines LSTM blocks with a spiking temporal feature-extraction block on a MaxViT spatial
 backbone~\cite{xu2025hybrid}. HsVT is the closest design point to the spiking model of this thesis: it keeps
@@ -551,7 +551,7 @@ input weight $b$, output weight $c$ and step $\Delta$, discretised with a zero-o
 \end{equation}
 The discrete LIF neuron of Equations~\eqref{eq:lif_integrate}--\eqref{eq:lif_reset} integrates its input
 $x_t$ as $m_t = \beta m_{t-1} + x_t$. With $\beta = \bar a$ and $x_t = \bar b u_t$ the membrane potential
-$m_t$ \emph{is} the SSM state $h_t$, and the leak is a discretised decay. The neuron differs in two
+$m_t$ is exactly the SSM state $h_t$, and the leak is a discretised decay. The neuron differs in two
 respects only. Its readout is a threshold, $s_t = \Theta(m_t - \vartheta)$, instead of a linear map; and its
 reset, $m_t \leftarrow m_t - s_t\vartheta$, feeds the output back into the state. The second difference is
 the consequential one. Without reset the recurrence is linear and can be evaluated with a parallel scan, as
@@ -605,7 +605,7 @@ benchmarks, language modelling and speech. Second, it is built on linear time-in
 decay does not depend on the input. The only selective model in Table~\ref{tab:spiking_ssm}, SpikeMba, keeps
 Mamba itself non-spiking and uses spikes only for proposal generation~\cite{li2024spikemba}. In a selective
 SSM the decay $\bar a_t = e^{\Delta_t a}$ varies with the input at every step. The recurrence is still linear
-in the state, so a spiking \emph{readout} placed after the scan, as in this thesis, leaves the scan exact and
+in the state, so a spiking readout placed after the scan, as in this thesis, leaves the scan exact and
 parallel; making the selective state itself spike, with a reset inside the scan, would require one of the
 parallel-training devices above to be extended to input-dependent decays.
 
@@ -1700,7 +1700,7 @@ PureSSM & run \texttt{aekvsalq}, rented RTX~5090 & 310k (best val.) & \texttt{a0
     \begin{tabularx}{\textwidth}{|>{\RaggedRight\arraybackslash}p{3.2cm}|l|l|>{\RaggedRight\arraybackslash}X|}
         \hline
         \rowcolor[gray]{0.9} \textbf{Risk} & \textbf{Likelihood} & \textbf{Impact} & \textbf{Mitigation and status} \\ \hline
-        Spiking model does not train stably & Medium & High & A kill-switch fixed before training: if the model is not training stably by 11~October, it is frozen as a simulated proof of concept and effort moves to the write-up. Spiking is introduced stage by stage, and the residual bypass is reported if used. \emph{Status:} criteria met. In overfitting tests the dense and graded readouts pass, and the binary readout, which receives about a third of the dense readout's gradient, passes with twice the steps. In 25k-step runs with spiking at stage~4 the spike and graded readouts reached 0.345 and 0.343 validation mAP against 0.351 for PureSSM under the same schedule, with no silent or saturated stage; runs with spiking at stages 2--4 are under way. \\ \hline
+        Spiking model does not train stably & Medium & High & A kill-switch fixed before training: if the model is not training stably by 11~October, it is frozen as a simulated proof of concept and effort moves to the write-up. Spiking is introduced stage by stage, and the residual bypass is reported if used. Status: criteria met. In overfitting tests the dense and graded readouts pass, and the binary readout, which receives about a third of the dense readout's gradient, passes with twice the steps. In 25k-step runs with spiking at stage~4 the spike and graded readouts reached 0.345 and 0.343 validation mAP against 0.351 for PureSSM under the same schedule, with no silent or saturated stage; runs with spiking at stages 2--4 are under way. \\ \hline
         Single-seed variance & High & Medium & Each model is trained once. Run-to-run variation is unmeasured; overall-mAP differences below about 1~mAP are treated as not distinguishable, and only larger effects, such as $\mathrm{AP}_L$ differences, are reported as findings, as single-seed results (Section~\ref{sec:limitations}). \\ \hline
         Training environment breaks & Medium & High & The hand-built Blackwell stack is pinned (Appendix~\ref{app:repro}); dependency resolution is disabled for the kernel packages; runbooks and patches rebuild it from scratch. \\ \hline
         Long run lost to a crash or out-of-memory kill & Medium & Medium & Full-state checkpoint resumption, validated in earlier runs; data-loader workers capped for host memory; a rented GPU of the same architecture as fallback. \\ \hline
