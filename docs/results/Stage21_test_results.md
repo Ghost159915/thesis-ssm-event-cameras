@@ -262,3 +262,44 @@ spiking arms `results/stage21_test_eval/{graded,spike,analog}_s234_dt{25,5}/` (a
   Schedule length barely changes robustness (PureSSM 69.1 % at 100k vs 69.7 % at 400k; graded 63.2 % vs 65.2 %).
   Figure `fig_robustness_spiking` (redrawn 2026-11-11 as one x position per arm, 2× → 10× drop, so analog yellow is
   never a line next to PureSSM orange).
+
+### 7.3 ConvLSTM efficiency (`results/stage10_rvt_lstm/`, run 2026-11-11 15:26–15:34, sha `9a2f1e5`)
+
+One benchmark session with all four ANN detectors (`stage10_run_local.sh --models all+rvt_lstm --graph`, VS Code
+closed, idle guard passed; smoke run first). RTX 5070 Ti, bf16 eager, batch 1, full-pipeline streaming.
+
+| Metric | RVT ConvLSTM | S5-RVT | EventSSM | PureSSM |
+|---|---|---|---|---|
+| Params | 18.54 M | 18.19 M | 19.18 M | 16.33 M |
+| FLOPs (profiler) | **10.53 G** | 11.06 G | 12.71 G | 10.03 G |
+| mAP / GFLOP | 4.48 | 4.32 | 3.64 | 4.63 |
+| Latency p50, this session | 13.17 ms | 17.14 ms | 12.20 ms | 26.96 ms |
+| Latency p50, Stage-16 (report) | — | 17.14 ms | 12.60 ms | 26.86 ms |
+| Backbone p50 | 6.11 ms | 10.70 ms | 5.23 ms | 19.90 ms |
+| fp32 full p50 | 9.84 ms | 14.16 ms | 9.83 ms | 23.96 ms |
+| Throughput b8 | **651 fps** | 229 | 342 | 210 |
+| Energy / frame, this session | **0.169 J** | 0.722 J | 0.429 J | 0.663 J |
+| Energy / frame, Stage-16 (report) | — | 0.723 J | 0.438 J | 0.652 J |
+| VRAM inference / train | **619 / 3264 MB** | 2279 / 10930 | 1331 / 7277 | 1333 / 10099 |
+| Streaming state | 4.7 MB (4800 KiB) | 4.7 MB | 144.5 MB | 144.5 MB |
+| CUDA-graph replay | not captured | not captured | 240 Hz net | 203 Hz net |
+
+- **The session reproduces the report's Stage-16 values** for the three ANN models: latency within 3.2 %, energy within
+  2.1 %, FLOPs identical (12.71 / 11.06 / 10.03 G). The ConvLSTM column can therefore sit next to the Stage-16 values
+  in `tab:efficiency` (done, with a dagger footnote).
+- **FLOP counter fixed:** fvcore traces the ConvLSTM cleanly, so the run counted it with fvcore (10.553 G), while
+  every SSM model falls back to torch.profiler (fvcore cannot trace their kernels). fvcore skips elementwise mul/add.
+  Recounted on the CPU with the profiler (`scripts/stage10_profiler_recount.py`): **10.528 G**; calibration S5-RVT
+  CPU = GPU = 10.025546256 G exactly. Provenance kept in `flops.recount` of the JSON. The harness now skips fvcore
+  for the ConvLSTM (`stage10_benchmark.PROFILER_ONLY`), so a rerun gives the profiler count directly.
+- **Energy caveat:** idle drift flagged (idle 48.6 W before, 42.0 W after; EventSSM and S5-RVT are flagged too, in
+  both sessions). With the post-run idle the ConvLSTM is 0.257 J and EventSSM 0.517 J: the ConvLSTM stays at about
+  half of EventSSM under either idle estimate. Load power 61.4 W vs 87.0 W (EventSSM) at similar frame rate.
+- ⇒ **The ConvLSTM is about as fast as EventSSM (≈ 1 ms slower in the same session, 4 ms faster than S5-RVT), uses
+  ≈ 40 % of EventSSM's energy per frame, the least VRAM, the highest batch-8 throughput, and the baseline's 4.7 MB
+  state.** EventSSM's efficiency lead (1.4× faster, 1.65× less energy) is a lead over S5-RVT, not over recurrent
+  detectors in general. What still favours ours: PureSSM best mAP/GFLOP (4.63 vs 4.48) and AP_L; CUDA-graph replay
+  (not measured for either baseline, so no comparison). Together with §7.2, the published ConvLSTM is the most
+  rate-robust and the most energy-efficient model measured, and 0.6 AP below S5-RVT at 1×.
+- Report figure `fig_efficiency` has the ConvLSTM as the top row (from this JSON; the other rows stay Stage-16).
+  Harness report: `results/stage10_rvt_lstm/efficiency_table.md`, `stage10_{latency_breakdown,pareto}.*`.

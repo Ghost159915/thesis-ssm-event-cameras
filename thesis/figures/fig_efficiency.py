@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Report figure: the efficiency trade-space of the three detectors (RTX 5070 Ti, bf16, batch 1, streaming).
+"""Report figure: the efficiency trade-space of the detectors (RTX 5070 Ti, bf16, batch 1, streaming).
 
 (a) Where a frame's time goes (eager p50 per component: backbone / neck+head / post-processing), with the
     graph-deploy latency (CUDA-graph network replay + eager post-processing) as a marker. Message: the neck and head
@@ -8,9 +8,16 @@
     scan kernels are launch-bound, which graph replay removes.
 (b) Energy per frame (GPU board power above idle x time, eager). (c) Recurrent state carried per stream.
     Message: EventSSM is the fastest and most frugal per frame, and pays for it with a 31x larger streaming state.
-The numbers are those of Table tab:efficiency (the three-model Stage-16 run in results/stage10/bench_results.json).
+    The RVT ConvLSTM row (top, when results/stage10_rvt_lstm/bench_results.json exists) is the published RVT-B
+    checkpoint, measured 2026-11-11 in one session with the three models below, whose values in that session lie within
+    3 % of the Stage-16 values drawn here. Message: the ConvLSTM is nearly as fast as EventSSM with less than half of its
+    energy per frame and the baseline's small state, so EventSSM's efficiency lead is over S5-RVT, not over recurrent
+    detectors in general. No CUDA-graph marker: the stock RVT state machinery is outside the graph-capture contract.
+The numbers are those of Table tab:efficiency (the three-model Stage-16 run in results/stage10/bench_results.json,
+plus the ConvLSTM from results/stage10_rvt_lstm/).
 
   python thesis/figures/fig_efficiency.py [--bench results/stage10/bench_results.json]
+                                          [--lstm-bench results/stage10_rvt_lstm/bench_results.json]
   -> thesis/latex/images/fig_efficiency.{pdf,png} + results/report_figs/fig_efficiency.csv
 """
 from __future__ import annotations
@@ -21,19 +28,27 @@ import json
 import report_style as rs
 from report_style import plt
 
-ORDER = [("baseline", "s5rvt"), ("eventssm", "eventssm"), ("puressm", "puressm")]   # bench key, style key
+ORDER = [("rvt_lstm", "convlstm"), ("baseline", "s5rvt"), ("eventssm", "eventssm"),
+         ("puressm", "puressm")]                                                      # bench key, style key
 NECK, POST = "#b4b2a9", "#dcdad3"                     # shared frozen pipeline: neutral, identical in every row
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--bench", default=str(rs.REPO / "results/stage10/bench_results.json"))
-    bench = json.loads(open(ap.parse_args().bench).read())["models"]
+    ap.add_argument("--lstm-bench", default=str(rs.REPO / "results/stage10_rvt_lstm/bench_results.json"))
+    args = ap.parse_args()
+    bench = json.loads(open(args.bench).read())["models"]
+    try:                                                     # ConvLSTM: its own (later) session, see the docstring
+        bench["rvt_lstm"] = json.loads(open(args.lstm_bench).read())["models"]["rvt_lstm"]
+    except (FileNotFoundError, KeyError):
+        pass
+    order = [(k, s) for k, s in ORDER if k in bench]
     rs.apply()
-    fig, (ax, bx, cx) = plt.subplots(1, 3, figsize=(rs.TEXT_WIDTH, 2.15), sharey=True,
+    fig, (ax, bx, cx) = plt.subplots(1, 3, figsize=(rs.TEXT_WIDTH, 0.6 + 0.52 * len(order)), sharey=True,
                                      gridspec_kw={"width_ratios": [2.2, 1, 1], "wspace": 0.18})
     rows, ticks = [], []
-    for y, (key, style) in enumerate(ORDER):
+    for y, (key, style) in enumerate(order):
         m = bench[key]
         lat = m["latency"]["bf16"]
         comp = {k: v["p50_ms"] for k, v in lat["components"].items()}
@@ -50,7 +65,7 @@ def main() -> None:
         for part, w, c in (("backbone", comp["backbone"], rs.colour(style)), ("neck+head", comp["neck_head"], NECK),
                            ("post-processing", comp["postprocess"], POST)):
             ax.barh(y, w, left=left, height=0.62, color=c, edgecolor="white", linewidth=1)
-            if y == 0 and part != "post-processing":       # direct labels on the first row instead of a legend
+            if key == "baseline" and part != "post-processing":   # direct labels on the widest backbone, no legend
                 ax.text(left + w / 2, y, part.replace("+", "+\n"), ha="center", va="center", fontsize=6.5,
                         linespacing=1.0,
                         color="white" if part == "backbone" else rs.INK)
@@ -72,7 +87,7 @@ def main() -> None:
                      "graph_deploy_p50_ms": round(deploy, 2) if deploy else "", "energy_J_per_frame": round(energy, 3),
                      "state_MB_per_stream": round(state_mb, 1)})
 
-    ax.set_yticks(range(len(ORDER)), ticks)
+    ax.set_yticks(range(len(order)), ticks)
     ax.invert_yaxis()
     ax.set_xlabel("Latency per frame, p50 (ms)")
     ax.set_xlim(0, 33)

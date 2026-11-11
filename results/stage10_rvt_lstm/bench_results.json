@@ -1,0 +1,611 @@
+{
+  "schema": 1,
+  "meta": {
+    "date": "2026-11-11T15:26:05",
+    "torch": "2.11.0+cu128",
+    "cuda": "12.8",
+    "gpu": "NVIDIA GeForce RTX 5070 Ti",
+    "driver": "595.91.07",
+    "git_sha": "9a2f1e5",
+    "clip_src": "/home/ghost/Desktop/thesis-ssm-event-cameras/data/gen1_raw/gen1/test/17-04-04_11-00-13_cut_15_122500000_182500000/event_representations_v2/stacked_histogram_dt=50_nbins=10/event_representations.h5",
+    "ckpts": {
+      "eventssm": "/home/ghost/Desktop/thesis-ssm-event-cameras/external/ssms_event_cameras/RVT/RVT/8zotrwjw/checkpoints/epoch=003-step=320000-val_AP=0.46.ckpt",
+      "baseline": "/home/ghost/Desktop/thesis-ssm-event-cameras/checkpoints/gen1_base.ckpt",
+      "puressm": "/home/ghost/Desktop/thesis-ssm-event-cameras/results/stage14_cloud/ckpts/epoch=002-step=310000-val_AP=0.48.ckpt",
+      "rvt_lstm": "/home/ghost/Desktop/thesis-ssm-event-cameras/checkpoints/rvt-b-gen1.ckpt"
+    },
+    "test_ap": {
+      "eventssm": 0.462,
+      "baseline": 0.477,
+      "puressm": 0.4643,
+      "rvt_lstm": 0.4714
+    },
+    "step_scale_env": {
+      "MAMBA_STEP_SCALE": null,
+      "S5_STEP_SCALE": null
+    },
+    "monitor_env": {
+      "SPIKING_MONITOR": null,
+      "PURESSM_MONITOR": null,
+      "SPIKING_ALLOW_ARM_OVERRIDE": null
+    },
+    "git_dirty": true,
+    "weights": "plain mdl.* (non-EMA); compute metrics weight-independent",
+    "clocks_sm_mhz": 2587.0,
+    "temperature_gpu_c": 39.0,
+    "raw": "2587, 39",
+    "clocks_after": {
+      "clocks_sm_mhz": 2880.0,
+      "temperature_gpu_c": 34.0,
+      "raw": "2880, 34"
+    }
+  },
+  "models": {
+    "eventssm": {
+      "params_m": {
+        "total": 19.184105,
+        "neck": 3.860992,
+        "head": 1.890709,
+        "backbone_spatial": 11.229824,
+        "backbone_temporal": 2.20258
+      },
+      "flops": {
+        "counted_gflops": 12.4850072,
+        "analytic_gflops": 0.22880256,
+        "total_gflops": 12.71380976,
+        "unsupported_ops": {
+          "trace_failed": 1,
+          "err": "at 31:23:\n    pid_h = tl.program_id(axis=2)\n    dt_ptr += pid_b * stride_dt_batch + pid_c * chunk_size * stride_dt_seqlen\n    dt_out_ptr += pid_b * stride_dt_out_batch + pid_c * stride_dt_out_chunk\n  "
+        },
+        "counted_incomplete": false,
+        "source": "torch.profiler",
+        "analytic_convention": "v2-unprofiled-only: SSM work inside custom kernels (causal conv, chunk scan, gated norm); projections/FF profiled; S5 complex products topped up from 1 to 4 real MACs"
+      },
+      "latency": {
+        "bf16": {
+          "full": {
+            "mean_ms": 12.20768744383046,
+            "std_ms": 0.04816598945190933,
+            "p50_ms": 12.20117301272694,
+            "p95_ms": 12.258651986485347,
+            "hz": 81.95933284094149,
+            "iters": 300
+          },
+          "network": {
+            "mean_ms": 11.5904554068887,
+            "std_ms": 0.030764064268572665,
+            "p50_ms": 11.585443004150875,
+            "p95_ms": 11.638954994850792,
+            "hz": 86.31521467428706,
+            "iters": 300
+          },
+          "components": {
+            "backbone": {
+              "mean_ms": 5.233638740610331,
+              "std_ms": 0.012838258535564622,
+              "p50_ms": 5.233377989497967,
+              "p95_ms": 5.254368006717414,
+              "hz": 191.08117204733554,
+              "iters": 100
+            },
+            "neck_head": {
+              "mean_ms": 6.3221599502139725,
+              "std_ms": 0.01340729333539745,
+              "p50_ms": 6.320866988971829,
+              "p95_ms": 6.340263003949076,
+              "hz": 158.20614509761467,
+              "iters": 100
+            },
+            "postprocess": {
+              "mean_ms": 0.6039179197978228,
+              "std_ms": 0.008076402918157493,
+              "p50_ms": 0.6037870043655857,
+              "p95_ms": 0.6138769967947155,
+              "hz": 1656.2131890379544,
+              "iters": 100
+            }
+          },
+          "throughput": {
+            "b4_fps": 297.2692034439631,
+            "b8_fps": 341.59031130856573
+          }
+        },
+        "fp32": {
+          "full": {
+            "mean_ms": 9.83952295316461,
+            "std_ms": 0.0439361298534476,
+            "p50_ms": 9.830799011979252,
+            "p95_ms": 9.900029996060766,
+            "hz": 101.72113159687802,
+            "iters": 300
+          },
+          "network": {
+            "mean_ms": 9.81436510963249,
+            "std_ms": 0.0325517957912189,
+            "p50_ms": 9.808688002522103,
+            "p95_ms": 9.893196998746134,
+            "hz": 101.9504341195143,
+            "iters": 300
+          },
+          "components": {
+            "backbone": {
+              "mean_ms": 5.413879930856638,
+              "std_ms": 0.021434160053146807,
+              "p50_ms": 5.420662011601962,
+              "p95_ms": 5.442401990876533,
+              "hz": 184.47931227951088,
+              "iters": 100
+            },
+            "neck_head": {
+              "mean_ms": 4.7673302798648365,
+              "std_ms": 0.028290129178850237,
+              "p50_ms": 4.758353999932297,
+              "p95_ms": 4.8208420048467815,
+              "hz": 210.15670545197526,
+              "iters": 100
+            },
+            "postprocess": {
+              "mean_ms": 0.6056563901074696,
+              "std_ms": 0.005067899792235912,
+              "p50_ms": 0.6069530063541606,
+              "p95_ms": 0.6119120080256835,
+              "hz": 1647.574012371716,
+              "iters": 100
+            }
+          },
+          "throughput": {
+            "b4_fps": 246.9139156274731,
+            "b8_fps": 255.65320328313592
+          }
+        },
+        "graph": {
+          "p50_ms": 4.157032002694905,
+          "hz": 240.55624285589425,
+          "protocol": "cuda-graph-replay",
+          "state_semantics": "carried",
+          "mean_ms": 4.156435242815253,
+          "p95_ms": 4.171218010014854,
+          "iters": 300
+        }
+      },
+      "vram": {
+        "inference_mb": 1331.22216796875,
+        "train_mb": 7277.25048828125,
+        "state_kb_per_stream": 147980.001953125
+      },
+      "energy": {
+        "idle_w": 52.22918918918919,
+        "idle_pre_w": 52.22918918918919,
+        "idle_post_w": 45.1327027027027,
+        "idle_drift_exceeded": true,
+        "load_w": 87.00477272727272,
+        "j_per_frame": 0.42910211557340966,
+        "frames": 4863,
+        "seconds": 60.005422647998785
+      }
+    },
+    "baseline": {
+      "params_m": {
+        "total": 18.192149,
+        "neck": 3.860992,
+        "head": 1.890709,
+        "backbone": 12.440448
+      },
+      "flops": {
+        "counted_gflops": 10.025546256,
+        "analytic_gflops": 1.02998016,
+        "total_gflops": 11.055526416,
+        "unsupported_ops": {
+          "trace_failed": 1,
+          "err": "Unsupported value kind: Tensor"
+        },
+        "counted_incomplete": false,
+        "source": "torch.profiler",
+        "analytic_convention": "v2-unprofiled-only: SSM work inside custom kernels (causal conv, chunk scan, gated norm); projections/FF profiled; S5 complex products topped up from 1 to 4 real MACs"
+      },
+      "latency": {
+        "bf16": {
+          "full": {
+            "mean_ms": 17.125882920227014,
+            "std_ms": 0.14854178841869453,
+            "p50_ms": 17.1390000032261,
+            "p95_ms": 17.38062599906698,
+            "hz": 58.34646127614029,
+            "iters": 300
+          },
+          "network": {
+            "mean_ms": 16.611072353359003,
+            "std_ms": 0.1362007693013537,
+            "p50_ms": 16.57431600324344,
+            "p95_ms": 16.83777300058864,
+            "hz": 60.33431484016048,
+            "iters": 300
+          },
+          "components": {
+            "backbone": {
+              "mean_ms": 10.694614340754924,
+              "std_ms": 0.06132562221366552,
+              "p50_ms": 10.701477993279696,
+              "p95_ms": 10.791006992803887,
+              "hz": 93.44503634245467,
+              "iters": 100
+            },
+            "neck_head": {
+              "mean_ms": 6.445790429570479,
+              "std_ms": 0.044047958438114376,
+              "p50_ms": 6.456918999901973,
+              "p95_ms": 6.500110001070425,
+              "hz": 154.8726257856389,
+              "iters": 100
+            },
+            "postprocess": {
+              "mean_ms": 0.6182992598041892,
+              "std_ms": 0.025393754980374494,
+              "p50_ms": 0.6101500039221719,
+              "p95_ms": 0.6813350046286359,
+              "hz": 1638.941233420947,
+              "iters": 100
+            }
+          },
+          "throughput": {
+            "b4_fps": 213.37886556693917,
+            "b8_fps": 229.25534968414905
+          }
+        },
+        "fp32": {
+          "full": {
+            "mean_ms": 14.147863293765113,
+            "std_ms": 0.17335683794476292,
+            "p50_ms": 14.155919998302124,
+            "p95_ms": 14.451116003328934,
+            "hz": 70.6418233587037,
+            "iters": 300
+          },
+          "network": {
+            "mean_ms": 13.519035850137394,
+            "std_ms": 0.07144660471730563,
+            "p50_ms": 13.518248000764288,
+            "p95_ms": 13.663352001458406,
+            "hz": 73.97408302787925,
+            "iters": 300
+          },
+          "components": {
+            "backbone": {
+              "mean_ms": 9.200260220823111,
+              "std_ms": 0.047003838079918765,
+              "p50_ms": 9.18923900462687,
+              "p95_ms": 9.272697003325447,
+              "hz": 108.82293947262558,
+              "iters": 100
+            },
+            "neck_head": {
+              "mean_ms": 4.773201398929814,
+              "std_ms": 0.05522663266355037,
+              "p50_ms": 4.766334008309059,
+              "p95_ms": 4.805506992852315,
+              "hz": 209.8048517491051,
+              "iters": 100
+            },
+            "postprocess": {
+              "mean_ms": 0.6133256007160526,
+              "std_ms": 0.012955894055483051,
+              "p50_ms": 0.6106310029281303,
+              "p95_ms": 0.6391550123225898,
+              "hz": 1637.6502260853883,
+              "iters": 100
+            }
+          },
+          "throughput": {
+            "b4_fps": 205.51590292566033,
+            "b8_fps": 215.467089533038
+          }
+        },
+        "graph": {
+          "captured": false,
+          "reason": "S5 baseline uses stock-RVT state machinery; not covered by the ours state-carry contract"
+        }
+      },
+      "vram": {
+        "inference_mb": 2278.84716796875,
+        "train_mb": 10930.16015625,
+        "state_kb_per_stream": 4800.0
+      },
+      "energy": {
+        "idle_w": 50.542162162162164,
+        "idle_pre_w": 50.542162162162164,
+        "idle_post_w": 45.057027027027026,
+        "idle_drift_exceeded": true,
+        "load_w": 92.41826484018264,
+        "j_per_frame": 0.7221199572353582,
+        "frames": 3480,
+        "seconds": 60.00982160400599
+      }
+    },
+    "puressm": {
+      "params_m": {
+        "total": 16.334225,
+        "neck": 3.860992,
+        "head": 1.890709,
+        "backbone_spatial": 8.379944,
+        "backbone_temporal": 2.20258
+      },
+      "flops": {
+        "counted_gflops": 9.059932,
+        "analytic_gflops": 0.96616448,
+        "total_gflops": 10.02609648,
+        "unsupported_ops": {
+          "trace_failed": 1,
+          "err": "at 31:23:\n    pid_h = tl.program_id(axis=2)\n    dt_ptr += pid_b * stride_dt_batch + pid_c * chunk_size * stride_dt_seqlen\n    dt_out_ptr += pid_b * stride_dt_out_batch + pid_c * stride_dt_out_chunk\n  "
+        },
+        "counted_incomplete": false,
+        "source": "torch.profiler",
+        "analytic_convention": "v2-unprofiled-only: SSM work inside custom kernels (causal conv, chunk scan, gated norm); projections/FF profiled; S5 complex products topped up from 1 to 4 real MACs"
+      },
+      "latency": {
+        "bf16": {
+          "full": {
+            "mean_ms": 26.98580553716359,
+            "std_ms": 0.08770175000632191,
+            "p50_ms": 26.95973801019136,
+            "p95_ms": 27.182087011169642,
+            "hz": 37.092348583728025,
+            "iters": 300
+          },
+          "network": {
+            "mean_ms": 26.4291337968704,
+            "std_ms": 0.1211538146363286,
+            "p50_ms": 26.385918012238108,
+            "p95_ms": 26.626331004081294,
+            "hz": 37.8990035342408,
+            "iters": 300
+          },
+          "components": {
+            "backbone": {
+              "mean_ms": 19.928884109685896,
+              "std_ms": 0.09164592886766584,
+              "p50_ms": 19.8986579925986,
+              "p95_ms": 20.048048987518996,
+              "hz": 50.2546453319593,
+              "iters": 100
+            },
+            "neck_head": {
+              "mean_ms": 6.4210729899059515,
+              "std_ms": 0.054290798196160936,
+              "p50_ms": 6.41456400626339,
+              "p95_ms": 6.450182001572102,
+              "hz": 155.89524074022293,
+              "iters": 100
+            },
+            "postprocess": {
+              "mean_ms": 0.6109729492163751,
+              "std_ms": 0.006808529967696328,
+              "p50_ms": 0.611762996413745,
+              "p95_ms": 0.6231949955690652,
+              "hz": 1634.619952272635,
+              "iters": 100
+            }
+          },
+          "throughput": {
+            "b4_fps": 142.01112681149894,
+            "b8_fps": 209.93562872629462
+          }
+        },
+        "fp32": {
+          "full": {
+            "mean_ms": 23.965607749608655,
+            "std_ms": 0.045934370135419705,
+            "p50_ms": 23.960357008036226,
+            "p95_ms": 24.04176999698393,
+            "hz": 41.73560517752733,
+            "iters": 300
+          },
+          "network": {
+            "mean_ms": 23.375261346567033,
+            "std_ms": 0.08976472275761126,
+            "p50_ms": 23.352812000666745,
+            "p95_ms": 23.549092991743237,
+            "hz": 42.821395554910005,
+            "iters": 300
+          },
+          "components": {
+            "backbone": {
+              "mean_ms": 19.351924799993867,
+              "std_ms": 0.07151410544300206,
+              "p50_ms": 19.365954998647794,
+              "p95_ms": 19.45583500491921,
+              "hz": 51.6370093842428,
+              "iters": 100
+            },
+            "neck_head": {
+              "mean_ms": 4.778672069805907,
+              "std_ms": 0.01600076281461955,
+              "p50_ms": 4.777949012350291,
+              "p95_ms": 4.802014998858795,
+              "hz": 209.29482449794838,
+              "iters": 100
+            },
+            "postprocess": {
+              "mean_ms": 0.6088607900892384,
+              "std_ms": 0.0058622590310097415,
+              "p50_ms": 0.610269999015145,
+              "p95_ms": 0.6171639979584143,
+              "hz": 1638.6189745748636,
+              "iters": 100
+            }
+          },
+          "throughput": {
+            "b4_fps": 132.05790484589568,
+            "b8_fps": 182.72167406107675
+          }
+        },
+        "graph": {
+          "p50_ms": 4.926610010443255,
+          "hz": 202.979330184495,
+          "protocol": "cuda-graph-replay",
+          "state_semantics": "carried",
+          "mean_ms": 4.925668283637303,
+          "p95_ms": 4.9397039983887225,
+          "iters": 300
+        }
+      },
+      "vram": {
+        "inference_mb": 1332.93896484375,
+        "train_mb": 10098.80078125,
+        "state_kb_per_stream": 147980.00390625
+      },
+      "energy": {
+        "idle_w": 44.33378378378379,
+        "idle_pre_w": 44.33378378378379,
+        "idle_post_w": 42.87243243243243,
+        "idle_drift_exceeded": false,
+        "load_w": 68.77977272727273,
+        "j_per_frame": 0.6632505355498007,
+        "frames": 2212,
+        "seconds": 60.014351967009134
+      }
+    },
+    "rvt_lstm": {
+      "params_m": {
+        "total": 18.536469,
+        "neck": 3.860992,
+        "head": 1.890709,
+        "backbone": 12.784768
+      },
+      "flops": {
+        "counted_gflops": 10.52806128,
+        "analytic_gflops": 0.0,
+        "total_gflops": 10.52806128,
+        "unsupported_ops": {
+          "note": "profiler count; fvcore op list kept out (different counter)"
+        },
+        "counted_incomplete": false,
+        "source": "torch.profiler",
+        "analytic_convention": "v2-unprofiled-only: SSM work inside custom kernels (causal conv, chunk scan, gated norm); projections/FF profiled; S5 complex products topped up from 1 to 4 real MACs",
+        "recount": {
+          "date": "2026-11-11",
+          "device": "cpu",
+          "previous_source": "fvcore",
+          "previous_counted_gflops": 10.55287296,
+          "reason": "one FLOP counter (torch.profiler) for every compared model"
+        }
+      },
+      "latency": {
+        "bf16": {
+          "full": {
+            "mean_ms": 13.185007930248199,
+            "std_ms": 0.07195645744461454,
+            "p50_ms": 13.172663995646872,
+            "p95_ms": 13.285676992381923,
+            "hz": 75.91478840805982,
+            "iters": 300
+          },
+          "network": {
+            "mean_ms": 12.586498993381005,
+            "std_ms": 0.07807928718278163,
+            "p50_ms": 12.568865000503138,
+            "p95_ms": 12.67503498820588,
+            "hz": 79.56167879597477,
+            "iters": 300
+          },
+          "components": {
+            "backbone": {
+              "mean_ms": 6.116793260007398,
+              "std_ms": 0.03820066436552708,
+              "p50_ms": 6.114292002166621,
+              "p95_ms": 6.1552889965241775,
+              "hz": 163.55123367442158,
+              "iters": 100
+            },
+            "neck_head": {
+              "mean_ms": 6.565004659496481,
+              "std_ms": 0.030412246908648893,
+              "p50_ms": 6.563818998984061,
+              "p95_ms": 6.619034000323154,
+              "hz": 152.350331438874,
+              "iters": 100
+            },
+            "postprocess": {
+              "mean_ms": 0.6077774894947652,
+              "std_ms": 0.013534384045431265,
+              "p50_ms": 0.605020992225036,
+              "p95_ms": 0.6359490071190521,
+              "hz": 1652.835212084761,
+              "iters": 100
+            }
+          },
+          "throughput": {
+            "b4_fps": 323.753678175666,
+            "b8_fps": 651.187346742206
+          }
+        },
+        "fp32": {
+          "full": {
+            "mean_ms": 9.852288185744934,
+            "std_ms": 0.037924963417587575,
+            "p50_ms": 9.844997999607585,
+            "p95_ms": 9.956598994904198,
+            "hz": 101.57442388915257,
+            "iters": 300
+          },
+          "network": {
+            "mean_ms": 9.230669206832923,
+            "std_ms": 0.05887802439213345,
+            "p50_ms": 9.21819600625895,
+            "p95_ms": 9.337661002064124,
+            "hz": 108.48109535976695,
+            "iters": 300
+          },
+          "components": {
+            "backbone": {
+              "mean_ms": 4.674724279757356,
+              "std_ms": 0.013572304846366538,
+              "p50_ms": 4.674957002862357,
+              "p95_ms": 4.694964998634532,
+              "hz": 213.90571065952597,
+              "iters": 100
+            },
+            "neck_head": {
+              "mean_ms": 4.562678889342351,
+              "std_ms": 0.017640593960561227,
+              "p50_ms": 4.564498987747356,
+              "p95_ms": 4.590527998516336,
+              "hz": 219.08209481135495,
+              "iters": 100
+            },
+            "postprocess": {
+              "mean_ms": 0.606703880475834,
+              "std_ms": 0.00863691229112894,
+              "p50_ms": 0.606795001658611,
+              "p95_ms": 0.619387996266596,
+              "hz": 1648.0030278209347,
+              "iters": 100
+            }
+          },
+          "throughput": {
+            "b4_fps": 424.4899725170609,
+            "b8_fps": 852.0747163498453
+          }
+        },
+        "graph": {
+          "captured": false,
+          "reason": "RVT ConvLSTM uses stock-RVT per-frame state machinery; not covered by the ours state-carry contract"
+        }
+      },
+      "vram": {
+        "inference_mb": 619.09130859375,
+        "train_mb": 3263.63427734375,
+        "state_kb_per_stream": 4800.0
+      },
+      "energy": {
+        "idle_w": 48.627027027027026,
+        "idle_pre_w": 48.627027027027026,
+        "idle_post_w": 41.98837837837838,
+        "idle_drift_exceeded": true,
+        "load_w": 61.36272727272727,
+        "j_per_frame": 0.16886335612743014,
+        "frames": 4526,
+        "seconds": 60.01048510000692
+      }
+    }
+  }
+}

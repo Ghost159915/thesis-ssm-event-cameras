@@ -1,0 +1,187 @@
+{
+  "schema": 1,
+  "meta": {
+    "date": "2026-11-11T15:25:48",
+    "torch": "2.11.0+cu128",
+    "cuda": "12.8",
+    "gpu": "NVIDIA GeForce RTX 5070 Ti",
+    "driver": "595.91.07",
+    "git_sha": "9a2f1e5",
+    "clip_src": "/home/ghost/Desktop/thesis-ssm-event-cameras/data/gen1_raw/gen1/test/17-04-04_11-00-13_cut_15_122500000_182500000/event_representations_v2/stacked_histogram_dt=50_nbins=10/event_representations.h5",
+    "ckpts": {
+      "eventssm": "/home/ghost/Desktop/thesis-ssm-event-cameras/external/ssms_event_cameras/RVT/RVT/8zotrwjw/checkpoints/epoch=003-step=320000-val_AP=0.46.ckpt",
+      "baseline": "/home/ghost/Desktop/thesis-ssm-event-cameras/checkpoints/gen1_base.ckpt",
+      "puressm": "/home/ghost/Desktop/thesis-ssm-event-cameras/results/stage14_cloud/ckpts/epoch=002-step=310000-val_AP=0.48.ckpt",
+      "rvt_lstm": "/home/ghost/Desktop/thesis-ssm-event-cameras/checkpoints/rvt-b-gen1.ckpt"
+    },
+    "test_ap": {
+      "eventssm": 0.462,
+      "baseline": 0.477,
+      "puressm": 0.4643,
+      "rvt_lstm": 0.4714
+    },
+    "step_scale_env": {
+      "MAMBA_STEP_SCALE": null,
+      "S5_STEP_SCALE": null
+    },
+    "monitor_env": {
+      "SPIKING_MONITOR": null,
+      "PURESSM_MONITOR": null,
+      "SPIKING_ALLOW_ARM_OVERRIDE": null
+    },
+    "git_dirty": false,
+    "weights": "plain mdl.* (non-EMA); compute metrics weight-independent",
+    "clocks_sm_mhz": 195.0,
+    "temperature_gpu_c": 38.0,
+    "raw": "195, 38",
+    "clocks_after": {
+      "clocks_sm_mhz": 2910.0,
+      "temperature_gpu_c": 39.0,
+      "raw": "2910, 39"
+    }
+  },
+  "models": {
+    "rvt_lstm": {
+      "params_m": {
+        "total": 18.536469,
+        "neck": 3.860992,
+        "head": 1.890709,
+        "backbone": 12.784768
+      },
+      "flops": {
+        "counted_gflops": 10.55287296,
+        "analytic_gflops": 0.0,
+        "total_gflops": 10.55287296,
+        "unsupported_ops": {
+          "aten::mul": 38,
+          "aten::softmax": 8,
+          "aten::add": 21,
+          "aten::gelu": 8,
+          "aten::tensor_split": 8,
+          "aten::sigmoid": 10,
+          "aten::tanh": 8,
+          "aten::silu_": 47,
+          "aten::_upsample_nearest_exact2d": 2,
+          "aten::meshgrid": 3,
+          "aten::exp": 1
+        },
+        "counted_incomplete": false,
+        "source": "fvcore",
+        "analytic_convention": "v2-unprofiled-only: SSM work inside custom kernels (causal conv, chunk scan, gated norm); projections/FF profiled; S5 complex products topped up from 1 to 4 real MACs"
+      },
+      "latency": {
+        "bf16": {
+          "full": {
+            "mean_ms": 10.96424839925021,
+            "std_ms": 0.031913094047617066,
+            "p50_ms": 10.976232995744795,
+            "p95_ms": 11.016680000466295,
+            "hz": 91.10593774637205,
+            "iters": 10
+          },
+          "network": {
+            "mean_ms": 10.457231299369596,
+            "std_ms": 0.09615058401317787,
+            "p50_ms": 10.420847000204958,
+            "p95_ms": 10.734437993960455,
+            "hz": 95.9614895008373,
+            "iters": 10
+          },
+          "components": {
+            "backbone": {
+              "mean_ms": 5.0654022983508185,
+              "std_ms": 0.010412863876002019,
+              "p50_ms": 5.066772995633073,
+              "p95_ms": 5.084605989395641,
+              "hz": 197.3642791697744,
+              "iters": 10
+            },
+            "neck_head": {
+              "mean_ms": 5.407220100460108,
+              "std_ms": 0.009995882018205181,
+              "p50_ms": 5.408797005657107,
+              "p95_ms": 5.430318007711321,
+              "hz": 184.88399526809593,
+              "iters": 10
+            },
+            "postprocess": {
+              "mean_ms": 0.4962158011039719,
+              "std_ms": 0.005168535561663404,
+              "p50_ms": 0.4967760032741353,
+              "p95_ms": 0.5034880014136434,
+              "hz": 2012.9796797937747,
+              "iters": 10
+            }
+          },
+          "throughput": {
+            "b4_fps": 391.5749134647112,
+            "b8_fps": 787.6178599646615
+          }
+        },
+        "fp32": {
+          "full": {
+            "mean_ms": 8.234561198332813,
+            "std_ms": 0.1288706319823809,
+            "p50_ms": 8.191708009690046,
+            "p95_ms": 8.617451007012278,
+            "hz": 122.07466364976521,
+            "iters": 10
+          },
+          "network": {
+            "mean_ms": 7.669630399323069,
+            "std_ms": 0.012814119208233506,
+            "p50_ms": 7.665607990929857,
+            "p95_ms": 7.693630002904683,
+            "hz": 130.45279659268064,
+            "iters": 10
+          },
+          "components": {
+            "backbone": {
+              "mean_ms": 3.92173529980937,
+              "std_ms": 0.014768708497350964,
+              "p50_ms": 3.9293909940170124,
+              "p95_ms": 3.936865003197454,
+              "hz": 254.49236319893456,
+              "iters": 10
+            },
+            "neck_head": {
+              "mean_ms": 3.7477948018931784,
+              "std_ms": 0.012431819696709898,
+              "p50_ms": 3.741256005014293,
+              "p95_ms": 3.770322000491433,
+              "hz": 267.28991511399647,
+              "iters": 10
+            },
+            "postprocess": {
+              "mean_ms": 0.49201279907720163,
+              "std_ms": 0.00564194673834991,
+              "p50_ms": 0.492027000291273,
+              "p95_ms": 0.49977199523709714,
+              "hz": 2032.4087893713438,
+              "iters": 10
+            }
+          },
+          "throughput": {
+            "b4_fps": 510.99449414111945,
+            "b8_fps": 1028.8270912956255
+          }
+        }
+      },
+      "vram": {
+        "inference_mb": 235.46630859375,
+        "train_mb": 2882.48974609375,
+        "state_kb_per_stream": 4800.0
+      },
+      "energy": {
+        "idle_w": 62.4775,
+        "idle_pre_w": 62.4775,
+        "idle_post_w": 48.51625,
+        "idle_drift_exceeded": true,
+        "load_w": 61.22315789473684,
+        "j_per_frame": -0.013708032803946307,
+        "frames": 458,
+        "seconds": 5.00523660799081
+      }
+    }
+  }
+}

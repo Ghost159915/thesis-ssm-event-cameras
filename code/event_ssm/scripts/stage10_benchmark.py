@@ -146,6 +146,8 @@ def measure_model(kind: str, device, clip, smoke: bool, graph: bool = False, ckp
             # internal .unsqueeze(0), so the argument here must already carry the batch dim
             # (B=1) -- both backbones require a 5D (L,B,C,H,W) tensor after that unsqueeze
             # (deviation from the brief's literal frames[0]; see task-5-report.md).
+            if kind in PROFILER_ONLY:
+                raise RuntimeError("fvcore skipped: profiler-only model (PROFILER_ONLY)")
             counted = bm.fvcore_network_flops(net_only, (frames[0:1],))
             source = "fvcore"
         except Exception as e:                    # tracing may fail on vmap paths (spec §8)
@@ -301,6 +303,13 @@ def measure_model(kind: str, device, clip, smoke: bool, graph: bool = False, ckp
     del model
     torch.cuda.empty_cache()
     return out
+
+
+# Models whose FLOPs are counted with torch.profiler directly. fvcore's jit trace fails on every SSM model, so they
+# fall back to the profiler; the RVT ConvLSTM traces cleanly, and fvcore would then count it under a different op set
+# (no elementwise mul/add: 10.553 vs 10.528 G). Skipping fvcore keeps one counter across all compared models
+# (2026-11-11; the first rvt_lstm run was recounted on the CPU, scripts/stage10_profiler_recount.py).
+PROFILER_ONLY = frozenset({"rvt_lstm"})
 
 
 def graph_skip_reason(kind: str) -> str:

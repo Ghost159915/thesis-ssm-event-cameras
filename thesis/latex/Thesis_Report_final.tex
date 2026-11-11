@@ -1188,20 +1188,23 @@ $10\times$ (5\,ms)  & no comp.  & \textbf{29.67} & \textbf{29.09} & \textbf{32.3
 \centering
 \caption[Efficiency of the non-spiking models]{Full-pipeline streaming inference, RTX 5070 Ti, idle-GPU-guarded harness. FLOPs per frame
 are counted as defined in Section~\ref{sec:eval_protocol}; mAP per GFLOP uses the test AP of
-Table~\ref{tab:accuracy}.}
+Table~\ref{tab:accuracy} (47.14 for the ConvLSTM). $^{\dagger}$Published RVT-B checkpoint
+\cite{gehrig2023recurrent}, measured in a later session of the same harness together with the other three
+models, whose latency and energy in that session lie within 3\,\% of the values shown; CUDA-graph replay is
+captured for the new models only.}
 \label{tab:efficiency}
-\begin{tabular}{lccc}
+\begin{tabular}{lcccc}
 \toprule
-\textbf{Metric} & \textbf{S5-RVT} & \textbf{EventSSM} & \textbf{PureSSM} \\
+\textbf{Metric} & \textbf{RVT (ConvLSTM)}$^{\dagger}$ & \textbf{S5-RVT} & \textbf{EventSSM} & \textbf{PureSSM} \\
 \midrule
-Total parameters       & 18.19\,M & 19.18\,M & \textbf{16.33\,M} \\
-FLOPs                  & 11.06\,G & 12.71\,G & \textbf{10.03\,G} \\
-mAP per GFLOP          & 4.32 & 3.64 & \textbf{4.63} \\
-Latency p50, eager     & 17.14\,ms & \textbf{12.60\,ms} & 26.86\,ms \\
-Throughput, eager      & 58\,Hz & \textbf{79\,Hz} & 37\,Hz \\
-Throughput, CUDA-graph & --- & \textbf{210\,Hz} & 181\,Hz \\
-Energy per frame       & 0.723\,J & \textbf{0.438\,J} & 0.652\,J \\
-Streaming state        & \textbf{4.7\,MB} & 144\,MB & 144\,MB \\
+Total parameters       & 18.54\,M & 18.19\,M & 19.18\,M & \textbf{16.33\,M} \\
+FLOPs                  & 10.53\,G & 11.06\,G & 12.71\,G & \textbf{10.03\,G} \\
+mAP per GFLOP          & 4.48 & 4.32 & 3.64 & \textbf{4.63} \\
+Latency p50, eager     & 13.17\,ms & 17.14\,ms & \textbf{12.60\,ms} & 26.86\,ms \\
+Throughput, eager      & 76\,Hz & 58\,Hz & \textbf{79\,Hz} & 37\,Hz \\
+Throughput, CUDA-graph & --- & --- & \textbf{210\,Hz} & 181\,Hz \\
+Energy per frame       & \textbf{0.169\,J} & 0.723\,J & 0.438\,J & 0.652\,J \\
+Streaming state        & \textbf{4.7\,MB} & \textbf{4.7\,MB} & 144\,MB & 144\,MB \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1209,8 +1212,8 @@ Streaming state        & \textbf{4.7\,MB} & 144\,MB & 144\,MB \\
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{images/fig_efficiency.pdf}
-    \caption[Efficiency of the non-spiking models]{Efficiency of the three non-spiking models (values of Table~\ref{tab:efficiency}; parameters and
-    GFLOPs per frame in the row labels). (a) Eager p50 latency per frame, split into backbone, neck and head,
+    \caption[Efficiency of the non-spiking models]{Efficiency of the non-spiking models (values of Table~\ref{tab:efficiency}; parameters and
+    GFLOPs per frame in the row labels; top row: RVT's ConvLSTM, measured in a later session). (a) Eager p50 latency per frame, split into backbone, neck and head,
     and post-processing; the marker is the latency with CUDA-graph replay of the network plus eager
     post-processing. (b) Measured GPU energy per frame. (c) Streaming state carried per stream.}
     \label{fig:efficiency}
@@ -1488,8 +1491,8 @@ Streaming state         & 4.7\,MB & 144.5\,MB & 144.5\,MB & 145.6\,MB \\
 2 Benchmarking & Gen1 and 1Mpx; accuracy, latency, memory, energy; CNN, RNN and transformer baselines;
   embedded-hardware latency &
   Delivered on Gen1 with all four metrics (Sections~\ref{sec:acc_results}, \ref{sec:efficiency}); the
-  RNN baseline is RVT's published ConvLSTM checkpoint, measured for accuracy and rate robustness
-  (Section~\ref{sec:robustness}) but not retrained or benchmarked for efficiency;
+  RNN baseline is RVT's published ConvLSTM checkpoint, measured for accuracy, rate robustness
+  (Section~\ref{sec:robustness}) and efficiency (Section~\ref{sec:efficiency}) but not retrained;
   1Mpx deferred to future work (Section~\ref{sec:future_work}); latency and energy measured on a
   desktop GPU, not embedded hardware. \\
 3 Temporal generalisation & Inference at frequencies other than training, without retraining &

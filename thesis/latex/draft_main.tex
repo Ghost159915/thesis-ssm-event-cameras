@@ -1259,20 +1259,23 @@ project repository (\path{docs/notes/Stage9_Zubic_methodology_verdict.md}).
 \centering
 \caption{Full-pipeline streaming inference, RTX 5070 Ti, idle-GPU-guarded harness. FLOPs per frame
 are counted as defined in Section~\ref{sec:eval_protocol}; mAP per GFLOP uses the test AP of
-Table~\ref{tab:accuracy}.}
+Table~\ref{tab:accuracy} (47.14 for the ConvLSTM). $^{\dagger}$Published RVT-B checkpoint
+\cite{gehrig2023recurrent}, measured in a later session of the same harness together with the other three
+models, whose latency and energy in that session lie within 3\,\% of the values shown; CUDA-graph replay is
+captured for the new models only.}
 \label{tab:efficiency}
-\begin{tabular}{lccc}
+\begin{tabular}{lcccc}
 \toprule
-\textbf{Metric} & \textbf{S5-RVT} & \textbf{EventSSM} & \textbf{PureSSM} \\
+\textbf{Metric} & \textbf{RVT (ConvLSTM)}$^{\dagger}$ & \textbf{S5-RVT} & \textbf{EventSSM} & \textbf{PureSSM} \\
 \midrule
-Total parameters       & 18.19\,M & 19.18\,M & \textbf{16.33\,M} \\
-FLOPs                  & 11.06\,G & 12.71\,G & \textbf{10.03\,G} \\
-mAP per GFLOP          & 4.32 & 3.64 & \textbf{4.63} \\
-Latency p50, eager     & 17.14\,ms & \textbf{12.60\,ms} & 26.86\,ms \\
-Throughput, eager      & 58\,Hz & \textbf{79\,Hz} & 37\,Hz \\
-Throughput, CUDA-graph & --- & \textbf{210\,Hz} & 181\,Hz \\
-Energy per frame       & 0.723\,J & \textbf{0.438\,J} & 0.652\,J \\
-Streaming state        & \textbf{4.7\,MB} & 144\,MB & 144\,MB \\
+Total parameters       & 18.54\,M & 18.19\,M & 19.18\,M & \textbf{16.33\,M} \\
+FLOPs                  & 10.53\,G & 11.06\,G & 12.71\,G & \textbf{10.03\,G} \\
+mAP per GFLOP          & 4.48 & 4.32 & 3.64 & \textbf{4.63} \\
+Latency p50, eager     & 13.17\,ms & 17.14\,ms & \textbf{12.60\,ms} & 26.86\,ms \\
+Throughput, eager      & 76\,Hz & 58\,Hz & \textbf{79\,Hz} & 37\,Hz \\
+Throughput, CUDA-graph & --- & --- & \textbf{210\,Hz} & 181\,Hz \\
+Energy per frame       & \textbf{0.169\,J} & 0.723\,J & 0.438\,J & 0.652\,J \\
+Streaming state        & \textbf{4.7\,MB} & \textbf{4.7\,MB} & 144\,MB & 144\,MB \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1282,8 +1285,12 @@ thesis. PureSSM performs the least computation with the best accuracy-per-FLOP, 
 eager wall-clock: its backbone is many small scan operations and is launch-overhead-bound, and
 state-space scans utilise the GPU less well than cuDNN convolutions. CUDA-graph replay repairs most of
 this ($37 \rightarrow 181$\,Hz, the largest speed-up of any model precisely because it was the most
-launch-bound), but the fair same-mode comparison still leaves EventSSM ahead in both modes. Two further
-caveats must be stated: event sparsity does \emph{not} translate into GPU speed, so the efficiency claim
+launch-bound), but the fair same-mode comparison still leaves EventSSM ahead in both modes. RVT's
+ConvLSTM, measured with the same harness, puts this frontier in context: at 13.17\,ms (76\,Hz) it is about
+1\,ms slower than EventSSM in the same session and 4\,ms faster than S5-RVT, it draws 0.169\,J per frame,
+about 40\,\% of EventSSM's energy, and it carries the same 4.7\,MB state as S5-RVT. The speed and energy
+advantage of EventSSM is therefore an advantage over the S5 baseline, not over recurrent detectors in
+general. Two further caveats must be stated: event sparsity does \emph{not} translate into GPU speed, so the efficiency claim
 is FLOP-efficiency and rate-robust deployability, not ``sparse means fast''; and the Mamba state
 expansion makes the streaming state 31 times larger than the baseline's, which for a SWaP-constrained
 platform is the number to watch.
@@ -1632,9 +1639,11 @@ tuning.
 \textbf{Efficiency is a trade-space, not a free gain.} PureSSM performs the least computation and has
 the best accuracy per FLOP, but it is the slowest model in eager execution (37\,Hz), because its
 fourteen bidirectional scans launch many small kernels. CUDA-graph replay lifts it to 181\,Hz, yet
-EventSSM stays ahead in both modes (79 and 210\,Hz) and draws the least energy per frame (0.438\,J). The
-baseline carries a 4.7\,MB streaming state against 144\,MB for both Mamba models, the cost of Mamba's
-state expansion at every spatial location. Event sparsity does not help on the GPU at all: every frame
+EventSSM stays ahead in both modes (79 and 210\,Hz) and draws the least energy per frame of the
+state-space models (0.438\,J). RVT's ConvLSTM, nearly as fast in eager execution (76\,Hz), draws less than
+half of that (0.169\,J), so the efficiency gain of the Mamba models is a gain over the S5 baseline, not over
+recurrent detectors in general. Both baselines carry a 4.7\,MB streaming state against 144\,MB for both
+Mamba models, the cost of Mamba's state expansion at every spatial location. Event sparsity does not help on the GPU at all: every frame
 is processed densely, whatever its event count. Which model is most efficient therefore depends on the
 binding constraint (FLOPs, latency, energy or memory), and the thesis reports the frontier rather than
 a winner on any single axis.
@@ -1711,8 +1720,8 @@ every registered aim against what this thesis delivers.
 2 Benchmarking & Gen1 and 1Mpx; accuracy, latency, memory, energy; CNN, RNN and transformer baselines;
   embedded-hardware latency &
   Delivered on Gen1 with all four metrics (Sections~\ref{sec:acc_results}, \ref{sec:efficiency}); the
-  RNN baseline is RVT's published ConvLSTM checkpoint, measured for accuracy and rate robustness
-  (Section~\ref{sec:robustness}) but not retrained or benchmarked for efficiency;
+  RNN baseline is RVT's published ConvLSTM checkpoint, measured for accuracy, rate robustness
+  (Section~\ref{sec:robustness}) and efficiency (Section~\ref{sec:efficiency}) but not retrained;
   1Mpx deferred to future work (Section~\ref{sec:future_work}); latency and energy measured on a
   desktop GPU, not embedded hardware. \\
 3 Temporal generalisation & Inference at frequencies other than training, without retraining &
@@ -1838,8 +1847,9 @@ as follows.
   \item \textbf{An efficiency frontier.} PureSSM is the smallest model (16.33\,M parameters) with the
         fewest FLOPs (10.03\,G) and the best accuracy per GFLOP (4.63), but the slowest in eager execution
         (37\,Hz, 181\,Hz with CUDA-graph replay); EventSSM is the fastest (79 and 210\,Hz) and uses the least
-        energy per frame (0.438\,J); both Mamba models carry a 144\,MB streaming state against the
-        baseline's 4.7\,MB (Section~\ref{sec:efficiency}).
+        energy per frame of the state-space models (0.438\,J), although RVT's ConvLSTM uses less (0.169\,J);
+        both Mamba models carry a 144\,MB streaming state against the baselines' 4.7\,MB
+        (Section~\ref{sec:efficiency}).
   \item \textbf{A spiking state-space detector.} A spiking variant whose temporal readout is a
         leaky integrate-and-fire layer, with three readout modes that decompose the cost of spiking, was
         built as a drop-in backbone for the same pipeline and verified by tests, including that it reduces

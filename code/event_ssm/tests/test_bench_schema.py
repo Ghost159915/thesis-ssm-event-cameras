@@ -186,3 +186,9 @@ def test_default_out_dir_keeps_rvt_lstm_runs_away_from_stage10(models):
                                           ("spikingssm", "LIF")])
 def test_graph_skip_reason_names_the_model(kind, needle):
     assert needle in s10.graph_skip_reason(kind)
+
+
+def test_rvt_lstm_flops_use_the_same_counter_as_the_ssm_models():
+    # every SSM model falls back to torch.profiler (fvcore cannot trace their kernels); the ConvLSTM must too
+    assert "rvt_lstm" in s10.PROFILER_ONLY
+    assert not ({"eventssm", "baseline", "puressm", "spikingssm"} & s10.PROFILER_ONLY)
