@@ -257,33 +257,40 @@ Chapter~\ref{ch:discussion} reports which hypotheses held.
 
 \section{Contributions}
 \label{sec:contributions}
+The thesis makes seven contributions.
 \begin{enumerate}
-  \item An exact reproduction of the S5-RVT baseline (Gen1 test AP $47.7$), establishing a verified
-        pipeline and evaluator against which all subsequent models are measured.
-  \item \textbf{Two original detectors}, EventSSM and PureSSM, built as drop-in backbone swaps into
-        that pipeline, giving a four-model ablation in which the own models differ from one another in
-        one component each (the spatial mixer between EventSSM and PureSSM, the temporal readout between
-        PureSSM and its spiking variant); against the published baseline, the whole backbone and two
-        training settings differ.
-  \item \textbf{A causal mechanism for the large-object result:} a gradient-based effective-receptive-field
-        probe showing that the state-space spatial mixer sees up to twice as far as the convolutional
-        stack, and --- unlike the convolutional stack --- widens its field through training.
-  \item \textbf{A reproduction study of $\Delta t$-rescaling:} under the published checkpoint and code,
-        the inference-time compensation reported to give SSMs their temporal generalisation does not
-        recover accuracy at any tested operating point (at a true tenfold rate it costs 9--13~mAP), and
-        the published 200\,Hz result is not reproducible. The rate robustness itself is reproduced
-        without the compensation.
-  \item \textbf{An efficiency frontier reported honestly}, including the results that do not flatter
-        the proposed model --- launch-bound wall-clock latency and a streaming state 31 times larger
-        than the baseline's.
-  \item \textbf{A decomposition of the cost of spiking:} a hybrid spiking variant whose temporal readout is a
-        leaky integrate-and-fire layer with three readouts sharing one membrane (analog, graded, binary).
-        Stepping PureSSM $\rightarrow$ analog $\rightarrow$ graded $\rightarrow$ binary separates the
-        accuracy cost of the neuron dynamics, of sparsity and of binarisation ($-0.28$, $-1.52$ and
-        $-0.54$~mAP on a common 100k-step schedule; the 95\,\% paired intervals of the last two exclude zero),
-        where published spiking
-        detectors report at most a single spiking-versus-non-spiking difference. On the full schedule the
-        graded readout reaches 46.24~mAP against PureSSM's 46.43.
+  \item \textbf{A verified starting point.} An exact reproduction of the published S5-RVT detector
+        (47.7~mAP on the Gen1 test set), so that every later comparison rests on checked data preparation
+        and evaluation code.
+  \item \textbf{Two new detectors in a controlled comparison.} EventSSM and PureSSM, built by replacing only
+        the backbone of that pipeline. They differ only in their spatial mixer and in pre-training, and the
+        spiking variant differs from PureSSM only in its temporal readout, so each difference can be traced
+        to one part of the detector.
+  \item \textbf{An explanation of the large-object result.} A receptive-field probe shows that the state
+        space mixer learns to draw on an area of the image up to twice as wide as the convolutional one, and
+        that training widens it. This fits PureSSM's gain on large objects, which is likely but not certain
+        on this test set.
+  \item \textbf{A reproduction study of the time-step correction.} With the published code and model, the
+        correction reported to make state space models robust to faster event rates lowers accuracy at every
+        point tested, by 9 to 13~mAP at ten times the rate, and the published 200-Hz result could not be
+        reproduced. The robustness itself is reproduced without the correction. A published ConvLSTM
+        detector, tested on the same data, is however more robust than every state space model, contrary to
+        the published comparison.
+  \item \textbf{A complete efficiency comparison.} Four detectors, including the ConvLSTM, measured for size,
+        computation, speed, energy and memory on one graphics card. The results that do not favour the new
+        models are reported too: PureSSM is the slowest in normal mode, and the Mamba models need 31 times
+        more memory per video stream.
+  \item \textbf{A breakdown of the cost of spiking.} A hybrid spiking version of PureSSM whose temporal
+        readout has three modes sharing one neuron model: analog, graded and spike. Stepping from PureSSM
+        through the three modes separates the accuracy cost of the neuron's leak and reset, of staying silent
+        and of the single bit ($-0.28$, $-1.52$ and $-0.54$~mAP on a common 100k-step schedule; the intervals
+        of the last two exclude zero). Published spiking detectors report at most one difference between a
+        spiking and a non-spiking model. On the full schedule, the graded readout reaches 46.24~mAP against
+        PureSSM's 46.43.
+  \item \textbf{A mapped path to neuromorphic hardware.} A spiking readout built for the graded spikes of
+        Loihi~2, its measured activity and estimated energy, a NumPy reference version of the spiking
+        temporal block, and an ordered route from the simulated model to the chip
+        (Section~\ref{sec:neuro_case}).
 \end{enumerate}
 
 \section{Scope}
@@ -2043,7 +2050,11 @@ that kind of evidence is what a design decision needs.
 \label{app:maths}
 
 \section{Continuous-Time SSM}
-% TODO-Continuous-Time SSM
+A state space model describes how a hidden state $h(t)\in\mathbb{R}^N$ changes over time in response to an
+input $u(t)$, and how the output $y(t)$ is read from that state. The matrix $A$ controls how the state
+evolves, $B$ how the input enters it, $C$ how the output is read, and $D$ passes part of the input straight
+to the output. In all the models of this thesis, $A$ is diagonal, so each part of the state evolves on its
+own:
 
 \begin{align}
     h'(t) &= A h(t) + B u(t) \\
@@ -2051,7 +2062,14 @@ that kind of evidence is what a design decision needs.
 \end{align}
 
 \section{Discretisation}
-% TODO-Discretisation
+To run on a computer, the model is converted into a step-by-step update with a step size $\Delta$. With
+the zero-order hold, which assumes that the input stays constant during each step, the update takes the form
+below; S5 uses this form, and Mamba-2 uses the simpler $\overline{B}=\Delta B$ of
+Equation~\eqref{eq:mamba2_state}. $\overline{A}$ sets how quickly the state fades in one step, and
+$\overline{B}$ how strongly each input is written into it. For a small step, $\overline{B}\approx\Delta B$,
+so shrinking the step also weakens every input. The step size
+is the value that the correction tested in Section~\ref{subsec:f2} adjusts, and this side effect is
+discussed in Section~\ref{sec:discuss_robustness}.
 
 \begin{align}
     \overline{A} &= \exp(\Delta A) \\
@@ -2064,18 +2082,27 @@ that kind of evidence is what a design decision needs.
 \end{align}
 
 \section{Mamba Selective Scan}
-% TODO-Mamba Selective Scan
+In Mamba~\cite{gu2023mamba}, the step size and the input and output matrices are not fixed. They are
+computed from the current input $u_k$ at every step by learned projections, so the model can decide at each
+moment how much to remember. The Mamba-2 version used in this thesis is given in
+Equations~\eqref{eq:mamba2_state} and~\eqref{eq:mamba2_out}.
 
 \begin{equation}
-    \Delta_k, B_k, C_k = f_\theta(u_k)
+    \Delta_k = \operatorname{softplus}\!\left(W_\Delta u_k + b_\Delta\right), \qquad
+    B_k = W_B\, u_k, \qquad C_k = W_C\, u_k,
 \end{equation}
+where $W_\Delta$, $b_\Delta$, $W_B$ and $W_C$ are learned, and the softplus keeps the step size positive.
+Mamba-2 also passes $B_k$ and $C_k$ through a short convolution over time, which is left out here.
 
 \section{Event Representations}
-% TODO-Event Representations
+This section defines the input format used by every model, and the one that was planned in Thesis~A.
 
 \subsection{Stacked Histogram}
 \label{subsec:stacked_hist}
-% TODO-Stacked Histogram
+Each event $k$, with time $t_k$, position $(x_k, y_k)$ and polarity $p_k$, is placed into one of $B=10$ time
+slices of its window, where $t_{\min}$ and $t_{\max}$ are the first and last event times in the window. The
+events are then counted for each polarity, time slice and pixel, with each count capped at $c=10$. The
+resulting 20 count images are stacked into one input and stored as small integers.
 
 \begin{equation}
   b_k = \min\!\left(\left\lfloor B\,\frac{t_k - t_{\min}}{\max(t_{\max}-t_{\min},\,1)}\right\rfloor,\; B-1\right),
@@ -2088,7 +2115,10 @@ that kind of evidence is what a design decision needs.
 \end{equation}
 
 \subsection{Voxel Grid (proposed in Thesis A; not used)}
-% TODO-Voxel Grid (proposed in Thesis A; not used)
+The voxel grid planned in Thesis~A instead spreads each event over the two nearest time slices, weighted by
+how close it is to each. Here $T$ is the window length, $t_k$ is measured from the start of the window and
+$\delta$ is one at zero and zero elsewhere. The voxel grid was not used, because every model uses the stacked
+histogram of the shared pipeline (Section~\ref{sec:repr}).
 
 \begin{equation}
     V_b(x, y) = \sum_k p_k \cdot \max(0, 1 - |(B-1) \cdot t_k / T - b|) \cdot \delta(x-x_k) \cdot \delta(y-y_k)
@@ -2096,7 +2126,19 @@ that kind of evidence is what a design decision needs.
 
 \chapter{Reproducibility}
 \label{app:repro}
-% TODO-Reproducibility
+Everything needed to repeat the experiments is stored in the project repository. The exact software versions
+are fixed in the \texttt{env/} folder (Table~\ref{tab:env}). Step-by-step guides in \texttt{docs/runbooks/}
+explain how to set up a new computer, repeat the baseline reproduction and train on a rented graphics card.
+
+Two pitfalls are documented there, because they fail in confusing ways. The Mamba code must be installed
+without letting the installer change other packages, because a default installation replaces PyTorch with
+an incompatible version. Loading the trained models with recent versions of PyTorch also requires a specific
+setting (\texttt{TORCH\_FORCE\_NO\_WEIGHTS\_ONLY\_LOAD=1}).
+
+The original S5-RVT code is kept at a fixed version, and every change made to it is saved as a patch that
+can be applied again. Every trained model behind a reported result is identified by a checksum in
+Table~\ref{tab:ckpts}, and the exact settings of each model are stored with the code. The 573 automated
+tests check that the code behaves as intended.
 
 \begin{table}[htbp]
 \centering
@@ -2129,15 +2171,28 @@ Reference implementation & \texttt{ssms\_event\_cameras} at commit \texttt{7c871
 Model & Origin & Selected step & SHA-256 (prefix) \\
 \midrule
 S5-RVT & published release~\cite{zubic2024state} & --- & \texttt{58396f15b6c6081c} \\
+RVT (ConvLSTM) & published release~\cite{gehrig2023recurrent} & --- & \texttt{24ca76af9fc417ec} \\
 EventSSM & run \texttt{8zotrwjw}, workstation & 320k (best val.) & \texttt{e94a36c2157bfea0} \\
 PureSSM & run \texttt{aekvsalq}, rented RTX~5090 & 310k (best val.) & \texttt{a07c108b430d288a} \\
+SpikingSSM, graded & run \texttt{a43jctgx}, workstation & 350k (best val.) & \texttt{48002509ee12cbe6} \\
+\midrule
+\multicolumn{4}{@{}l}{\textbf{Short schedule (100k steps, final checkpoint)}} \\
+PureSSM & run \texttt{igk6myyb}, workstation & 100k & \texttt{24c5a6083cb3df3a} \\
+Analog readout & run \texttt{sx14rpo8}, workstation & 100k & \texttt{76efec6fbf6ebf57} \\
+Graded readout & run \texttt{rnak3sms}, workstation & 100k & \texttt{44de83533cff07f7} \\
+Spike readout & run \texttt{5ykgl80y}, workstation & 100k & \texttt{dad067cda73f766a} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \chapter{Project Timeline}
 \label{app:timeline}
-% TODO-Project Timeline
+Table~\ref{tab:timeline} and Figure~\ref{fig:gantt} show the plan registered in Thesis~A, and
+Figure~\ref{fig:gantt_actual} shows what actually happened, rebuilt from the history of the code. The main
+change is that the planned simulation and drone-testing phases were replaced by the controlled study of the
+backbones and by the spiking model (Section~\ref{sec:scope_change}). The training runs, shown in the bottom
+row of Figure~\ref{fig:gantt_actual}, took most of the calendar time: each full run lasted between one and
+two days.
 
 \begin{table}[htbp]
     \centering
@@ -2177,23 +2232,25 @@ PureSSM & run \texttt{aekvsalq}, rented RTX~5090 & 310k (best val.) & \texttt{a0
 
 \chapter{Risk Assessment}
 \label{app:risk}
-% TODO-Risk Assessment
+Table~\ref{tab:risk_assessment} lists the main risks of Thesis~C, how likely and how serious each one was, how
+it was handled and how it turned out by the end of the project.
 
 \begin{table}[htbp]
     \centering
     \small
-    \caption[Risk assessment]{Risk register for Thesis~C (status on 6 October 2026).}
+    \caption[Risk assessment]{Risk register for Thesis~C, with the outcome of each risk at the end of the project.}
     \label{tab:risk_assessment}
     \renewcommand{\arraystretch}{1.4}
     \begin{tabularx}{\textwidth}{|>{\RaggedRight\arraybackslash}p{3.2cm}|l|l|>{\RaggedRight\arraybackslash}X|}
         \hline
-        \rowcolor[gray]{0.9} \textbf{Risk} & \textbf{Likelihood} & \textbf{Impact} & \textbf{Mitigation and status} \\ \hline
-        Spiking model does not train stably & Medium & High & A kill-switch fixed before training: if the model is not training stably by 11~October, it is frozen as a simulated proof of concept and effort moves to the write-up. Spiking is introduced stage by stage, and the residual bypass is reported if used. Status: criteria met. In overfitting tests the dense and graded readouts pass, and the binary readout, which receives about a third of the dense readout's gradient, passes with twice the steps. In 25k-step runs with spiking at stage~4 the spike and graded readouts reached 0.345 and 0.343 validation mAP against 0.351 for PureSSM under the same schedule, with no silent or saturated stage; runs with spiking at stages 2--4 are under way. \\ \hline
-        Single-seed variance & High & Medium & Each model is trained once. Run-to-run variation is unmeasured; overall-mAP differences below about 1~mAP are treated as not distinguishable, and only larger effects, such as $\mathrm{AP}_L$ differences, are reported as findings, as single-seed results (Section~\ref{sec:limitations}). \\ \hline
-        Training environment breaks & Medium & High & The hand-built Blackwell stack is pinned (Appendix~\ref{app:repro}); dependency resolution is disabled for the kernel packages; runbooks and patches rebuild it from scratch. \\ \hline
-        Long run lost to a crash or out-of-memory kill & Medium & Medium & Full-state checkpoint resumption, validated in earlier runs; data-loader workers capped for host memory; a rented GPU of the same architecture as fallback. \\ \hline
-        Write-up completed late & Medium & High & Writing runs in parallel with the experiments, and every non-spiking section is drafted before the spiking results arrive; the kill-switch caps the time the spiking strand can take. \\ \hline
-        Neuromorphic hardware access delayed (INRC, Lava archived) & High & Low & Hardware deployment is future work, not a thesis result (Section~\ref{sec:future_work}); the model is exported through the vendor-neutral NIR format. \\ \hline
+        \rowcolor[gray]{0.9} \textbf{Risk} & \textbf{Likelihood} & \textbf{Impact} & \textbf{Mitigation and outcome} \\ \hline
+        Spiking model does not train stably & Medium & High & A stop rule was fixed before training: if the model was not training stably by 11~October, it would be frozen as a simulated proof of concept. Spiking was added one stage at a time. \textbf{Outcome:} passed on 7~October. All three readouts trained stably, and the graded readout completed the full schedule. \\ \hline
+        Single training runs & High & Medium & Differences below about 1~mAP are not treated as findings, and paired bootstrap intervals give the uncertainty from the choice of test recordings. \textbf{Outcome:} remains the main limitation (Section~\ref{sec:limitations}). \\ \hline
+        Training environment breaks & Medium & High & The hand-built software stack is pinned (Appendix~\ref{app:repro}), and guides and patches rebuild it from scratch. \textbf{Outcome:} an automatic system update removed the graphics driver twice, on 8~October and 12~November. It was reinstalled both times, and no run was affected. \\ \hline
+        Long run lost to a crash & Medium & Medium & Training resumes from saved checkpoints, and a rented card of the same type is available as a fallback. \textbf{Outcome:} the graded runs were interrupted five times in total and resumed each time. Resuming restores the model and optimiser, but not the order of the training data. \\ \hline
+        Test data lost & Low & Medium & The raw recordings and the scripts that build every derived data set are kept. \textbf{Outcome:} the faster-rate test data was deleted in October and rebuilt from the raw recordings before the final runs. \\ \hline
+        Write-up completed late & Medium & High & Writing ran in parallel with the experiments, and the stop rule capped the time the spiking work could take. \textbf{Outcome:} the last experiments finished on 11~November, leaving the final weeks for writing. \\ \hline
+        Neuromorphic hardware access delayed & High & Low & Hardware deployment was made future work, not a thesis result, and the model was built entirely in simulation. \textbf{Outcome:} Intel discontinued Lava in May~2026 and no hardware access was obtained during the project. The path to the chip is set out in Section~\ref{sec:neuro_case}. \\ \hline
     \end{tabularx}
 \end{table}
 
