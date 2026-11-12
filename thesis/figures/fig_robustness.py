@@ -17,7 +17,9 @@ Second figure, fig_robustness_spiking (only when the true-rate logs of the spiki
 Values are read from the eval logs of results/stage9/{sweep,sweep_tr}/ and results/stage9_rvt_lstm/ (Tables
 tab:regime1, tab:regime2, tab:dt_comp).
 
-  python thesis/figures/fig_robustness.py   -> thesis/latex/images/fig_robustness{,_spiking}.{pdf,png}
+Third figure, fig_robustness_truerate: panel (b) alone, for the final report (the window test is in its appendix).
+
+  python thesis/figures/fig_robustness.py   -> thesis/latex/images/fig_robustness{,_truerate,_spiking}.{pdf,png}
                                                + results/report_figs/*.csv
 """
 from __future__ import annotations
@@ -34,6 +36,7 @@ LSTM = rs.REPO / "results/stage9_rvt_lstm"
 MODELS = [("baseline", "s5rvt"), ("eventssm", "eventssm"), ("puressm", "puressm")]      # log prefix, style key
 WINDOWS = [(200, 0.25), (100, 0.5), (50, 1.0), (25, 2.0), (12, 4.0)]                     # regime 1: dt ms, mult
 TRUE_RATE = [(25, 2.0, "0.5000"), (5, 10.0, "0.1000")]                                   # regime 2: dt, mult, step scale
+XS = [1.0] + [m for _, m, _ in TRUE_RATE]                                                # regime 2 x positions
 # Zubic et al. 2024, Table 2 (Gen1 test): S5 47.71 -> 39.84 and RVT 47.16 -> 8.35 from 20 to 200 Hz.
 PUBLISHED = {"S5\n(corrected) ": 39.84 / 47.71 * 100, "ConvLSTM\n": 8.35 / 47.16 * 100}
 # (sweep_tr log key, test_metrics key, style key, arm position on the x axis, schedule)
@@ -79,33 +82,11 @@ def spread_labels(axis, items: list[tuple[float, float, str]]) -> None:
                       fontsize=7.5, color=rs.INK)
 
 
-def main() -> None:
-    rs.apply()
-    test = json.loads((rs.DATA / "test_metrics.json").read_text())
-    spiking = [s for s in SPIKING if ap(S9 / f"sweep_tr/{s[0]}_dt5_nc.log") is not None]
-    fig, axes = plt.subplots(1, 2, figsize=(rs.TEXT_WIDTH, 2.8), gridspec_kw={"wspace": 0.25,
-                                                                               "width_ratios": [1, 1.25]})
-    ax, bx = axes
-    rows = []
-
-    for prefix, style in MODELS:                                                     # (a) regime 1
-        aps = [ap(S9 / f"sweep/{prefix}_dt{dt}.log") for dt, _ in WINDOWS]
-        ref = aps[2]
-        ret = [a / ref * 100 for a in aps]
-        ax.plot([m for _, m in WINDOWS], ret, color=rs.colour(style), marker=rs.marker(style),
-                markeredgecolor="white", markeredgewidth=0.6, label=rs.label(style).replace(" (baseline)", ""))
-        rows += [{"regime": 1, "model": style, "mult": m, "dt_ms": dt, "comp": "none", "AP": round(a, 2),
-                  "retention_pct": round(r, 1)} for (dt, m), a, r in zip(WINDOWS, aps, ret)]
-    ax.set_xscale("log", base=2)
-    ax.set_xticks([m for _, m in WINDOWS], ["200", "100", "50\nnormal", "25", "12"])
-    ax.set_xlabel("Time window per frame (ms)")
-    ax.set_ylabel("Accuracy kept (%)")
-    ax.set_ylim(70, 102)
-    ax.legend(loc="lower center", fontsize=7.5)
-    rs.panel_tag(ax, "a", "longer or shorter windows")
-
-    labels_b = []
-    xs = [1.0] + [m for _, m, _ in TRUE_RATE]
+def true_rate_panel(bx) -> tuple[list[dict], list[tuple[float, float, str]]]:
+    """Regime 2 (true rate change) on one axis: SSMs without/with correction, measured ConvLSTM, published stars.
+    Returns the plotted rows and the right-of-point labels (placed by spread_labels once limits are final)."""
+    rows, labels_b = [], []
+    xs = XS
     for prefix, style in MODELS:                                                     # (b) regime 2
         ref = ap(S9 / f"sweep/{prefix}_dt50.log")
         for comp, ls, mfc in (("none", "-", None), ("dt", "--", "white")):
@@ -142,6 +123,36 @@ def main() -> None:
     bx.set_ylim(10, 102)
     bx.set_xlabel("Frame rate (times normal)")
     bx.legend(loc="lower left", fontsize=7.5)
+    return rows, labels_b
+
+
+def main() -> None:
+    rs.apply()
+    test = json.loads((rs.DATA / "test_metrics.json").read_text())
+    spiking = [s for s in SPIKING if ap(S9 / f"sweep_tr/{s[0]}_dt5_nc.log") is not None]
+    fig, axes = plt.subplots(1, 2, figsize=(rs.TEXT_WIDTH, 2.8), gridspec_kw={"wspace": 0.25,
+                                                                               "width_ratios": [1, 1.25]})
+    ax, bx = axes
+    rows = []
+
+    for prefix, style in MODELS:                                                     # (a) regime 1
+        aps = [ap(S9 / f"sweep/{prefix}_dt{dt}.log") for dt, _ in WINDOWS]
+        ref = aps[2]
+        ret = [a / ref * 100 for a in aps]
+        ax.plot([m for _, m in WINDOWS], ret, color=rs.colour(style), marker=rs.marker(style),
+                markeredgecolor="white", markeredgewidth=0.6, label=rs.label(style).replace(" (baseline)", ""))
+        rows += [{"regime": 1, "model": style, "mult": m, "dt_ms": dt, "comp": "none", "AP": round(a, 2),
+                  "retention_pct": round(r, 1)} for (dt, m), a, r in zip(WINDOWS, aps, ret)]
+    ax.set_xscale("log", base=2)
+    ax.set_xticks([m for _, m in WINDOWS], ["200", "100", "50\nnormal", "25", "12"])
+    ax.set_xlabel("Time window per frame (ms)")
+    ax.set_ylabel("Accuracy kept (%)")
+    ax.set_ylim(70, 102)
+    ax.legend(loc="lower center", fontsize=7.5)
+    rs.panel_tag(ax, "a", "longer or shorter windows")
+
+    rows_b, labels_b = true_rate_panel(bx)
+    rows += rows_b
     rs.panel_tag(bx, "b", "frames arrive faster")
 
     for a in axes:
@@ -149,6 +160,19 @@ def main() -> None:
     fig.canvas.draw()                                                                # final transforms for the labels
     spread_labels(bx, labels_b)
     rs.save(fig, "fig_robustness", rows)
+
+    fig, bx = plt.subplots(figsize=(0.8 * rs.TEXT_WIDTH, 2.8))                       # final report: true rate only
+    rows_tr, labels_tr = true_rate_panel(bx)
+    from matplotlib.lines import Line2D                                              # panel (a) held the model key
+    model_keys = [Line2D([], [], color=rs.colour(s), marker=rs.marker(s), markeredgecolor="white",
+                         markeredgewidth=0.6, label=rs.label(s).replace(" (baseline)", "")) for _, s in MODELS]
+    handles, _ = bx.get_legend_handles_labels()
+    bx.legend(handles=model_keys + handles, loc="lower left", fontsize=7.5)
+    bx.set_ylabel("Accuracy kept (%)")
+    bx.minorticks_off()
+    fig.canvas.draw()
+    spread_labels(bx, labels_tr)
+    rs.save(fig, "fig_robustness_truerate", rows_tr)
 
     if spiking:                                                                      # second figure: spiking ladder
         from matplotlib.lines import Line2D
@@ -170,7 +194,7 @@ def main() -> None:
                             va="center", fontsize=7, color=rs.INK)
                 by_rate[mult].append(r)
             srows += [{"model": tkey, "schedule": sched, "mult": x_, "dt_ms": round(50 / x_, 1), "comp": "none",
-                       "AP": round(a, 2), "retention_pct": round(r, 1)} for x_, a, r in zip(xs, aps, ret)]
+                       "AP": round(a, 2), "retention_pct": round(r, 1)} for x_, a, r in zip(XS, aps, ret)]
         right = len(ARM_TICKS) - 1 + 0.55
         cx.text(right, 100.4, "normal", ha="left", va="bottom", fontsize=7, color=rs.MUTED)
         for (_, mult, _), text in zip(TRUE_RATE, ("2× faster", "10× faster")):

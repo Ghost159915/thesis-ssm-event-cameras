@@ -664,8 +664,8 @@ measures it with two detectors that differ only in that component (Section~\ref{
 
 \textbf{Gap~B: rate robustness under the published artefacts.} The temporal generalisation of SSM detectors
 has been attributed to inference-time rescaling of the discretisation step~\cite{zubic2024state}. Whether
-the reported high-rate results can be reproduced from the released checkpoint and code, and how the
-robustness behaves under a fixed cadence versus a true rate change, had not been examined
+the reported high-rate results can be reproduced from the released checkpoint and code, with frames that
+really arrive faster, had not been examined
 (Section~\ref{sec:robustness}).
 
 \textbf{Gap~C: where the cost of spiking comes from.} Spiking detectors have reached the accuracy of
@@ -1021,14 +1021,14 @@ probe~\cite{luo2016understanding} measures how much of the image each trained sp
 
 \subsection{Temporal Robustness}
 \label{subsec:eval_rob}
-Robustness to the event rate was tested in two settings. In the first, the model still receives a new frame
-every 50~ms, but each frame collects events over a shorter or longer period, from 200 down to 12~ms. Only
-the number of events in each frame changes. In the second setting, the frames really arrive faster: every
-25~ms, which is twice the normal rate, or every 5~ms, which is ten times the normal rate. This is the
-experiment of Zubi\'{c} et al.~\cite{zubic2024state}, and it required rebuilding the test data at each rate.
-Robustness is reported as retention: the accuracy at the new rate divided by the accuracy at the normal
-rate. S5-RVT, EventSSM and PureSSM were also tested with the correction proposed by Zubi\'{c} et al., which
-adjusts the model's step size $\Delta_t$ to match the new rate (Section~\ref{subsec:f2}).
+Robustness to the event rate was tested by making the frames arrive faster than in training: every 25~ms,
+which is twice the normal rate, or every 5~ms, which is ten times the normal rate. Each frame then holds
+fewer events, and the model's memory takes more steps for each second of driving. This is the experiment of
+Zubi\'{c} et al.~\cite{zubic2024state}, and it required rebuilding the test data at each rate. Robustness is
+reported as retention: the accuracy at the new rate divided by the accuracy at the normal rate. S5-RVT,
+EventSSM and PureSSM were also tested with the correction proposed by Zubi\'{c} et al., which adjusts the
+model's step size $\Delta_t$ to match the new rate (Section~\ref{subsec:f2}). A simpler test, in which only
+the length of each frame's window changes, is reported in Appendix~\ref{app:window}.
 
 \subsection{Efficiency}
 \label{subsec:eval_eff}
@@ -1095,21 +1095,14 @@ Appendix~\ref{app:repro} lists the software versions and the trained models.
 
 \section{Accuracy}
 \label{sec:acc_results}
-Table~\ref{tab:accuracy} and Figure~\ref{fig:acc_by_size} compare the accuracy of the three models on the
-test set. S5-RVT scores 47.72~mAP, EventSSM 46.22 and PureSSM 46.43. The baseline is ahead of both new
-models by 1.3 to 1.5 points. The 95\,\% interval of each gap excludes zero, so the baseline is better on
-this test set. The two new models are level: PureSSM is 0.2 points ahead, but the interval of that
-difference, $-0.12$ to $+0.72$, includes zero.
-
-The scores by object size are more informative. EventSSM is close to the baseline on small and medium
-objects, but six points behind on large ones (44.70 against 50.66). This gap is clearly real: its interval
-runs from $-9.33$ to $-1.94$. A model that handles small objects well but large ones poorly probably cannot
-see enough of the image at once, because a large object covers more of the frame than its features take
-in. PureSSM raises the large-object score from 44.70 to 47.65, a gain of 2.9 points that closes about half
-of the gap. The interval of this gain runs from $-0.09$ to $+6.35$. It just includes zero, so the gain is
-likely but not certain on this test set. Most of it comes from cars ($+1.16$), which are often large and
-close to the camera, and not from pedestrians ($-0.76$), which rarely appear large. Both class differences
-are small, however.
+Table~\ref{tab:accuracy} and Figure~\ref{fig:acc_by_size} compare the three models. S5-RVT scores
+47.72~mAP, EventSSM 46.22 and PureSSM 46.43. The baseline is ahead of both new models, and the 95\,\%
+interval of each gap excludes zero. The two new models are level. By object size, EventSSM is close to the
+baseline on small and medium objects but six points behind on large ones. This suggests that it cannot see
+enough of the image at once. PureSSM raises the large-object score from 44.70 to 47.65, a gain of 2.9 points
+that closes about half of the gap. The interval of this gain, $-0.09$ to $+6.35$, just includes zero, so the
+gain is likely but not certain. It comes from cars, which are often large and close to the camera, rather
+than from pedestrians.
 
 \begin{table}[htbp]
 \centering
@@ -1131,16 +1124,12 @@ Car / Pedestrian        & 63.88 / 31.56 & 61.67 / 30.78 & 62.83 / 30.02 \\
 \end{tabular}
 \end{table}
 
-This result matters because of how PureSSM is built. Apart from the layers that shrink the image and one
-small filter per block, every link between distant parts of the image passes through a state space scan.
-With no attention and almost no convolution, it matches the convolutional model overall, does better on
-large objects, and has the fewest parameters of all the models (16.33 million,
-Table~\ref{tab:efficiency}). It is still 1.3 points behind the baseline overall, although it was trained
-with half the baseline's batch size (Section~\ref{sec:training}). On large objects it remains three points
-behind, but this gap is no longer clearly real: its interval, $-7.72$ to $+2.38$, includes zero. EventSSM
-and PureSSM differ only in the spatial mixer and in pre-training. Pre-training should, if anything, favour
-EventSSM, so the large-object gain can be traced to the spatial mixer. The next section examines why. The
-spiking model that also appears in Figure~\ref{fig:acc_by_size} is covered in Section~\ref{subsec:spk_full}.
+PureSSM's spatial mixer uses no attention and almost no convolution, yet it matches EventSSM overall, does
+better on large objects and has the fewest parameters (16.33 million, Table~\ref{tab:efficiency}). It is
+still 1.3 points behind the baseline, although it was trained with half the baseline's batch size
+(Section~\ref{sec:training}). The two new models differ only in the spatial mixer and in pre-training, which
+if anything favours EventSSM. The large-object gain can therefore be traced to the spatial mixer. The
+spiking model in Figure~\ref{fig:acc_by_size} is covered in Section~\ref{subsec:spk_full}.
 
 \begin{figure}[htbp]
     \centering
@@ -1153,14 +1142,12 @@ spiking model that also appears in Figure~\ref{fig:acc_by_size} is covered in Se
 
 \section{Effective Receptive Field}
 \label{sec:erf}
-To explain the gain on large objects, the receptive field of each trained spatial mixer was measured. The
-receptive field is the area of the input image that a feature in the network actually draws on. It was
-measured with a standard probe~\cite{luo2016understanding}. The probe takes the feature at the centre of
-the image and finds how strongly each input pixel affects it. The spread of this effect, $\sigma$, is given
-in pixels and averaged over eight random inputs. Table~\ref{tab:erf} and Figure~\ref{fig:erf} show the
-results. The state space mixer draws on a much wider area at both stages measured: 85.6 pixels against
-41.8 at stage~3, about twice as far, and 105.5 against 84.4 at stage~4. Training widened its field by 30 to
-34 pixels. The field of the convolutional mixer grew by only 0.2 pixels at stage~3 and 6.2 at stage~4.
+To explain this gain, the receptive field of each trained spatial mixer was measured: the area of the input
+that a feature actually draws on. A standard probe~\cite{luo2016understanding} finds how strongly each input
+pixel affects the feature at the centre of the image, and $\sigma$ is the spread of this effect in pixels.
+Table~\ref{tab:erf} and Figure~\ref{fig:erf} show that the state space mixer draws on a much wider area:
+85.6 against 41.8 pixels at stage~3, about twice as far, and 105.5 against 84.4 at stage~4. Training widened
+its field by 30 to 34 pixels, but the convolutional field by only 0.2 and 6.2.
 
 \begin{table}[htbp]
 \centering
@@ -1177,18 +1164,15 @@ BiMamba (PureSSM)    & \textbf{85.6\,px} & \textbf{105.5\,px} & $\mathbf{+34.4}$
 \end{tabular}
 \end{table}
 
-There is a simple reason for this difference. A convolutional layer combines only small neighbourhoods of
-pixels, so its view grows slowly as layers are added, and training changes it
-little~\cite{luo2016understanding}. A state space scan reads the whole image as one sequence, forwards and
-backwards, so information can travel from any point to any other. How far it travels is set by the decay
-rates and step sizes of Equation~\eqref{eq:mamba2_state}, and these are learned. The reach of the state
-space mixer is therefore learned, while that of the convolutional mixer is largely fixed by its design. At
-stage~4, PureSSM's untrained field was in fact slightly narrower than the convolutional one (75.4 against
-78.2 pixels), so there the whole advantage comes from training. This wider view fits the gain on large
-objects in Section~\ref{sec:acc_results}, although that gain is not certain. Two caveats apply. The probe
-uses random inputs rather than real event data. In addition, the untrained convolutional network had
-random weights, not the ImageNet weights from which EventSSM started, so its change covers both
-pre-training and training on Gen1.
+The reason lies in how each mixer works. A convolutional layer combines only small neighbourhoods of pixels,
+so its view grows slowly with depth and training changes it little~\cite{luo2016understanding}. A state
+space scan reads the whole image as one sequence, forwards and backwards, so information can travel from any
+point to any other. How far it travels is set by the learned decay rates and step sizes of
+Equation~\eqref{eq:mamba2_state}, so its reach is learned rather than fixed by design. At stage~4, PureSSM's
+untrained field was in fact slightly narrower than the convolutional one (75.4 against 78.2 pixels), so
+there the whole advantage comes from training. This wider view fits the large-object gain. Two caveats
+apply: the probe uses random inputs rather than events, and the untrained convolutional network had random
+weights rather than the ImageNet weights that EventSSM started from.
 
 \begin{figure}[htbp]
     \centering
@@ -1202,33 +1186,12 @@ pre-training and training on Gen1.
 \label{sec:robustness}
 % TODO-Temporal Robustness (Results)
 
-\subsection{Fixed Cadence, Variable Accumulation Window}
-% TODO-Fixed Cadence, Variable Accumulation Window
-
-\begin{table}[htbp]
-\centering
-\caption[Robustness when the window length changes]{Setting 1: a frame every 50~ms, each collecting events over a shorter or longer window (mAP). Training used
-    $1\times$. PureSSM's $1\times$ value comes from the rebuilt test data (46.43 on the original).}
-\label{tab:regime1}
-\begin{tabular}{llccc}
-\toprule
-\textbf{Multiplier} & \textbf{$\Delta t$} & \textbf{S5-RVT} & \textbf{EventSSM} & \textbf{PureSSM} \\
-\midrule
-$0.25\times$ & 200\,ms & 41.0 & 40.9 & \textbf{41.65} \\
-$0.5\times$  & 100\,ms & 46.5 & 45.5 & 45.67 \\
-$1\times$    & 50\,ms  & 47.7 & 46.2 & 46.45 \\
-$2\times$    & 25\,ms  & 45.0 & 43.5 & 44.09 \\
-$4\times$    & 12\,ms   & 38.4 & 35.4 & 35.68 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
 \subsection{True Event-Rate Change}
 % TODO-True Event-Rate Change
 
 \begin{table}[htbp]
 \centering
-\caption[Robustness when frames arrive faster]{Setting 2: frames really arrive 2 or 10 times faster (mAP, no correction). Retention: share of the model's
+\caption[Robustness when frames arrive faster]{Frames really arrive 2 or 10 times faster (mAP, no correction). Retention: share of the model's
     own $1\times$ accuracy that is kept. The ConvLSTM is RVT's published model~\cite{gehrig2023recurrent};
     Zubi\'{c} et al.~\cite{zubic2024state} report that it keeps only 17.7\,\%, which is not reproduced here.}
 \label{tab:regime2}
@@ -1247,10 +1210,9 @@ true-$10\times$ retention     & 80.3\% & 62.2\% & 63.0\% & 69.7\% \\
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\textwidth]{images/fig_robustness.pdf}
-    \caption[Robustness to changes in event rate]{Share of each model's normal accuracy that is kept when the event rate changes. (a) Setting 1: longer or
-        shorter windows. (b) Setting 2: frames really arrive faster; dashed lines use the published
-        correction, the black line is RVT's ConvLSTM. Stars: published values~\cite{zubic2024state}, not
+    \includegraphics[width=0.8\textwidth]{images/fig_robustness_truerate.pdf}
+    \caption[Robustness to faster frames]{Share of each model's normal accuracy that is kept when frames arrive
+        faster. Dashed lines use the published correction. Stars: published values~\cite{zubic2024state}, not
         reproduced here.}
     \label{fig:robustness}
 \end{figure}
@@ -1565,8 +1527,8 @@ Streaming state         & 4.7\,MB & 144.5\,MB & 144.5\,MB & 145.6\,MB \\
   1Mpx deferred to future work (Section~\ref{sec:future_work}); latency and energy measured on a
   desktop GPU, not embedded hardware. \\
 3 Temporal generalisation & Inference at frequencies other than training, without retraining &
-  Delivered and extended to two regimes, fixed cadence and true rate change, including a reproduction
-  of inference-time $\Delta t$-rescaling (Section~\ref{sec:robustness}). \\
+  Delivered for frames arriving up to ten times faster, including a reproduction of inference-time
+  $\Delta t$-rescaling (Section~\ref{sec:robustness}; window-length test in Appendix~\ref{app:window}). \\
 4 System integration & Obstacle-avoidance controller in simulation; micro-UAV flight if feasible &
   Descoped (this section). \\
 \bottomrule
@@ -1752,6 +1714,36 @@ PureSSM & run \texttt{aekvsalq}, rented RTX~5090 & 310k (best val.) & \texttt{a0
         Write-up completed late & Medium & High & Writing runs in parallel with the experiments, and every non-spiking section is drafted before the spiking results arrive; the kill-switch caps the time the spiking strand can take. \\ \hline
         Neuromorphic hardware access delayed (INRC, Lava archived) & High & Low & Hardware deployment is future work, not a thesis result (Section~\ref{sec:future_work}); the model is exported through the vendor-neutral NIR format. \\ \hline
     \end{tabularx}
+\end{table}
+
+
+\chapter{Window-Length Test}
+\label{app:window}
+This test complements Section~\ref{sec:robustness}. The model still receives a frame every 50~ms, as in
+training, but each frame collects events over a shorter or longer window, from 200 down to 12~ms. Only the
+number of events in each frame changes, and the model's memory still takes one step every 50~ms. This is what
+the published code of Zubi\'{c} et al.~\cite{zubic2024state} produces, because its 50-ms step is fixed.
+Table~\ref{tab:regime1} shows that every model is most accurate at the 50-ms window it was trained on and
+loses accuracy in both directions. At the 12-ms window, changing S5-RVT's step size with the published
+correction, in either direction, lowered its accuracy from 38.4 to about 30~mAP. With the clock unchanged,
+there is nothing for the correction to fix.
+
+\begin{table}[htbp]
+\centering
+\caption[Robustness when the window length changes]{A frame every 50~ms, each collecting events over a shorter or longer window (mAP). Training used
+    $1\times$. PureSSM's $1\times$ value comes from the rebuilt test data (46.43 on the original).}
+\label{tab:regime1}
+\begin{tabular}{llccc}
+\toprule
+\textbf{Multiplier} & \textbf{Window} & \textbf{S5-RVT} & \textbf{EventSSM} & \textbf{PureSSM} \\
+\midrule
+$0.25\times$ & 200\,ms & 41.0 & 40.9 & \textbf{41.65} \\
+$0.5\times$  & 100\,ms & 46.5 & 45.5 & 45.67 \\
+$1\times$    & 50\,ms  & 47.7 & 46.2 & 46.45 \\
+$2\times$    & 25\,ms  & 45.0 & 43.5 & 44.09 \\
+$4\times$    & 12\,ms   & 38.4 & 35.4 & 35.68 \\
+\bottomrule
+\end{tabular}
 \end{table}
 
 \end{document}
