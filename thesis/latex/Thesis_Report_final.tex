@@ -1978,23 +1978,52 @@ The spiking ladder of this thesis shows where such designs should focus: on keep
 
 \chapter{Conclusion}
 \label{ch:conclusion}
-This thesis set out to isolate what a state space model contributes to object detection with an event
-camera. It held a verified detection pipeline fixed and changed one part at a time. That turned a question
-that earlier comparisons could not answer into one that could be measured.
+The aim of this thesis was to identify what a state space model architecture contributes to object detection
+with an event-based camera. This was achieved by setting up a controlled experiment that used a fixed and
+verified pipeline, the S5-RVT detector reproduced in Thesis~A. Previous work reported that state space models
+are competitive and cope better with changes in event rate than other models. However, every published
+comparison changed several components at once, making it difficult to identify the effect of state space
+models on object detection.
 
-A state space model can serve as the spatial backbone of
-an event-camera detector. It matches a convolutional one in accuracy, needs less computation, and probably
-sees large objects better because it learns a wider view of the image. A ConvLSTM was more robust to faster frames than any state space model, and the published correction lowered accuracy rather than raising it. The state space model is also slower on a graphics card and needs far more memory.
+It was shown that state space models can replace the convolutional layers of a spatial backbone, with
+comparable accuracy, less computation, and probably better detection of large objects, which fits their wider
+view of the image.
 
-The spiking strand answered the second question. Most of the cost of spiking comes from sparsity rather than from the single bit, and with full training a graded readout loses almost no accuracy. That makes the model a sound starting point for neuromorphic hardware, although in its present hybrid form spiking can reduce the energy by about 1\,\% at most. Section~\ref{sec:neuro_case} maps the path to a chip, and its first steps need no special hardware.
+S5-RVT, the published baseline, was reproduced exactly and remained the most accurate model, at 47.72~mAP
+overall and 50.66 on large objects, with a small memory of 4.7~MB per stream. However, it used the most energy
+of the four non-spiking models, 0.723~J per frame, and was the least robust to faster frames, keeping
+62.2\,\% of its accuracy at ten times the rate. It remains the best choice when accuracy matters most.
 
-These conclusions rest on single training runs on one driving dataset. Repeating the runs, moving to higher
-resolution and to data recorded from drones, and testing on embedded and neuromorphic hardware are the
-natural next steps.
+RVT with a ConvLSTM memory, tested with the published model, was the most robust to faster frames. It kept
+80.3\,\% of its accuracy at ten times the rate, where the published comparison reported only 17.7\,\%. It also
+used the least energy, 0.169~J per frame, and the same small memory as S5-RVT, while its accuracy, 47.14~mAP,
+was 0.6 points below S5-RVT. It is the strongest candidate for a platform limited by energy.
 
-Changing one part of a detector at a time is slower than proposing a new
-detector, but it shows what each part actually does. Here, it also showed that two published results could
-not be reproduced with the released code and models.
+EventSSM was identified as the fastest model. It processes a frame in 12.60~ms, and in 4.8~ms in the faster
+replay mode, which makes it the only model shown to keep up with 5-ms windows. However, it performs the
+weakest on large objects, with an AP of 44.70, and needs the most computation, 12.71~GFLOPs per frame. This
+model is key when processing speed matters most.
+
+PureSSM is the smallest model, with only 16.33 million parameters, which makes it 10.2\,\% smaller than the
+baseline. It still reaches a competitive overall mAP of 46.43, 1.3 points below the baseline, probably detects
+large objects better than EventSSM, and has the best accuracy per GFLOP, even though it was trained with half
+the baseline's batch size. It is the most robust state space model, retaining 69.7\,\% of its accuracy at ten
+times the rate. Its costs are speed and memory: it is the slowest model in normal mode, at 26.86~ms per frame,
+and like EventSSM it needs 144.5~MB of memory per stream.
+
+SpikingSSM is set up as a baseline for future work on neuromorphic hardware. After full training, its graded
+readout is level with PureSSM, at 46.24~mAP, and has the best large-object score of the new models, 49.63. On
+the short schedule, however, spiking cost 2.3 points, mostly through sparsity, and training took twice as long
+as for EventSSM. Its estimated energy saving is only about 1\,\%, because the spikes reach only the first
+layers of the neck.
+
+No single model was best on every measure, so the right choice depends on the main limit of the platform:
+S5-RVT for accuracy, the ConvLSTM for energy and robustness, EventSSM for speed and PureSSM for size and
+computation. The state space models did not show the advantage in rate robustness over a ConvLSTM that earlier
+work reported, and the published time-step correction could not be reproduced. These conclusions rest on
+single training runs on one driving dataset. The next steps are to repeat the training, to train on
+higher-resolution and drone-view data, and to give the spiking model a smaller memory and a fixed step size so
+that it can run on a neuromorphic chip.
 
 % ===================================================================== BACK MATTER (roman, continuing)
 \clearpage
