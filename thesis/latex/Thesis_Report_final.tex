@@ -1094,10 +1094,18 @@ Appendix~\ref{app:repro} lists the software versions and the trained models.
 
 \chapter{Results}
 \label{ch:results}
+This chapter reports the results in the order of the aims: accuracy, the reason for the accuracy
+differences, robustness to the event rate, efficiency, and finally the spiking model. All results are
+measured on the Gen1 test set with the same evaluation code. Each model was trained only once, so
+differences in overall accuracy of less than about one point are not treated as real
+(Section~\ref{subsec:eval_stats}). Where 95\,\% intervals are given, they come from the bootstrap described
+there.
 
 \section{Baseline Reproduction}
 \label{sec:repro_results}
-% TODO-Baseline Reproduction
+The published S5-RVT model scores 47.72~mAP on the test set, an exact match to its published
+47.7~\cite{zubic2024state}. This was checked before any new model was tested. It confirms that the data
+preparation, the evaluation code and the scoring used for every other result are correct.
 
 \section{Accuracy}
 \label{sec:acc_results}
@@ -1190,10 +1198,20 @@ weights rather than the ImageNet weights that EventSSM started from.
 
 \section{Temporal Robustness}
 \label{sec:robustness}
-% TODO-Temporal Robustness (Results)
+This section tests how well each model copes when frames arrive faster than in training. It then tries to
+reproduce the correction proposed in the literature for this case.
 
 \subsection{True Event-Rate Change}
-% TODO-True Event-Rate Change
+Table~\ref{tab:regime2} and Figure~\ref{fig:robustness} show what happens when frames really arrive faster.
+At twice the normal rate, the three state space models keep about 95\,\% of their accuracy. At ten times the
+rate, with a new frame every 5~ms and no retraining, S5-RVT keeps 62.2\,\% and EventSSM 63.0\,\%. PureSSM
+keeps 69.7\,\%, the most of the state space models. RVT's original ConvLSTM model, tested in the same way,
+keeps more than any of them: 97.7\,\% at twice and 80.3\,\% at ten times the rate. At ten times the rate it
+scores 37.84~mAP, against 32.38 for PureSSM. Robustness to the event rate is therefore not something that
+sets state space models apart from this older recurrent design. EventSSM and PureSSM process time in exactly
+the same way, so PureSSM's extra robustness is linked to its spatial mixer. Its wider view of the image is a
+likely reason, because frames at ten times the rate contain very few events, but this was not tested
+directly.
 
 \begin{table}[htbp]
 \centering
@@ -1225,7 +1243,19 @@ true-$10\times$ retention     & 80.3\% & 62.2\% & 63.0\% & 69.7\% \\
 
 \subsection{Reproducing Inference-Time \texorpdfstring{$\Delta t$}{Delta t}-Rescaling}
 \label{subsec:f2}
-% TODO-Reproducing Inference-Time Delta t-Rescaling
+Zubi\'{c} et al.~\cite{zubic2024state} report that state space detectors can handle event rates they were
+not trained on if their step size $\Delta_t$ is adjusted at test time to match the new rate. With this
+correction, they report 39.84~mAP for S5 at ten times the normal rate. This thesis applied the same
+correction with the published code and model, and also to the two Mamba models (Table~\ref{tab:dt_comp}).
+The correction lowered accuracy at every point tested. At ten times the rate it cost 9.7 points for
+S5-RVT, 8.9 for EventSSM and 12.7 for PureSSM. The published 39.84 could not be reproduced with the
+published code and model: the best S5-RVT result at ten times the rate was 29.67, without the correction.
+The released code also cannot make test data at a faster frame rate, because its 50-ms step is fixed, so
+the published experiment cannot be repeated exactly as released. The correction did not help in the window
+test of Appendix~\ref{app:window} either. The robustness itself was reproduced: without any correction, the
+state space models keep 62 to 70\,\% of their accuracy. The other half of the published comparison was not.
+The paper reports that RVT's ConvLSTM keeps only 17.7\,\% at ten times the rate, but tested on the same data
+as the state space models it keeps 80.3\,\% (Table~\ref{tab:regime2}).
 
 \begin{table}[htbp]
 \centering
@@ -1248,7 +1278,22 @@ $10\times$ (5\,ms)  & no comp.  & \textbf{29.67} & \textbf{29.09} & \textbf{32.3
 
 \section{Efficiency}
 \label{sec:efficiency}
-% TODO-Efficiency (Results)
+Table~\ref{tab:efficiency} and Figure~\ref{fig:efficiency} show that no model is best on every measure.
+PureSSM is the smallest model, needs the least computation and gives the most accuracy per unit of
+computation. Yet it is the slowest in normal mode, at 26.86~ms per frame, or 37 frames per second. Its
+spatial mixer consists of many small operations, and each operation on a graphics card carries a fixed
+start-up cost. In the faster replay mode most of this cost disappears, and PureSSM reaches 181 frames per
+second. EventSSM is the fastest model in both modes, at 79 and 210 frames per second. It also uses less
+energy than the other state space models: 0.438~J per frame, against 0.723~J for the baseline. RVT's
+ConvLSTM, measured later with the same setup, puts these numbers in context. It is almost as fast as
+EventSSM, at 76 frames per second, but it uses less than half of its energy, 0.169~J per frame. EventSSM's
+speed and energy are therefore an advantage over the S5 baseline, not over recurrent detectors in general.
+
+Two further results complete the picture. First, sparse input does not make a graphics card faster. Only
+about 1.5\,\% of the input is non-zero (Section~\ref{sec:repr}), but every frame is still processed in
+full. Second, the Mamba models must keep 144~MB of memory for each video stream, 31 times the 4.7~MB of the
+baseline and the ConvLSTM. This is because Mamba stores a large memory at every position in the image. On a small
+platform with limited memory, this may be the figure that matters most.
 
 \begin{table}[htbp]
 \centering
@@ -1284,7 +1329,14 @@ Streaming state        & \textbf{4.7\,MB} & \textbf{4.7\,MB} & 144\,MB & 144\,MB
 
 \section{Qualitative Results}
 \label{sec:qualitative}
-% TODO-Qualitative Results
+Figure~\ref{fig:qualitative} shows eight evenly spaced frames from the test recording with the most large
+cars; the frames were not picked by hand. Four behaviours appear repeatedly across the recordings examined.
+Close cars that produce events are detected with high confidence. Detections continue when the scene goes
+quiet: even when almost no events fall on a car, both models keep detecting it, because the car is held in
+the model's memory. At the start of a recording, when the memory is still empty, both models produce a few
+weak boxes where there is no object. Finally, the labels themselves flicker and miss visible pedestrians,
+so a correct detection can be counted as a mistake. The two models look very similar in these frames. The
+difference between them rests on the measured scores of Section~\ref{sec:acc_results}.
 
 \begin{figure}[htbp]
     \centering
@@ -1297,11 +1349,21 @@ Streaming state        & \textbf{4.7\,MB} & \textbf{4.7\,MB} & 144\,MB & 144\,MB
 
 \section{Spiking SSM Detector}
 \label{sec:spiking_results}
-% TODO-Spiking SSM Detector
+The spiking model is a hybrid: only its temporal readout spikes, and its spatial mixer is the same as
+PureSSM's. It is therefore not directly comparable with the fully spiking detectors of
+Table~\ref{tab:snn_landscape}, and its accuracy is context rather than a ranking. The main result of this
+section is the breakdown of what spiking costs. The three readouts were trained on the short
+100{,}000-step schedule and compared with a PureSSM trained on the same schedule. The graded readout was
+also trained on the full schedule (Section~\ref{subsec:spk_full}).
 
 \subsection{Accuracy of the Readouts}
 \label{subsec:spk_accuracy}
-% TODO-Accuracy of the Readouts
+On the short schedule, PureSSM scores 42.52~mAP, the analog readout 42.25, the graded readout 40.72 and the
+spike readout, which sends binary spikes, 40.18 (Table~\ref{tab:spiking_ablation}). Turning the output into
+binary spikes therefore costs 2.34 points in total. Most of this loss falls on pedestrians: the car score
+drops by 1.61 points and the pedestrian score by 3.07. The interval of each model is about four points wide,
+and the intervals overlap, because each depends on which test recordings happen to be included. The models
+are therefore compared step by step, on the same recordings.
 
 \begin{table}[htbp]
 \centering
@@ -1322,7 +1384,22 @@ spike (binary)     & 40.18 [38.09, 41.88] & 66.40 & 41.14 & 58.82 / 21.55 & 0.41
 
 \subsection{The Readout Ladder}
 \label{subsec:spk_ladder}
-% TODO-The Readout Ladder
+Figure~\ref{fig:spiking_ladder} shows the three steps of the ladder of Equation~\eqref{eq:ladder}. Adding the
+neuron's own behaviour, its leak and reset, costs 0.28 points, with an interval from $-0.63$ to $+0.05$.
+Staying silent most of the time costs 1.52 points ($-1.98$ to $-1.06$). Reducing each signal to a single bit
+costs a further 0.54 points ($-1.07$ to $-0.07$). The order predicted before training (H4) therefore held.
+The last two steps are clearly below zero, while the first is too small to measure on this test set. Staying
+silent is the largest cost, about three times the cost of the single bit. Because every readout is scored
+on the same recordings, these step intervals are four to six times narrower than those of the single
+models.
+
+By object size, staying silent costs accuracy on small objects ($-1.88$) and medium ones ($-1.23$). The
+single bit costs on medium objects ($-1.06$) but not on small ones ($-0.06$). For large objects the
+intervals are six to eight points wide, so no conclusion is drawn. The validation scores during training
+(Figure~\ref{fig:training_curves}) show that the final order emerged late. The spike readout was ahead of
+the graded one for the first 30{,}000 steps, and the two stayed close until about 60{,}000 steps, after
+which the graded readout stayed ahead. The cost of the single bit also shrank, from 3.5 points in an early
+25{,}000-step trial to 0.7 points on the validation set after 100{,}000 steps.
 
 \begin{figure}[htbp]
 \centering
@@ -1343,7 +1420,19 @@ spike (binary)     & 40.18 [38.09, 41.88] & 66.40 & 41.14 & 58.82 / 21.55 & 0.41
 
 \subsection{The Graded Readout on the Full Schedule}
 \label{subsec:spk_full}
-% TODO-The Graded Readout on the Full Schedule
+Trained on the full schedule, the graded readout scores 46.24~mAP (Table~\ref{tab:spiking_400k}). This is
+only 0.19 below PureSSM, with an interval of $-0.66$ to $+0.09$ that includes zero, and level with EventSSM.
+On the short schedule the same readout was 1.80 points behind PureSSM, so most of that loss came from
+learning more slowly rather than from a lower final accuracy. On large objects it scores 49.63, the best of
+the new models. That is 1.98 points above PureSSM, although the interval ($-0.40$ to $+3.59$) includes zero,
+and only 1.03 below the baseline.
+
+The training curves of the three full runs overlap closely (Figure~\ref{fig:training_400k}). The graded run
+stayed stable although it was stopped and restarted three times, and its validation score was flat over
+its last 50{,}000 steps. Training was slower, however (Figure~\ref{fig:training_400k_time}). The graded run
+took 55.5 hours on the desktop card, twice the 27.9 hours of EventSSM. Its state space spatial mixer is
+slower to train than a convolutional one, and its neurons must be updated one time step after another.
+PureSSM was trained on a faster rented card, so its training time is not comparable.
 
 \begin{table}[htbp]
 \centering
@@ -1386,7 +1475,25 @@ Checkpoint (step)       & published & 320k & 310k & 350k \\
 
 \subsection{Firing Activity and the Threshold Trade-off}
 \label{subsec:spk_firing}
-% TODO-Firing Activity and the Threshold Trade-off
+On a one-minute test recording, the graded readout is active (non-zero) for 28, 13 and 10\,\% of its
+outputs at stages 2, 3 and 4 (Figure~\ref{fig:firing_pattern}). The spike readout is active for 48, 36 and
+39\,\%.
+The two changed in opposite directions during training (Figure~\ref{fig:spiking_firing}): the activity of
+the spike readout roughly doubled at every stage, while that of the graded readout fell at stages 3 and 4.
+The spike readout seems to make up for carrying only one bit by firing more often. Activity also hardly
+follows the scene. Only stage 2 of the graded readout becomes more active when the scene is busier
+($r = 0.65$). The other stages fire at an almost constant rate, because the Mamba memory before them keeps
+driving them even when the scene is quiet.
+
+Because the firing threshold was fixed during training, the trained readouts can be re-tested with other
+thresholds (Figure~\ref{fig:threshold_sweep}). This shows how sensitive they are to the threshold, not what
+a readout trained with another threshold would reach. For both readouts, the training threshold gives the
+best accuracy. A lower threshold makes the neurons more active without improving accuracy. A higher
+threshold makes them quieter, but accuracy falls quickly, and faster for the spike readout: at a threshold of
+2 it loses 11.8 points, against 6.1 for the graded one. A higher threshold is also not a useful way to save
+energy here. The quietest setting tested makes the graded readout active
+for only 5.3\,\% of the operations it feeds. Even this would raise the estimated saving of
+Section~\ref{subsec:spk_energy} only from 0.86 to about 0.99\,\%, at a cost of 12.9 points.
 
 \begin{figure}[htbp]
     \centering
@@ -1416,7 +1523,18 @@ Checkpoint (step)       & published & 320k & 310k & 350k \\
 
 \subsection{Rate Robustness of the Spiking Readouts}
 \label{subsec:spk_rate}
-% TODO-Rate Robustness of the Spiking Readouts
+The spiking readouts were also tested with frames arriving faster, without correction. This matters
+because the neurons' leak and threshold were learned at the normal rate only. At twice the rate, the graded
+readout trained on the full schedule keeps 94.9\,\% of its accuracy, close to PureSSM's 95.9\,\%. At ten
+times the rate it keeps 65.2\,\%, against 69.7\,\% for PureSSM. The short-schedule models show where this
+loss comes from (Figure~\ref{fig:robustness_spiking}). PureSSM keeps 69.1\,\%, the analog readout 67.6\,\%,
+the graded readout 63.2\,\% and the spike readout 70.3\,\%, the most of any state space model tested. The
+leak and reset therefore cost a little robustness, staying silent costs more, and the single bit wins it all
+back. At ten times the rate the spike readout scores 2.5 points more than the graded one (28.26 against
+25.73~mAP), although it is 0.54 points lower at the normal rate. One possible reason, not tested here, is
+that a binary spike always has the same size: when frames carry fewer events, the spike readout loses
+spikes, whereas the graded output also becomes smaller. These are single runs without intervals, so
+differences of a few points are indicative only.
 
 \begin{figure}[htbp]
     \centering
@@ -1428,7 +1546,20 @@ Checkpoint (step)       & published & 320k & 310k & 350k \\
 
 \subsection{Synaptic Operations and Estimated Energy}
 \label{subsec:spk_energy}
-% TODO-Synaptic Operations and Estimated Energy
+Equation~\eqref{eq:sop_energy} turns the measured activity into an energy estimate (Table~\ref{tab:sop}).
+The graded readout on the full schedule activates 10.1 of the 52.4 million operations that its outputs
+feed. This gives 22.81~mJ per frame against 23.01~mJ without spiking, a saving of 0.84\,\% out of a possible
+1.04\,\%. Along the ladder, the analog readout saves nothing, the graded readout 0.86\,\% and the spike
+readout 0.96\,\%. The spike readout saves slightly more although it fires more often, because an addition
+costs only about a fifth of a multiply-add. These are estimates from operation counts. The cost of moving
+data in memory, which is usually larger than the cost of the arithmetic~\cite{horowitz2014computing}, is
+not included.
+
+On a graphics card the spiking model brings no saving (Table~\ref{tab:spiking_bench}). It takes 27.19~ms per
+frame, 0.73~ms longer than PureSSM, because the neurons are updated one time step after another, and it
+needs 1.1~MB more memory per stream. Its measured energy, between 0.55 and 0.69~J per frame, overlaps
+PureSSM's 0.641~J, so no difference is claimed. A graphics card processes every input, active or not, so it
+cannot benefit from silent neurons.
 
 \begin{table}[htbp]
 \centering
@@ -1471,10 +1602,26 @@ Streaming state         & 4.7\,MB & 144.5\,MB & 144.5\,MB & 145.6\,MB \\
 
 \subsection{Training Dynamics}
 \label{subsec:spk_dynamics}
-% TODO-Training Dynamics
+Single bits also slow down learning. Every model first had to pass a quick check in which it memorises one
+small batch of data. The analog and graded readouts reduced their error about four-fold within 150 steps;
+the spike readout reached only about 2.5-fold and needed 300 steps to pass. A separate test showed why: the
+spike readout passes back only about a third of the learning signal of the analog one. The learned leak
+also hardly changed during training. It stayed within 0.044 of its starting value of 0.9 in every channel,
+which suggests that the Mamba memory before the neurons already does the remembering.
 
 \section{Summary of Results}
-% TODO-Summary of Results
+\label{sec:results_summary}
+The baseline was reproduced exactly, which confirms the evaluation setup used for every other result.
+Replacing the convolutional spatial mixer with a state space model left overall accuracy unchanged and
+improved large-object detection by about three points, a gain that is likely but not certain. The
+receptive-field probe links it to a wider view of the image that the model learns in training. When frames
+arrived ten times faster, the state space models kept 62 to 70\,\% of their accuracy without any correction,
+PureSSM the most, while RVT's ConvLSTM kept 80\,\%. The published correction lowered accuracy instead, and
+the published results could not be reproduced. No model was the most efficient on every measure: EventSSM is
+the fastest, PureSSM needs the least computation, and the ConvLSTM uses the least energy and memory. Finally,
+most of the cost of spiking comes from staying silent rather than from the single bit. For the graded
+readout this cost nearly disappears with full training, and the possible energy saving is at most about
+1\,\%, because the spikes only reach the first layers of the neck.
 
 \chapter{Discussion}
 \label{ch:discussion}
