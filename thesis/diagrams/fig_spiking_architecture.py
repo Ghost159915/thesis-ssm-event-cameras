@@ -6,8 +6,11 @@ running the real `LIFReadout` from code/event_ssm/models/spikingssm/lif.py on a 
 illustrative stimulus, so the figure cannot drift from the implementation. Re-run this
 script after any change to the LIF and the figure updates itself.
 
-Usage:  python thesis/diagrams/fig_spiking_architecture.py
+Usage:  python thesis/diagrams/fig_spiking_architecture.py [--compact]
 Writes: fig_spiking_architecture.svg (source of truth) next to this file.
+        --compact writes fig_spiking_architecture_compact.svg instead: panel (b), the model grid, is left out
+        (the final report has the same information in Table tab:four_models), the LIF panel becomes (b) and the
+        vertical gaps are tightened, so the figure is ~30 % shorter at the same text size.
         Convert to PDF/PNG for LaTeX with cairosvg (see the runbook line at the bottom).
 """
 import pathlib
@@ -42,6 +45,7 @@ FRZ, FRZ_BG = "#475569", "#f1f5f9"          # frozen / shared
 LINE = "#94a3b8"
 
 W, H = 1300, 1300
+COMPACT = "--compact" in sys.argv[1:]     # final report: no model grid, tighter gaps
 out = []
 def add(s): out.append(s)
 
@@ -67,7 +71,9 @@ def panel(x, y, letter, title):
     txt(x, y, letter, 20, "start", "bold", INK)
     txt(x + 26, y, title, 17, "start", "bold", INK)
 
-TOP, BOTTOM = 78, 1268                       # visible band: the title area above panel (a) is cropped
+ZY = 270 if COMPACT else 286                 # top of the "inside one stage" zoom box
+LY = ZY - 4 + 250 + 46 if COMPACT else 928   # top of the LIF panel
+TOP, BOTTOM = 78, LY + 340                   # visible band: the title area above panel (a) is cropped
 add(f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{BOTTOM - TOP}" '
     f'viewBox="0 {TOP} {W} {BOTTOM - TOP}">')
 add('<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" '
@@ -104,9 +110,8 @@ line(854, Y + 70, 854, Y + 62, FRZ, 1.4); line(1126, Y + 70, 1126, Y + 62, FRZ, 
 txt(990, Y + 88, "the same in all four models", 12, "middle", "bold", FRZ)
 
 # ---- zoom into one stage
-ZY = 286
 line(430, Y + 72, 320, ZY - 8, LINE, 1.2, "4 3")
-line(744, Y + 72, 1100, ZY - 8, LINE, 1.2, "4 3")
+line(744, Y + 72, 1000 if COMPACT else 1100, ZY - 8, LINE, 1.2, "4 3")   # compact: clear of the label
 rect(290, ZY - 4, 840, 250, "#fcfcfd", LINE, 10, 1.6, "6 4")
 txt(710, ZY + 20, "Inside one backbone stage: two mixers", 14, "middle", "bold", INK)
 
@@ -134,50 +139,50 @@ txt(495, ZY + 191, "its output does not reach the neck,", 12, "middle", "normal"
 txt(495, ZY + 209, "so a mixer there would have no effect", 12, "middle", "normal", MUTE)
 
 # ============================== (b) model grid =========================================
-GY = 588
-panel(40, GY, "b", "What each model changes")
-rows = [
-    ("S5-RVT  (baseline)",           "MaxViT attention", False, "S5",              False, "47.7", ""),
-    ("EventSSM  (this work)",         "ResNet-18 (CNN)",  False, "Mamba-2",         False, "46.2", ""),
-    ("PureSSM  (this work)",          "BiMamba",          True,  "Mamba-2",         False, "46.4", ""),
-    ("SpikingSSM  (this work)",      "BiMamba",          False, "Mamba-2  +  LIF", True,  "46.2", "graded"),
-]
-cx = [56, 430, 760, 1032]
-hy = GY + 34
-txt(cx[0], hy, "model", 13, "start", "bold", MUTE)
-txt(cx[1] + 140, hy, "Spatial mixer", 13, "middle", "bold", SPA)
-txt(cx[2] + 130, hy, "Temporal mixer", 13, "middle", "bold", TEM)
-txt(cx[3] + 52, hy, "Test mAP", 13, "middle", "bold", MUTE)
-line(48, hy + 10, 1256, hy + 10, LINE, 1.2)
+if not COMPACT:
+    GY = 588
+    panel(40, GY, "b", "What each model changes")
+    rows = [
+        ("S5-RVT  (baseline)",           "MaxViT attention", False, "S5",              False, "47.7", ""),
+        ("EventSSM  (this work)",         "ResNet-18 (CNN)",  False, "Mamba-2",         False, "46.2", ""),
+        ("PureSSM  (this work)",          "BiMamba",          True,  "Mamba-2",         False, "46.4", ""),
+        ("SpikingSSM  (this work)",      "BiMamba",          False, "Mamba-2  +  LIF", True,  "46.2", "graded"),
+    ]
+    cx = [56, 430, 760, 1032]
+    hy = GY + 34
+    txt(cx[0], hy, "model", 13, "start", "bold", MUTE)
+    txt(cx[1] + 140, hy, "Spatial mixer", 13, "middle", "bold", SPA)
+    txt(cx[2] + 130, hy, "Temporal mixer", 13, "middle", "bold", TEM)
+    txt(cx[3] + 52, hy, "Test mAP", 13, "middle", "bold", MUTE)
+    line(48, hy + 10, 1256, hy + 10, LINE, 1.2)
 
-for i, (name, sp, sp_new, tp, tp_new, ap, note) in enumerate(rows):
-    ry = hy + 40 + i * 48
-    last = i == len(rows) - 1
-    if last:
-        rect(48, ry - 21, 1208, 42, "#fbfaff", SPK, 6, 1.6)
-    txt(cx[0], ry + 5, name, 13.5, "start", "bold" if last else "normal", SPK if last else INK)
-    if sp_new or tp_new:                                   # caret marks the CHANGED cell
-        mx, mc = (cx[1] - 15, SPA) if sp_new else (cx[2] - 15, SPK)
-        add(f'<path d="M {mx} {ry - 2} L {mx + 9} {ry + 4} L {mx} {ry + 10} z" fill="{mc}"/>')
-    rect(cx[1], ry - 15, 280, 30, SPA_BG if sp_new else "#f8fafc", SPA if sp_new else LINE, 6,
-         2.0 if sp_new else 1.2)
-    txt(cx[1] + 140, ry + 5, sp, 13, "middle", "bold" if sp_new else "normal", SPA if sp_new else INK)
-    rect(cx[2], ry - 15, 260, 30, SPK_BG if tp_new else "#f8fafc", SPK if tp_new else LINE, 6,
-         2.2 if tp_new else 1.2)
-    txt(cx[2] + 130, ry + 5, tp, 13, "middle", "bold" if tp_new else "normal", SPK if tp_new else INK)
-    txt(cx[3] + 52, ry + 5, ap, 14, "middle", "bold", INK)
-    if note:
-        txt(cx[3] + 140, ry + 5, note, 12, "middle", "normal", SPK)
+    for i, (name, sp, sp_new, tp, tp_new, ap, note) in enumerate(rows):
+        ry = hy + 40 + i * 48
+        last = i == len(rows) - 1
+        if last:
+            rect(48, ry - 21, 1208, 42, "#fbfaff", SPK, 6, 1.6)
+        txt(cx[0], ry + 5, name, 13.5, "start", "bold" if last else "normal", SPK if last else INK)
+        if sp_new or tp_new:                                   # caret marks the CHANGED cell
+            mx, mc = (cx[1] - 15, SPA) if sp_new else (cx[2] - 15, SPK)
+            add(f'<path d="M {mx} {ry - 2} L {mx + 9} {ry + 4} L {mx} {ry + 10} z" fill="{mc}"/>')
+        rect(cx[1], ry - 15, 280, 30, SPA_BG if sp_new else "#f8fafc", SPA if sp_new else LINE, 6,
+             2.0 if sp_new else 1.2)
+        txt(cx[1] + 140, ry + 5, sp, 13, "middle", "bold" if sp_new else "normal", SPA if sp_new else INK)
+        rect(cx[2], ry - 15, 260, 30, SPK_BG if tp_new else "#f8fafc", SPK if tp_new else LINE, 6,
+             2.2 if tp_new else 1.2)
+        txt(cx[2] + 130, ry + 5, tp, 13, "middle", "bold" if tp_new else "normal", SPK if tp_new else INK)
+        txt(cx[3] + 52, ry + 5, ap, 14, "middle", "bold", INK)
+        if note:
+            txt(cx[3] + 140, ry + 5, note, 12, "middle", "normal", SPK)
 
-fy = hy + 40 + 4 * 48 + 14
-txt(56, fy + 6, "The small arrow marks what changes from the row above. PureSSM changes the spatial mixer; "
-    "SpikingSSM changes the temporal one.", 12.5, "start", "normal", MUTE)
-txt(56, fy + 28, "Everything else (data, neck, head, loss and training settings) is the same for all four models.",
-    12.5, "start", "normal", MUTE)
+    fy = hy + 40 + 4 * 48 + 14
+    txt(56, fy + 6, "The small arrow marks what changes from the row above. PureSSM changes the spatial mixer; "
+        "SpikingSSM changes the temporal one.", 12.5, "start", "normal", MUTE)
+    txt(56, fy + 28, "Everything else (data, neck, head, loss and training settings) is the same for all four models.",
+        12.5, "start", "normal", MUTE)
 
 # ============================== (c) LIF mechanism ======================================
-LY = 928
-panel(40, LY, "c", "How the spiking readout works (trace from the real code)")
+panel(40, LY, "b" if COMPACT else "c", "How the spiking readout works (trace from the real code)")
 pre, post, spk, rate = _trace()
 
 rect(48, LY + 26, 470, 300, "#fcfcfd", LINE, 10, 1.6)
@@ -224,6 +229,6 @@ txt(902, PY + PH + 66, "Each spike lowers m by one threshold; anything above it 
 
 add('</svg>')
 
-dest = pathlib.Path(__file__).with_suffix(".svg")
+dest = pathlib.Path(__file__).with_name("fig_spiking_architecture" + ("_compact" if COMPACT else "") + ".svg")
 dest.write_text("\n".join(out), encoding="utf-8")
 print(f"wrote {dest}  (firing rate {rate:.3f}, {sum(spk)}/{len(spk)} steps fired)")

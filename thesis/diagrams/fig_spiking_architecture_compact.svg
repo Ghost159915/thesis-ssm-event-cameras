@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1300" height="824" viewBox="0 78 1300 824">
+<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#475569"/></marker></defs>
+<rect y="78" width="1300" height="824" fill="#ffffff"/>
+<text x="40" y="105" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="20" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="start">a</text>
+<text x="66" y="105" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="17" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="start">The detector, shared by all models</text>
+<rect x="40" y="140" width="96" height="56" rx="7" fill="#fff" stroke="#94a3b8" stroke-width="1.4"/>
+<text x="88.0" y="164" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="middle">events</text>
+<text x="88.0" y="182" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" font-style="normal" fill="#475569" text-anchor="middle">from camera</text>
+<line x1="140" y1="168" x2="168" y2="168" stroke="#475569" stroke-width="1.8" marker-end="url(#ah)"/>
+<rect x="172" y="140" width="150" height="56" rx="7" fill="#fff" stroke="#94a3b8" stroke-width="1.4"/>
+<text x="247.0" y="164" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="middle">event histogram</text>
+<text x="247.0" y="182" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" font-style="normal" fill="#475569" text-anchor="middle">20 x 240 x 304</text>
+<line x1="324" y1="168" x2="352" y2="168" stroke="#475569" stroke-width="1.8" marker-end="url(#ah)"/>
+<rect x="356" y="124" width="462" height="88" rx="9" fill="#fbfdff" stroke="#0f172a" stroke-width="2.0"/>
+<text x="587" y="150" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="middle">Backbone  (4 stages)</text>
+<text x="587" y="172" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="12" font-weight="normal" font-style="normal" fill="#475569" text-anchor="middle">the only part that differs between models</text>
+<text x="587" y="192" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="12" font-weight="normal" font-style="normal" fill="#475569" text-anchor="middle">stages 2, 3 and 4 feed the neck</text>
+<line x1="822" y1="168" x2="850" y2="168" stroke="#475569" stroke-width="1.8" marker-end="url(#ah)"/>
+<rect x="854" y="140" width="118" height="56" rx="7" fill="#f1f5f9" stroke="#475569" stroke-width="1.4"/>
+<text x="913.0" y="164" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="middle">Neck</text>
+<text x="913.0" y="182" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" font-style="normal" fill="#475569" text-anchor="middle">combines stages</text>
+<line x1="976" y1="168" x2="1004" y2="168" stroke="#475569" stroke-width="1.8" marker-end="url(#ah)"/>
+<rect x="1008" y="140" width="118" height="56" rx="7" fill="#f1f5f9" stroke="#475569" stroke-width="1.4"/>
+<text x="1067.0" y="164" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="middle">Head</text>
+<text x="1067.0" y="182" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" font-style="normal" fill="#475569" text-anchor="middle">class + box</text>
+<line x1="1130" y1="168" x2="1158" y2="168" stroke="#475569" stroke-width="1.8" marker-end="url(#ah)"/>
+<rect x="1162" y="140" width="98" height="56" rx="7" fill="#fff" stroke="#94a3b8" stroke-width="1.4"/>
+<text x="1211.0" y="164" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="middle">detections</text>
+<text x="1211.0" y="182" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="11.5" font-weight="normal" font-style="normal" fill="#475569" text-anchor="middle">cars, people</text>
+<line x1="854" y1="210" x2="1126" y2="210" stroke="#475569" stroke-width="1.4"/>
+<line x1="854" y1="210" x2="854" y2="202" stroke="#475569" stroke-width="1.4"/>
+<line x1="1126" y1="210" x2="1126" y2="202" stroke="#475569" stroke-width="1.4"/>
+<text x="990" y="228" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" font-style="normal" fill="#475569" text-anchor="middle">the same in all four models</text>
+<line x1="430" y1="212" x2="320" y2="262" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="4 3"/>
+<line x1="744" y1="212" x2="1000" y2="262" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="4 3"/>
+<rect x="290" y="266" width="840" height="250" rx="10" fill="#fcfcfd" stroke="#94a3b8" stroke-width="1.6" stroke-dasharray="6 4"/>
+<text x="710" y="290" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="middle">Inside one backbone stage: two mixers</text>
+<rect x="320" y="308" width="350" height="86" rx="8" fill="#dbeafe" stroke="#1d4ed8" stroke-width="2.0"/>
+<text x="495" y="336" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="15" font-weight="bold" font-style="normal" fill="#1d4ed8" text-anchor="middle">Spatial mixer</text>
+<text x="495" y="360" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="normal" font-style="normal" fill="#0f172a" text-anchor="middle">looks across the image, one frame at a time</text>
+<text x="495" y="380" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="12" font-weight="normal" font-style="normal" fill="#475569" text-anchor="middle">no memory between frames</text>
+<line x1="674" y1="350" x2="706" y2="350" stroke="#475569" stroke-width="1.8" marker-end="url(#ah)"/>
+<rect x="710" y="308" width="350" height="86" rx="8" fill="#fef3c7" stroke="#b45309" stroke-width="2.0"/>
+<text x="885" y="336" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="15" font-weight="bold" font-style="normal" fill="#b45309" text-anchor="middle">Temporal mixer</text>
+<text x="885" y="360" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="normal" font-style="normal" fill="#0f172a" text-anchor="middle">looks across time, at each position</text>
+<text x="885" y="380" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="12" font-weight="normal" font-style="normal" fill="#475569" text-anchor="middle">keeps a memory from frame to frame</text>
+<line x1="885" y1="396" x2="885" y2="414" stroke="#6d28d9" stroke-width="1.8" marker-end="url(#ah)"/>
+<rect x="710" y="416" width="350" height="76" rx="8" fill="#ede9fe" stroke="#6d28d9" stroke-width="2.2"/>
+<text x="885" y="440" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="15" font-weight="bold" font-style="normal" fill="#6d28d9" text-anchor="middle">+  spiking readout (LIF)</text>
+<text x="885" y="461" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="12" font-weight="normal" font-style="normal" fill="#6d28d9" text-anchor="middle">new: added after the temporal mixer</text>
+<text x="885" y="481" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" font-style="normal" fill="#6d28d9" text-anchor="middle">numbers in, spikes out</text>
+<rect x="320" y="416" width="350" height="76" rx="8" fill="#fff" stroke="#94a3b8" stroke-width="1.3"/>
+<text x="495" y="440" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="bold" font-style="normal" fill="#475569" text-anchor="middle">Stage 1 has no temporal mixer</text>
+<text x="495" y="461" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="12" font-weight="normal" font-style="normal" fill="#475569" text-anchor="middle">its output does not reach the neck,</text>
+<text x="495" y="479" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="12" font-weight="normal" font-style="normal" fill="#475569" text-anchor="middle">so a mixer there would have no effect</text>
+<text x="40" y="562" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="20" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="start">b</text>
+<text x="66" y="562" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="17" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="start">How the spiking readout works (trace from the real code)</text>
+<rect x="48" y="588" width="470" height="300" rx="10" fill="#fcfcfd" stroke="#94a3b8" stroke-width="1.6"/>
+<text x="283" y="614" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="13" font-weight="normal" font-style="normal" fill="#475569" text-anchor="middle">at every time step, for each value y from the mixer</text>
+<rect x="70" y="631" width="426" height="46" rx="6" fill="#ffffff" stroke="#b45309" stroke-width="1.5"/>
+<text x="283" y="650" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="middle">m  ←  β m  +  y</text>
+<text x="283" y="668" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="12" font-weight="normal" font-style="normal" fill="#475569" text-anchor="middle">add the input; the old total slowly leaks away</text>
+<rect x="70" y="689" width="426" height="46" rx="6" fill="#ffffff" stroke="#6d28d9" stroke-width="1.5"/>
+<text x="283" y="708" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="middle">s  =  1  if  m ≥ ϑ,  else 0</text>
+<text x="283" y="726" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="12" font-weight="normal" font-style="normal" fill="#475569" text-anchor="middle">fire a spike when m reaches the threshold ϑ</text>
+<rect x="70" y="747" width="426" height="46" rx="6" fill="#ffffff" stroke="#6d28d9" stroke-width="1.5"/>
+<text x="283" y="766" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="middle">m  ←  m  −  s ϑ</text>
+<text x="283" y="784" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="12" font-weight="normal" font-style="normal" fill="#475569" text-anchor="middle">after a spike, take the threshold off m</text>
+<text x="283" y="844" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="middle">Training uses a smooth stand-in for the step,</text>
+<text x="283" y="864" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="12" font-weight="normal" font-style="normal" fill="#475569" text-anchor="middle">because the step itself gives no slope to learn from.</text>
+<rect x="548" y="588" width="708" height="300" rx="10" fill="#fcfcfd" stroke="#94a3b8" stroke-width="1.6"/>
+<text x="902" y="614" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="middle">The running total m over time</text>
+<line x1="574" y1="778.0" x2="1212" y2="778.0" stroke="#475569" stroke-width="1.4"/>
+<line x1="574" y1="778.0" x2="574" y2="632" stroke="#475569" stroke-width="1.4"/>
+<line x1="574" y1="691.1034482758621" x2="1212" y2="691.1034482758621" stroke="#6d28d9" stroke-width="1.6" stroke-dasharray="6 4"/>
+<text x="582" y="682.1034482758621" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" font-style="normal" fill="#6d28d9" text-anchor="start">threshold ϑ</text>
+<text x="566" y="783.0" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="11" font-weight="normal" font-style="normal" fill="#475569" text-anchor="end">0</text>
+<polyline points="592.0,738.9 637.8,697.0 683.7,683.1 683.7,770.0 729.5,717.3 775.4,665.6 775.4,752.5 821.2,734.6 867.1,728.0 912.9,685.1 912.9,772.0 958.8,715.6 1004.6,690.2 1004.6,777.1 1050.5,759.8 1096.3,717.4 1142.2,673.5 1142.2,760.4 1188.0,732.6" fill="none" stroke="#b45309" stroke-width="2.4" stroke-linejoin="round"/>
+<circle cx="683.7" cy="683.1" r="4.2" fill="#6d28d9"/>
+<line x1="683.6923076923077" y1="792" x2="683.6923076923077" y2="816" stroke="#6d28d9" stroke-width="3.2"/>
+<circle cx="775.4" cy="665.6" r="4.2" fill="#6d28d9"/>
+<line x1="775.3846153846154" y1="792" x2="775.3846153846154" y2="816" stroke="#6d28d9" stroke-width="3.2"/>
+<circle cx="912.9" cy="685.1" r="4.2" fill="#6d28d9"/>
+<line x1="912.9230769230769" y1="792" x2="912.9230769230769" y2="816" stroke="#6d28d9" stroke-width="3.2"/>
+<circle cx="1004.6" cy="690.2" r="4.2" fill="#6d28d9"/>
+<line x1="1004.6153846153846" y1="792" x2="1004.6153846153846" y2="816" stroke="#6d28d9" stroke-width="3.2"/>
+<circle cx="1142.2" cy="673.5" r="4.2" fill="#6d28d9"/>
+<line x1="1142.1538461538462" y1="792" x2="1142.1538461538462" y2="816" stroke="#6d28d9" stroke-width="3.2"/>
+<text x="574" y="836" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" font-style="normal" fill="#6d28d9" text-anchor="start">output spikes</text>
+<text x="1212" y="836" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="12" font-weight="normal" font-style="normal" fill="#475569" text-anchor="end">fires on 36 % of steps</text>
+<text x="902" y="866" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="12" font-weight="normal" font-style="normal" fill="#475569" text-anchor="middle">Each spike lowers m by one threshold; anything above it is kept.</text>
+</svg>

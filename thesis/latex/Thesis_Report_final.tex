@@ -22,6 +22,12 @@
 \usepackage[table]{xcolor}
 \usepackage{parskip}
 
+% --- float placement: let figures and tables share pages with text (fewer half-empty float-only pages) ---
+\renewcommand{\topfraction}{0.85}        % a float may fill up to 85 % of a page top
+\renewcommand{\bottomfraction}{0.6}
+\renewcommand{\textfraction}{0.12}       % a page needs only 12 % text to count as a text page
+\renewcommand{\floatpagefraction}{0.8}   % a float-only page must be at least 80 % full
+
 % --- Document Info ---
 \titleformat{\chapter}[hang]{\huge\bfseries}{\thechapter.\ }{0pt}{\huge\bfseries}
 \titlespacing*{\chapter}{0pt}{-20pt}{20pt}
@@ -721,9 +727,9 @@ graphics card, and with a lower numerical precision (Section~\ref{sec:training})
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\textwidth]{images/fig_spiking_architecture.png}
-    \caption[The detector and the spiking readout]{The detector. (a) The pipeline shared by all models. (b) The part each model changes. (c) The spiking (LIF)
-        readout.}
+    \includegraphics[width=\textwidth]{images/fig_spiking_architecture_compact.pdf}
+    \caption[The detector and the spiking readout]{The detector. (a) The pipeline shared by all models; only the
+        backbone differs (Table~\ref{tab:four_models}). (b) The spiking (LIF) readout.}
     \label{fig:spiking_arch}
 \end{figure}
 
@@ -771,7 +777,7 @@ PureSSM's temporal mixer.
 \caption[The five models compared]{The five models compared. Bold: the one part that changes from the row above. EventSSM differs from S5-RVT
     in both parts.}
 \label{tab:four_models}
-\begin{tabularx}{\textwidth}{@{}lXXX@{}}
+\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
 \toprule
 \textbf{Model} & \textbf{Spatial mixer} & \textbf{Temporal mixer} & \textbf{Role} \\
 \midrule
@@ -1133,7 +1139,7 @@ spiking model in Figure~\ref{fig:acc_by_size} is covered in Section~\ref{subsec:
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\textwidth]{images/fig_accuracy_by_size.pdf}
+    \includegraphics[width=0.75\textwidth]{images/fig_accuracy_by_size.pdf}
     \caption[Accuracy by object size, relative to S5-RVT]{Test mAP of the new models minus that of S5-RVT, overall and by object size; below zero is worse. On small
         and medium objects all models are close. On large objects PureSSM halves EventSSM's gap, and the
         spiking model's gap is the smallest.}
