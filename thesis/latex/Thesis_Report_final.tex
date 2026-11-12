@@ -297,17 +297,22 @@ rather than system-level.
 
 \section{Thesis Organisation}
 \label{sec:organisation}
-Chapter~\ref{ch:lit} reviews event-based sensing, event representations, detection architectures,
-state space models, spiking networks and neuromorphic hardware, and identifies the research gaps.
-Chapter~\ref{ch:method} describes the event representation, the frozen detection pipeline, the models
-and the spiking readout, together with the dataset, metrics, training protocol and evaluation protocol.
-Chapter~\ref{ch:results} reports the baseline reproduction, accuracy, the receptive-field mechanism, temporal
-robustness, efficiency and the results of the spiking variant.
-Chapter~\ref{ch:discussion} answers the research question, interprets the results, justifies the scope change,
-and states the limitations and the opportunities for future research.
-Chapter~\ref{ch:conclusion} concludes.
-Appendices~\ref{app:maths} to~\ref{app:risk} give the mathematical formulations, the details needed to
-reproduce the results, the project timeline and the risk assessment.
+The rest of the thesis is organised as follows. Chapter~\ref{ch:lit} reviews the literature: event cameras
+and how their data is represented, detection methods, state space models, spiking networks and
+neuromorphic hardware. It ends with the research gaps that this thesis addresses.
+
+Chapter~\ref{ch:method} describes how the detectors were built, trained and tested: the input, the shared
+detection pipeline, the four models, the dataset and how each result was measured.
+Chapter~\ref{ch:results} reports the results in the order of the aims: the baseline reproduction, accuracy
+and its explanation, robustness to the event rate, efficiency, example detections and the spiking model.
+
+Chapter~\ref{ch:discussion} explains what the results mean for the research question and for each
+hypothesis. It also sets out the path to neuromorphic hardware, and discusses the change of scope, the
+limitations and future research. Chapter~\ref{ch:conclusion} closes the thesis.
+
+The appendices give the mathematical details (Appendix~\ref{app:maths}), what is needed to reproduce the
+results (Appendix~\ref{app:repro}), the project timeline (Appendix~\ref{app:timeline}), the risk assessment
+(Appendix~\ref{app:risk}) and further results (Appendix~\ref{app:extra}).
 
 % ===================================================================== CHAPTER 2 (full text)
 \chapter{Literature Review}
@@ -933,7 +938,7 @@ Two problems with the dataset affect every result. First, the classes are uneven
 cars, and the validation set, which is used to choose the best checkpoint, contains only 2{,}823 pedestrian
 boxes. Second, the labels are rare in time and incomplete. Labels exist only about once per second, so only
 about 4\,\% of the predictions can be checked against a label. Many pedestrians that are visible in the
-events are also not labelled (Appendix~\ref{sec:qualitative}). A correct detection of an unlabelled object
+events are also not labelled (Section~\ref{sec:qualitative}). A correct detection of an unlabelled object
 is therefore counted as a false positive, which lowers every model's score, and the pedestrian scores are
 lower than the true performance.
 
@@ -1097,8 +1102,8 @@ Appendix~\ref{app:repro} lists the software versions and the trained models.
 \chapter{Results}
 \label{ch:results}
 This chapter reports the results in the order of the aims: accuracy, the reason for the accuracy
-differences, robustness to the event rate, efficiency, and finally the spiking model. Each section shows
-only its main result; further tables and figures are collected in Appendix~\ref{app:extra}. All results are
+differences, robustness to the event rate, efficiency, and finally the spiking model. Supporting results that are not
+needed to follow the argument are collected in Appendix~\ref{app:extra}. All results are
 measured on the Gen1 test set with the same evaluation code. Each model was trained only once, so
 differences in overall accuracy of less than about one point are not treated as real
 (Section~\ref{subsec:eval_stats}). Where 95\,\% intervals are given, they come from the bootstrap described
@@ -1126,8 +1131,8 @@ better on large objects and has the fewest parameters (16.33 million, Table~\ref
 still 1.3 points behind the baseline, although it was trained with half the baseline's batch size
 (Section~\ref{sec:training}). The two new models differ only in the spatial mixer and in pre-training, which
 if anything favours EventSSM. The large-object gain can therefore be traced to the spatial mixer. The
-last column of the table, the spiking model, is covered in Section~\ref{subsec:spk_full}. Example detections are
-shown in Appendix~\ref{sec:qualitative}.
+last column of the table, the spiking model, is covered in Section~\ref{subsec:spk_full}. Section~\ref{sec:qualitative}
+shows example detections.
 
 \begin{table}[htbp]
 \centering
@@ -1284,6 +1289,26 @@ Streaming state        & \textbf{4.7\,MB} & \textbf{4.7\,MB} & 144\,MB & 144\,MB
 \end{tabular}
 \end{table}
 
+\section{Example Detections}
+\label{sec:qualitative}
+Figure~\ref{fig:qualitative} shows eight evenly spaced frames from the test recording with the most large
+cars; the frames were not picked by hand. Four behaviours appear repeatedly across the recordings examined.
+Close cars that produce events are detected with high confidence. Detections continue when the scene goes
+quiet: even when almost no events fall on a car, both models keep detecting it, because the car is held in
+the model's memory. At the start of a recording, when the memory is still empty, both models produce a few
+weak boxes where there is no object. Finally, the labels themselves flicker and miss visible pedestrians,
+so a correct detection can be counted as a mistake. The two models look very similar in these frames. The
+difference between them rests on the measured scores of Section~\ref{sec:acc_results}.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{images/fig_qualitative_large_car.png}
+    \caption[Ground truth and predictions on a large-car recording]{Eight evenly spaced frames from the test recording with the most large cars. Top: EventSSM; bottom: PureSSM.
+        Solid boxes: ground truth (car green, pedestrian orange). Dashed boxes: predictions with confidence
+        (car magenta, pedestrian yellow). Red and blue dots are events.}
+    \label{fig:qualitative}
+\end{figure}
+
 \section{Spiking SSM Detector}
 \label{sec:spiking_results}
 The spiking model is a hybrid: only its temporal readout spikes, and its spatial mixer is the same as
@@ -1297,7 +1322,8 @@ also trained on the full schedule (Section~\ref{subsec:spk_full}).
 \label{subsec:spk_ladder}
 \label{subsec:spk_accuracy}
 On the short schedule, PureSSM scores 42.52~mAP, the analog readout 42.25, the graded readout 40.72 and the
-spike readout, which sends binary spikes, 40.18 (Figure~\ref{fig:spiking_ladder}a). Turning the output into
+spike readout, which sends binary spikes, 40.18 (Table~\ref{tab:spiking_ablation} and
+Figure~\ref{fig:spiking_ladder}a). Turning the output into
 binary spikes therefore costs 2.34 points in total, most of it on pedestrians. Figure~\ref{fig:spiking_ladder}b
 splits this cost into the three steps of the ladder of Equation~\eqref{eq:ladder}. Adding the neuron's own
 behaviour, its leak and reset, costs 0.28 points, with an interval from $-0.63$ to $+0.05$. Staying silent
@@ -1306,7 +1332,24 @@ most of the time costs 1.52 points ($-1.98$ to $-1.06$). Reducing each signal to
 are clearly below zero, while the first is too small to measure on this test set. Staying silent is the
 largest cost, about three times the cost of the single bit. Because every readout is scored on the same
 recordings, these step intervals are much narrower than the interval of each single model (about four
-points, Table~\ref{tab:spiking_ablation} in the appendix).
+points, Table~\ref{tab:spiking_ablation}).
+
+\begin{table}[htbp]
+\centering
+\caption[Accuracy of the spiking readouts (100k steps)]{The three spiking readouts and PureSSM, all trained for 100k steps (Gen1 test set). CI: 95\,\% confidence
+    interval. Firing rate: share of readout outputs that are not zero.}
+\label{tab:spiking_ablation}
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Model (100k steps)} & \textbf{mAP [95\,\% CI]} & \textbf{AP\textsubscript{50}} & \textbf{AP\textsubscript{L}} & \textbf{Car / Ped.} & \textbf{Firing rate} \\
+\midrule
+PureSSM (no LIF)   & 42.52 [40.40, 44.39] & 69.40 & 42.62 & 60.43 / 24.62 & n/a \\
+analog (dense LIF) & 42.25 [40.14, 43.99] & 69.55 & 42.41 & 59.72 / 24.77 & 1.00 (dense) \\
+graded             & 40.72 [38.66, 42.33] & 67.57 & 38.41 & 59.09 / 22.36 & 0.17 \\
+spike (binary)     & 40.18 [38.09, 41.88] & 66.40 & 41.14 & 58.82 / 21.55 & 0.41 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 The single bit also slows down learning. The spike readout passes back only about a third of the learning
 signal of the analog one, and during training it fell behind the graded readout only after about 60{,}000
@@ -1329,8 +1372,18 @@ Trained on the full schedule, the graded readout scores 46.24~mAP (Table~\ref{ta
 short schedule the same readout was 1.80 points behind PureSSM, so most of that loss came from learning more
 slowly rather than from a lower final accuracy. On large objects it scores 49.63, the best of the new models.
 That is 1.98 points above PureSSM, although the interval ($-0.40$ to $+3.59$) includes zero, and only 1.03
-below the baseline. Training stayed stable, but it took 55.5 hours on the desktop card, twice the 27.9 hours
-of EventSSM, because the spatial scan and the neurons are slower to train (Appendix~\ref{sec:extra_spiking}).
+below the baseline. Training stayed stable (Figure~\ref{fig:training_400k}). The curves of the three full-schedule runs
+overlap closely, even though the graded run was stopped and restarted three times, and on large objects the
+graded run stays above the other two on the validation set over the last 100{,}000 steps. It took 55.5 hours on the desktop card, however, twice the 27.9 hours
+of EventSSM, because the spatial scan and the neurons are slower to train.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{images/fig_training_400k.pdf}
+    \caption[Validation accuracy and training losses of the 400k-step runs]{The 400k-step runs during training: validation accuracy (a) overall, (b) on large and (c) on small objects;
+        training losses (d)--(f). Triangles: points where the graded run was restarted.}
+    \label{fig:training_400k}
+\end{figure}
 
 \subsection{Activity, Rate Robustness and Energy}
 \label{subsec:spk_firing}
@@ -1339,10 +1392,21 @@ of EventSSM, because the spatial scan and the neurons are slower to train (Appen
 \label{subsec:spk_dynamics}
 The readouts are active (non-zero) for only part of the time. On a test recording, the graded readout is
 active for 28, 13 and 10\,\% of its outputs at stages 2, 3 and 4, and the spike readout for 48, 36 and
-39\,\%; the spike readout seems to make up for its single bit by firing more often. Activity hardly follows
-the scene: only stage 2 of the graded readout becomes more active when the scene is busier. Re-testing the
+39\,\%; the spike readout seems to make up for its single bit by firing more often. Activity also hardly follows the scene.
+Figure~\ref{fig:firing_pattern} follows both readouts through one minute of driving: only stage~2 of the
+graded readout becomes more active when the scene is busier, while the deeper stages fire at an almost
+constant rate. Re-testing the
 trained readouts with other firing thresholds showed that the training threshold gives the best accuracy;
 a higher threshold makes the neurons quieter but costs accuracy quickly.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{images/fig_firing_pattern.pdf}
+\caption[Readout activity over one test recording]{Readout activity over one 60-s test recording. (a) Events per frame. (b)--(d) Firing rate (share of non-zero readout
+    outputs) at stages 2--4; $r$: correlation with (a). Shaded: the first 32 frames, while the memory warms
+    up (left out of $r$).}
+\label{fig:firing_pattern}
+\end{figure}
 
 The readouts were also tested with frames arriving ten times faster, without correction. The graded readout
 on the full schedule keeps 65.2\,\% of its accuracy, against 69.7\,\% for PureSSM. On the short schedule,
@@ -2185,51 +2249,15 @@ BiMamba (PureSSM)    & \textbf{85.6\,px} & \textbf{105.5\,px} & $\mathbf{+34.4}$
 \end{tabular}
 \end{table}
 
-\section{Example Detections}
-\label{sec:qualitative}
-Figure~\ref{fig:qualitative} shows eight evenly spaced frames from the test recording with the most large
-cars; the frames were not picked by hand. Four behaviours appear repeatedly across the recordings examined.
-Close cars that produce events are detected with high confidence. Detections continue when the scene goes
-quiet: even when almost no events fall on a car, both models keep detecting it, because the car is held in
-the model's memory. At the start of a recording, when the memory is still empty, both models produce a few
-weak boxes where there is no object. Finally, the labels themselves flicker and miss visible pedestrians,
-so a correct detection can be counted as a mistake. The two models look very similar in these frames. The
-difference between them rests on the measured scores of Section~\ref{sec:acc_results}.
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=\textwidth]{images/fig_qualitative_large_car.png}
-    \caption[Ground truth and predictions on a large-car recording]{Eight evenly spaced frames from the test recording with the most large cars. Top: EventSSM; bottom: PureSSM.
-        Solid boxes: ground truth (car green, pedestrian orange). Dashed boxes: predictions with confidence
-        (car magenta, pedestrian yellow). Red and blue dots are events.}
-    \label{fig:qualitative}
-\end{figure}
-
 \section{Spiking Model}
 \label{sec:extra_spiking}
-Table~\ref{tab:spiking_ablation} gives the accuracy of the three readouts on the short schedule.
-Figures~\ref{fig:training_curves}--\ref{fig:training_400k_time} show the validation accuracy and losses during
-training. Figures~\ref{fig:spiking_firing} and~\ref{fig:firing_pattern} show how active the readouts are.
-Table~\ref{tab:sop} gives the energy
-estimate of each readout, and Table~\ref{tab:spiking_bench} compares the graded model with the non-spiking
-models on the graphics card.
+Figure~\ref{fig:training_curves} shows the validation accuracy of the short-schedule readouts during
+training, and Figure~\ref{fig:training_400k_time} the full-schedule runs against training time.
+Figure~\ref{fig:spiking_firing} shows how the activity of the readouts changed during training.
+Table~\ref{tab:sop} gives the energy estimate of each readout, and Table~\ref{tab:spiking_bench} compares the
+graded model with the non-spiking models on the graphics card.
 
-\begin{table}[htbp]
-\centering
-\caption[Accuracy of the spiking readouts (100k steps)]{The three spiking readouts and PureSSM, all trained for 100k steps (Gen1 test set). CI: 95\,\% confidence
-    interval. Firing rate: share of readout outputs that are not zero.}
-\label{tab:spiking_ablation}
-\begin{tabular}{lccccc}
-\toprule
-\textbf{Model (100k steps)} & \textbf{mAP [95\,\% CI]} & \textbf{AP\textsubscript{50}} & \textbf{AP\textsubscript{L}} & \textbf{Car / Ped.} & \textbf{Firing rate} \\
-\midrule
-PureSSM (no LIF)   & 42.52 [40.40, 44.39] & 69.40 & 42.62 & 60.43 / 24.62 & n/a \\
-analog (dense LIF) & 42.25 [40.14, 43.99] & 69.55 & 42.41 & 59.72 / 24.77 & 1.00 (dense) \\
-graded             & 40.72 [38.66, 42.33] & 67.57 & 38.41 & 59.09 / 22.36 & 0.17 \\
-spike (binary)     & 40.18 [38.09, 41.88] & 66.40 & 41.14 & 58.82 / 21.55 & 0.41 \\
-\bottomrule
-\end{tabular}
-\end{table}
+
 
 \begin{figure}[htbp]
     \centering
@@ -2239,13 +2267,7 @@ spike (binary)     & 40.18 [38.09, 41.88] & 66.40 & 41.14 & 58.82 / 21.55 & 0.41
     \label{fig:training_curves}
 \end{figure}
 
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=\textwidth]{images/fig_training_400k.pdf}
-    \caption[Validation accuracy and training losses of the 400k-step runs]{The 400k-step runs during training: validation accuracy (a) overall, (b) on large and (c) on small objects;
-        training losses (d)--(f). Triangles: points where the graded run was restarted.}
-    \label{fig:training_400k}
-\end{figure}
+
 
 \begin{figure}[htbp]
     \centering
@@ -2263,14 +2285,7 @@ spike (binary)     & 40.18 [38.09, 41.88] & 66.40 & 41.14 & 58.82 / 21.55 & 0.41
     \label{fig:spiking_firing}
 \end{figure}
 
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\textwidth]{images/fig_firing_pattern.pdf}
-\caption[Readout activity over one test recording]{Readout activity over one 60-s test recording. (a) Events per frame. (b)--(d) Firing rate (share of non-zero readout
-    outputs) at stages 2--4; $r$: correlation with (a). Shaded: the first 32 frames, while the memory warms
-    up (left out of $r$).}
-\label{fig:firing_pattern}
-\end{figure}
+
 
 \begin{table}[htbp]
 \centering
