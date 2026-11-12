@@ -96,29 +96,26 @@
 
 \chapter*{Abstract}
 \addcontentsline{toc}{chapter}{Abstract}
-Event cameras report per-pixel brightness changes asynchronously, with microsecond latency and a very high
-dynamic range (HDR), properties well suited to perception under the size, weight and power (SWaP) constraints
-of micro unmanned aerial vehicles. State-space models have recently been proposed as a natural sequence model
-for this type of data. However, existing results change several architectural components at once, so it is
-unclear what state-space models actually contribute. This thesis addresses that gap. It starts with an exact
-reproduction of the S5-RVT baseline of Zubi\'{c} et al.\ (Gen1 test AP 47.7). Two original detectors were then
-built as controlled backbone swaps into the verified S5-RVT pipeline, with the neck, detection head, loss, data
-pipeline and evaluator held fixed. The two detectors differ only in the spatial mixer, so the difference
-between them can be attributed to that one component. EventSSM reaches 46.2 AP and PureSSM 46.4 AP, a
-difference within single-seed noise, while PureSSM is the smallest model (16.3\,M parameters), performs the
-least computation, and closes roughly half of EventSSM's large-object gap to the attention-based baseline. A
-gradient-based receptive-field probe links that gain to a learned spatial extent up to twice that of the
-convolutional stack. Under a true tenfold change in event rate, PureSSM retains 69.7\,\% of its accuracy, the
-most of the state-space models tested, although RVT's ConvLSTM, measured on the same test set, retains more
-(80.3\,\%).
-
-A spiking variant passes PureSSM's temporal output through a leaky integrate-and-fire (LIF) readout whose three
-modes, analog, graded and binary, share one membrane, so that the cost of spiking separates into the cost of
-the neuron dynamics, of sparsity and of binarisation. Trained on the full schedule, the graded readout of
-SpikingSSM reaches 46.2 AP, 0.2 below PureSSM, with the highest large-object AP of the proposed models
-($\mathrm{AP}_L$ 49.6). Because spikes feed only about 1\,\% of the detector's operations, an operation-count
-estimate puts the graded readout's energy saving at only 0.84\,\%; to make the energy case for neuromorphic
-hardware, more of the network, such as the spatial backbone, would need to spike as well.
+Event cameras report changes in brightness at each pixel as they happen, with microsecond timing and a very
+wide brightness range. This makes them attractive for small drones, which have little room, weight or power
+for computing. State space models, a type of neural network that processes long sequences efficiently, have
+recently been proposed for event data. However, published comparisons change several parts of the detector
+at once, so it is unclear what the state space model itself contributes. This thesis isolates it. It first
+reproduces the published S5-RVT detector exactly, at 47.7 mean average precision (mAP) on the Gen1 driving
+dataset. It then builds two new detectors on the same pipeline that differ only in how they combine
+information across the image: EventSSM uses a convolutional network, and PureSSM a state space model. They
+score 46.2 and 46.4~mAP, which is effectively equal, but PureSSM is the smallest model, needs the least
+computation and probably detects large objects about three points better. A receptive-field probe shows
+that it learns to draw on an area of the image up to twice as wide. When frames arrive ten times faster than
+in training, the state space models keep 62 to 70\,\% of their accuracy, but a ConvLSTM detector keeps
+80\,\%. A published time-step correction for this case lowered accuracy by 9 to 13 points, and its published
+results could not be reproduced with the released code and model. No model is the most efficient on every
+measure. Finally, a spiking version of PureSSM splits the cost of spiking into three
+parts. The neuron's leak and reset cost 0.3 points, staying silent 1.5 points and reducing each signal to a
+single bit 0.5 points.
+With full training, the graded version comes within 0.2 points of PureSSM. Because its spikes reach only about 1\,\% of the detector's operations,
+its estimated energy saving is below 1\,\%. Larger savings would require the spatial part of the network to
+spike as well.
 
 \chapter*{Acknowledgements}
 \addcontentsline{toc}{chapter}{Acknowledgements}
@@ -1578,7 +1575,32 @@ Four directions follow most directly from the results.
 
 \chapter{Conclusion}
 \label{ch:conclusion}
-% TODO-Conclusion
+This thesis asked what a state space model contributes to object detection with an event camera when every
+other part of the detector stays the same. To answer this, it first reproduced the published S5-RVT
+detector exactly, at 47.72~mAP. It then built two new detectors that differ only in their spatial mixer and
+trained them in the same way. The convolutional EventSSM scored 46.22 and the state space PureSSM
+46.43~mAP, which is effectively equal. PureSSM detected large objects about three points better, a gain that
+is likely but not certain. A receptive-field probe showed that it learns to draw on an area of the image up
+to twice as wide. When frames arrived ten times faster, PureSSM kept 69.7\,\% of its accuracy, the most of
+the state space models, but RVT's ConvLSTM kept 80.3\,\%. The correction proposed in the literature for this
+case made the models less accurate, and its published results could not be reproduced with the released
+code and model.
+
+No model was the most efficient on every measure. PureSSM needs the least computation and EventSSM is the
+fastest, but RVT's ConvLSTM uses the least energy, and both Mamba models need 31 times more memory than the
+two published models. The spiking version split the cost of spiking into three parts, 0.28, 1.52 and 0.54
+points, and showed that staying silent is the largest of them. After full training, the graded version came
+within 0.2 points of PureSSM. Its possible energy saving, however, is limited to about 1\,\%, because its
+spikes only reach the first layers of the neck.
+
+The main limitation is that every result comes from a single training run on one low-resolution dataset
+recorded from a car. The most important next steps are therefore to repeat the training and to train on
+higher-resolution data. Real energy savings on neuromorphic hardware would also require a spatial mixer
+that works with events or spikes. Within these limits, this thesis shows three things.
+A state space model can process space as well as time in an event-camera detector, and its advantage
+appears where its wider view of the image predicts. Robustness to the event rate comes from having a
+memory, not from the state space model or the published correction. And the efficiency of each design must
+be judged against the main limit of the platform it will run on.
 
 % ===================================================================== BACK MATTER (roman, continuing)
 \clearpage
