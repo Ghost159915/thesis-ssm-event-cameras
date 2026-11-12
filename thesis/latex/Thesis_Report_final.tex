@@ -1095,7 +1095,21 @@ Appendix~\ref{app:repro} lists the software versions and the trained models.
 
 \section{Accuracy}
 \label{sec:acc_results}
-% TODO-Accuracy (Results)
+Table~\ref{tab:accuracy} and Figure~\ref{fig:acc_by_size} compare the accuracy of the three models on the
+test set. S5-RVT scores 47.72~mAP, EventSSM 46.22 and PureSSM 46.43. The baseline is ahead of both new
+models by 1.3 to 1.5 points. The 95\,\% interval of each gap excludes zero, so the baseline is better on
+this test set. The two new models are level: PureSSM is 0.2 points ahead, but the interval of that
+difference, $-0.12$ to $+0.72$, includes zero.
+
+The scores by object size are more informative. EventSSM is close to the baseline on small and medium
+objects, but six points behind on large ones (44.70 against 50.66). This gap is clearly real: its interval
+runs from $-9.33$ to $-1.94$. A model that handles small objects well but large ones poorly probably cannot
+see enough of the image at once, because a large object covers more of the frame than its features take
+in. PureSSM raises the large-object score from 44.70 to 47.65, a gain of 2.9 points that closes about half
+of the gap. The interval of this gain runs from $-0.09$ to $+6.35$. It just includes zero, so the gain is
+likely but not certain on this test set. Most of it comes from cars ($+1.16$), which are often large and
+close to the camera, and not from pedestrians ($-0.76$), which rarely appear large. Both class differences
+are small, however.
 
 \begin{table}[htbp]
 \centering
@@ -1117,6 +1131,17 @@ Car / Pedestrian        & 63.88 / 31.56 & 61.67 / 30.78 & 62.83 / 30.02 \\
 \end{tabular}
 \end{table}
 
+This result matters because of how PureSSM is built. Apart from the layers that shrink the image and one
+small filter per block, every link between distant parts of the image passes through a state space scan.
+With no attention and almost no convolution, it matches the convolutional model overall, does better on
+large objects, and has the fewest parameters of all the models (16.33 million,
+Table~\ref{tab:efficiency}). It is still 1.3 points behind the baseline overall, although it was trained
+with half the baseline's batch size (Section~\ref{sec:training}). On large objects it remains three points
+behind, but this gap is no longer clearly real: its interval, $-7.72$ to $+2.38$, includes zero. EventSSM
+and PureSSM differ only in the spatial mixer and in pre-training. Pre-training should, if anything, favour
+EventSSM, so the large-object gain can be traced to the spatial mixer. The next section examines why. The
+spiking model that also appears in Figure~\ref{fig:acc_by_size} is covered in Section~\ref{subsec:spk_full}.
+
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{images/fig_accuracy_by_size.pdf}
@@ -1128,7 +1153,14 @@ Car / Pedestrian        & 63.88 / 31.56 & 61.67 / 30.78 & 62.83 / 30.02 \\
 
 \section{Effective Receptive Field}
 \label{sec:erf}
-% TODO-Effective Receptive Field
+To explain the gain on large objects, the receptive field of each trained spatial mixer was measured. The
+receptive field is the area of the input image that a feature in the network actually draws on. It was
+measured with a standard probe~\cite{luo2016understanding}. The probe takes the feature at the centre of
+the image and finds how strongly each input pixel affects it. The spread of this effect, $\sigma$, is given
+in pixels and averaged over eight random inputs. Table~\ref{tab:erf} and Figure~\ref{fig:erf} show the
+results. The state space mixer draws on a much wider area at both stages measured: 85.6 pixels against
+41.8 at stage~3, about twice as far, and 105.5 against 84.4 at stage~4. Training widened its field by 30 to
+34 pixels. The field of the convolutional mixer grew by only 0.2 pixels at stage~3 and 6.2 at stage~4.
 
 \begin{table}[htbp]
 \centering
@@ -1144,6 +1176,19 @@ BiMamba (PureSSM)    & \textbf{85.6\,px} & \textbf{105.5\,px} & $\mathbf{+34.4}$
 \bottomrule
 \end{tabular}
 \end{table}
+
+There is a simple reason for this difference. A convolutional layer combines only small neighbourhoods of
+pixels, so its view grows slowly as layers are added, and training changes it
+little~\cite{luo2016understanding}. A state space scan reads the whole image as one sequence, forwards and
+backwards, so information can travel from any point to any other. How far it travels is set by the decay
+rates and step sizes of Equation~\eqref{eq:mamba2_state}, and these are learned. The reach of the state
+space mixer is therefore learned, while that of the convolutional mixer is largely fixed by its design. At
+stage~4, PureSSM's untrained field was in fact slightly narrower than the convolutional one (75.4 against
+78.2 pixels), so there the whole advantage comes from training. This wider view fits the gain on large
+objects in Section~\ref{sec:acc_results}, although that gain is not certain. Two caveats apply. The probe
+uses random inputs rather than real event data. In addition, the untrained convolutional network had
+random weights, not the ImageNet weights from which EventSSM started, so its change covers both
+pre-training and training on Gen1.
 
 \begin{figure}[htbp]
     \centering
