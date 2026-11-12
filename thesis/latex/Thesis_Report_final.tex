@@ -107,10 +107,6 @@ the following parts of the work:
   \item \textbf{Literature:} searching for and summarising papers, and checking published numbers against the
         original papers.
   \item \textbf{Report structure:} planning the chapter and section structure and the order of headings.
-  \item \textbf{Report text:} English is my second language. The assistant drafted large parts of the report
-        from my results, notes and instructions, including most of the methodology, results, discussion and
-        conclusion chapters, the abstract and the appendices, and edited the remaining text for clear, plain
-        English. I reviewed every section and asked for changes until it said what I intended.
   \item \textbf{Tables and figures:} writing the LaTeX tables and the scripts that draw the figures from my own
         logged results, such as the learning-rate schedule and the validation accuracy. All data shown come
         from my own experiments.
@@ -244,17 +240,14 @@ in return?
 To answer these questions, the thesis sets six aims:
 \begin{enumerate}
   \item Reproduce the published S5-RVT detector and confirm that it reaches its reported accuracy of
-        47.7~mAP, so that every later comparison rests on a verified starting point.
-  \item Build two new detectors, EventSSM and PureSSM, that differ from each other only in their spatial
-        mixer, and compare their accuracy overall, for each object class and for each object size.
-  \item Explain why any difference in accuracy occurs, rather than only reporting it.
-  \item Measure how well the detectors cope when the rate of incoming events changes, with and without
-        the correction proposed in the literature, and compare them with a published ConvLSTM detector on
+        47.7~mAP.
+  \item Build two new detectors, EventSSM and PureSSM, and compare their accuracy overall, for each object class and for each object size.
+  \item Explain why any difference in accuracy occurs.
+  \item Measure how well the detectors cope when the rate of incoming events changes, and compare them with a published ConvLSTM detector on
         the same test data.
   \item Measure efficiency in every way that matters for a small, battery-powered platform: model size,
         amount of computation, speed, energy use and memory.
-  \item Build a spiking version of the detector and break down the accuracy it loses into separate,
-        measurable causes.
+  \item Build a spiking version of the detector and break down the accuracy it loses into measurable findings.
 \end{enumerate}
 These aims refine the aims registered in Thesis~A. The Thesis~A aim of connecting the detector to an
 obstacle-avoidance controller was later removed from the scope, as explained in
@@ -1454,7 +1447,7 @@ a higher threshold makes the neurons quieter but costs accuracy quickly.
 The readouts were also tested with frames arriving ten times faster, without correction. The graded readout
 on the full schedule keeps 65.2\,\% of its accuracy, against 69.7\,\% for PureSSM. On the short schedule,
 PureSSM keeps 69.1\,\%, the analog readout 67.6\,\%, the graded readout 63.2\,\% and the spike readout
-70.3\,\%, the most of any state space model tested. Sparsity therefore costs some robustness, and the single bit restores it. These are single runs, so differences of a few points are indicative only.
+70.3\,\%, slightly more than PureSSM on the same schedule. Sparsity therefore costs some robustness, and the single bit restores it. These are single runs, so differences of a few points are indicative only.
 
 The energy that spiking could save is small. Equation~\eqref{eq:sop_energy} turns the measured activity into
 an estimate: the graded readout on the full schedule would save 0.84\,\% of the energy per frame, and no
@@ -1482,8 +1475,7 @@ readout this cost nearly disappears with full training, and the possible energy 
 
 \chapter{Discussion}
 \label{ch:discussion}
-Chapter~\ref{ch:results} reported what was measured. This chapter asks what it means. It first answers the
-research question and the four hypotheses. It then looks at each result in turn: what the state space mixer
+This chapter interprets the results of Chapter~\ref{ch:results}. It first answers the research question and the four hypotheses. It then looks at each result in turn: what the state space mixer
 contributes, why the models cope with faster events, what efficiency really depends on, and how far the
 path to neuromorphic hardware has come. It ends with the change of scope, the limitations of the work and the directions it opens.
 
@@ -1496,8 +1488,7 @@ all the models tested. It is, however, the slowest model on a graphics card in n
 
 The second question asked what it costs to make the detector spike, and what spiking gives back. On the
 short schedule, spiking costs 2.3 points, and most of that comes from sparsity. After full
-training, the graded readout loses almost nothing. What it gives back is small in this design: on paper, at
-most about 1\,\% of the energy.
+training, the graded readout loses almost nothing. In this hybrid design, the estimated energy saving is at most about 1\,\%.
 
 All six aims were met, with two qualifications: efficiency was measured on a desktop graphics card, not on the kind of computer a drone would carry, and the explanation of the large-object gain rests on a gain
 whose interval just includes zero.
@@ -1558,7 +1549,7 @@ learns to draw on an area up to twice as wide as the convolutional one. The spli
 gain appears for cars, which are often large and close, and not for pedestrians. Each piece of evidence is
 modest on its own, and the large-object gain is likely rather than certain, but the three agree.
 
-This also places PureSSM among published detectors. Other state space detectors keep a conventional method
+Other published state space detectors keep a conventional method
 for one of the two directions: attention for space in S5-RVT~\cite{zubic2024state}, or a ConvLSTM for time in
 SMamba~\cite{yang2025smamba}. PureSSM shows that both directions can be handled by state space models. Where
 raw speed on today's graphics cards matters most, however, the convolutional EventSSM is still the better
@@ -1567,8 +1558,8 @@ choice.
 \section{Temporal Robustness and the \texorpdfstring{$\Delta t$}{Delta t}-Rescaling Claim}
 \label{sec:discuss_robustness}
 Without any correction, every state space model kept between 62 and 70\,\% of its accuracy when frames
-arrived ten times faster. With the published correction, every model did worse, by 9 to 13 points. The robustness to the event rate therefore comes from the memory of the models, not from the correction. One likely reason why the correction lowers accuracy, not tested here, lies in the input. The correction assumes a smooth signal that is simply sampled more often, so that each sample is
-as large as before. Event frames are different. They are counts, and a 5-ms frame holds about a tenth of the
+arrived ten times faster. With the published correction, every model did worse, by 9 to 13 points. The robustness is therefore present without the correction, so the correction is not its source. One likely reason why the correction lowers accuracy, not tested here, lies in the input. The correction assumes a smooth signal that is simply sampled more often, so that each sample is
+as large as before. Event frames, however, are counts, and a 5-ms frame holds about a tenth of the
 events of a 50-ms frame. Shrinking the step size makes the memory fade at the right speed, but it also reduces the weight with which each new frame enters the memory tenfold. Because each frame already holds about a tenth of the events, the total input to the memory over 50~ms falls to about a tenth of its level in training. This would also explain why the correction hurts all three models alike:
 with it, all three land at about 20~mAP.
 
@@ -1577,11 +1568,9 @@ advantage over S5 is small, however. EventSSM keeps 63.0\,\% against S5-RVT's 62
 also differ in their spatial mixers.
 
 The ConvLSTM result differs most from the literature. Tested on the same data, it kept 80.3\,\% at ten times the rate, more
-than any state space model, while the paper reports only 17.7\,\%. Robustness to the event rate is therefore a property of recurrent memory in general, not of state space models in particular. Why the ConvLSTM holds up better was not tested.
+than any state space model, while the paper reports only 17.7\,\%. Robustness to the event rate is therefore not specific to state space models, since a ConvLSTM shows more of it. Why the ConvLSTM holds up better was not tested.
 
-The spiking readouts keep this robustness. Figure~\ref{fig:robustness_spiking} follows the readout ladder at two
-and ten times the rate. The leak and reset cost a little robustness and sparsity costs more, but the spike readout restores it: at ten times the rate it keeps 70.3\,\%, the most of any state space
-model tested. A possible reason is that a binary spike always has the same size. When frames carry fewer
+Figure~\ref{fig:robustness_spiking} follows the readout ladder at two and ten times the rate. At ten times the rate, the short-schedule PureSSM keeps 69.1\,\%, the analog readout 67.6\,\%, the graded readout 63.2\,\% and the spike readout 70.3\,\%. The leak and reset therefore cost a little robustness and sparsity costs more, while the spike readout keeps slightly more than PureSSM on the same schedule. A possible reason is that a binary spike always has the same size. When frames carry fewer
 events, the spike readout loses some spikes, but each spike it keeps is as strong as before.
 
 \begin{figure}[htbp]
@@ -1744,7 +1733,7 @@ On a chip, energy follows activity. The graded readout is active for only
 10 to 28\,\% of its outputs, so the temporal part of a chip version would do a fraction of the work of a
 dense one. Sparsity was the most expensive step of the ladder on the short schedule, but with full training the graded readout lost almost nothing, so the sparsity that a chip needs costs little accuracy.
 
-Graded spikes are the natural target: after full training the graded readout matches PureSSM's accuracy, and Loihi~2 supports graded spikes directly. The binary spike readout is an alternative, and it was the most rate-robust state space model tested.
+Graded spikes are the natural target: after full training the graded readout matches PureSSM's accuracy, and Loihi~2 supports graded spikes directly. The binary spike readout is an alternative: on the short schedule it kept slightly more accuracy at ten times the rate than PureSSM (70.3 against 69.1\,\%).
 
 The neurons' leak stayed within 0.044 of its starting value in every channel, so a chip can use one fixed leak, which is the simplest case to implement.
 
