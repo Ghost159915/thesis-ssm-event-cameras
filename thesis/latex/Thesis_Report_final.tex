@@ -226,9 +226,9 @@ To answer these questions, the thesis sets six aims:
   \item Build two new detectors, EventSSM and PureSSM, that differ from each other only in their spatial
         mixer, and compare their accuracy overall, for each object class and for each object size.
   \item Explain why any difference in accuracy occurs, rather than only reporting it.
-  \item Measure how well the detectors cope when the rate of incoming events changes, in two test
-        settings, with and without the correction proposed in the literature, and compare them with a
-        published ConvLSTM detector on the same test data.
+  \item Measure how well the detectors cope when the rate of incoming events changes, with and without
+        the correction proposed in the literature, and compare them with a published ConvLSTM detector on
+        the same test data.
   \item Measure efficiency in every way that matters for a small, battery-powered platform: model size,
         amount of computation, speed, energy use and memory.
   \item Build a spiking version of the detector and break down the accuracy it loses into separate,
@@ -1380,25 +1380,105 @@ readout this cost nearly disappears with full training, and the possible energy 
 \label{ch:discussion}
 
 \section{Answering the Research Question}
-% TODO-Answering the Research Question
+\label{sec:answer_rq}
+The main research question asked what difference the backbone's spatial mixer makes when every other part
+of the detector stays the same. Replacing a convolutional spatial mixer with a state space model gives the
+same overall accuracy. It probably detects large objects about three points better, it keeps more of its
+accuracy than the other state space models when frames arrive faster, and it needs the least computation.
+In return, it runs more slowly on a graphics card and needs much more memory. The second question asked
+what it costs to make the detector spike. On the short schedule, spiking costs 2.3 points, mostly because
+the neurons are silent most of the time. After full training, the graded version loses almost nothing. What
+spiking can give back is limited in this hybrid design: on paper, the energy saving is at most about 1\,\%.
+
+All six aims were met. The baseline was reproduced exactly, and the two new detectors were built,
+compared and their difference explained. Robustness was measured with and without the correction and
+against a ConvLSTM, efficiency on five measures, and the cost of spiking was broken down into three parts. Two qualifications apply: efficiency was measured on a desktop graphics card rather than on
+embedded hardware, and the explanation rests on a gain whose interval just includes zero. Of the four
+hypotheses, H1 is supported with that reservation: the state space mixer learns a wider view of the image,
+and PureSSM detects large objects 2.9 points better. H2 is not supported. The state space models keep
+62--70\,\% of their accuracy at ten times the rate, but the ConvLSTM keeps more, 80.3\,\%. H3 is not
+supported either, because the published correction made the models less accurate. H4 is supported: the
+three spiking readouts ranked in the predicted order, although the first step of the ladder was too small to
+measure.
 
 \section{What the State-Space Model Contributes}
 \label{sec:what_shown}
-% TODO-What the State-Space Model Contributes
+The first contribution of this thesis is to show that a state space model can do more than process time: it
+can also serve as the spatial backbone of an event-camera detector. PureSSM uses no attention and almost no
+convolution, yet it matches the convolutional model on overall accuracy with the fewest parameters and the
+least computation. This result should be kept in proportion. PureSSM is still 1.3 points behind the
+attention-based baseline. The new models were also trained with half the baseline's batch size, so part of
+that gap may come from the training settings rather than from the design.
+
+The second contribution is the explanation of where the gain comes from. Changing only the spatial mixer
+improved large-object accuracy by about three points, while small and medium objects hardly changed. The
+receptive-field probe fits this pattern: the state space mixer learns to draw on an area up to twice as wide
+as the convolutional mixer does. The results by class agree, since the gain appears for cars, which are
+often large and close, and not for pedestrians. Other published state space detectors still use a
+conventional method for one of the two directions, such as attention for space in
+S5-RVT~\cite{zubic2024state} or a ConvLSTM for time in SMamba~\cite{yang2025smamba}. PureSSM shows that
+both directions can be handled by state space models. Where speed on current graphics cards matters most,
+however, the convolutional model remains the better choice.
 
 \section{Temporal Robustness and the \texorpdfstring{$\Delta t$}{Delta t}-Rescaling Claim}
-% TODO-Temporal Robustness and the Delta t-Rescaling Claim
+\label{sec:discuss_robustness}
+The robustness that makes state space models attractive for event data is real, but it comes from the way
+these models remember the past, not from the published correction. Every state space model kept between 62
+and 70\,\% of its accuracy at ten times the normal rate without any correction, while the correction lowered
+accuracy in every test. Mamba's ability to adjust its step size to the input might be expected to help, but
+its advantage over S5 is small. EventSSM keeps 63.0\,\% against S5-RVT's 62.2\,\%, and the two models also
+differ in their spatial mixers. What matters most is that these detectors have a memory at all, not that
+the memory is a state space model. RVT's ConvLSTM, tested in the same way, kept 80.3\,\% at ten times the
+rate, more than any of them. The 17.7\,\% published for it could not be reproduced, so neither of the
+published results at ten times the rate holds with the released code and models.
+
+For a drone, this result is useful in practice. The event rate changes with the drone's own speed, and these
+detectors lose accuracy gradually at rates they were never trained on, without any retuning. One question
+remains open: the correction may behave differently with the unreleased code used for the published
+experiment, but this cannot be checked with the material that was released.
 
 \section{Efficiency Trade-offs}
-% TODO-Efficiency Trade-offs
+\label{sec:discuss_efficiency}
+The efficiency results do not produce a single winner. PureSSM needs the least computation and EventSSM is
+the fastest. RVT's ConvLSTM uses the least energy, less than half of EventSSM's, and it shares with the S5
+baseline by far the smallest memory. Computation and speed disagree because PureSSM's spatial mixer consists
+of many small operations, and each one carries a fixed start-up cost on a graphics card. Graphics cards are
+also built for convolutions and run scans less efficiently. The faster replay mode removes most of the
+start-up cost, which shows that much of the speed gap comes from the software rather than from the method.
+Two costs remain. A graphics card cannot use the sparsity of events, and the Mamba models need 31 times
+more memory than the baseline, which is a real problem on a small platform. The best model therefore
+depends on the platform's main limit: computation, speed, energy or memory.
 
 \section{Latency and the Choice of Window}
 \label{sec:latency_window}
-% TODO-Latency and the Choice of Window
+Every model collects events over 50-ms windows, so its reaction time is set by the window and the
+processing, not by the camera. An event waits 25~ms on average, and up to 50~ms, before it is used, and
+processing adds another 13 to 27~ms. The camera's microsecond speed is therefore not used, and the detector
+updates only 20 times per second, like an ordinary video camera. The camera still offers its very wide
+brightness range, freedom from motion blur and a sparse output. The window, however, is a choice rather than
+a fixed limit. With 5-ms windows and no retraining, the state space models keep 62 to 70\,\% of their
+accuracy. In the faster replay mode, EventSSM and PureSSM process 210 and 181 frames per second, close to
+the 200 that such windows require.
 
 \section{The Neuromorphic Case}
 \label{sec:neuro_case}
-% TODO-The Neuromorphic Case
+Neuromorphic chips could offer what a graphics card cannot. They only do work when spikes arrive, so their
+energy use depends on activity rather than on the size of the input~\cite{davies2021advancing}. The memory of
+the models in this thesis also suits such chips, because it breaks down into many independent parts that can
+each run as a neuron. Meyer et al.~\cite{meyer2024diagonal} ran a similar model on Intel's Loihi~2 chip.
+When inputs arrived one at a time, as they do from a streaming event camera, it used about 1000 times less
+energy than on a small NVIDIA Jetson board. Loihi~2 also supports graded spikes~\cite{orchard2021efficient},
+which match the graded readout of this thesis. Three obstacles remain. Mamba changes its step size at every
+input, which such chips cannot easily do. The spatial mixer does not spike. And Intel discontinued its Lava
+software in 2026~\cite{intel2026lava}, so the model is exported in a vendor-neutral
+format~\cite{pedersen2024neuromorphic} that other chips can also read.
+
+The energy that this hybrid model can save is small by design. Its spikes only reach the first layers of the
+neck, which carry about 1\,\% of the detector's operations (Figure~\ref{fig:spike_fed_ops}). Even if the
+neurons never fired, the saving could not exceed about 1\,\%. The value of the spiking model therefore lies
+elsewhere: it shows that the expensive part of spiking is making the neurons silent, not reducing their
+output to a single bit. This tells the designers of fully spiking detectors where to focus. Real energy
+savings would require the spatial mixer to spike as well (Section~\ref{sec:future_work}).
 
 \begin{figure}[htbp]
     \centering
@@ -1411,7 +1491,20 @@ readout this cost nearly disappears with full training, and the possible energy 
 
 \section{Scope Change: the Obstacle-Avoidance Aim}
 \label{sec:scope_change}
-% TODO-Scope Change: the Obstacle-Avoidance Aim
+The fourth aim of Thesis~A was to connect the detector to an obstacle-avoidance controller, first in
+simulation and then, if possible, on a real drone. This aim was removed from the scope, together with two
+parts of the benchmarking aim: testing on the larger 1Mpx dataset and measuring speed on embedded hardware.
+Table~\ref{tab:aims} compares every registered aim with what was delivered.
+
+There were two reasons for this decision. First, the detector is trained on Gen1, which was recorded from a
+car and only contains cars and pedestrians. In a drone simulation it would face objects and viewpoints it
+had never seen. A collision rate measured there would mostly reflect this mismatch, together with the
+controller and the simulator, and could not show what the backbone contributes, which is the question of
+this thesis. Second, the aim depended on things outside the project's control: simulation tools for event
+cameras, a stereo event camera that could not be integrated, drone hardware and flight approval. The time
+was spent instead on the controlled study, which produced the explanation of the large-object gain, the
+robustness study and the efficiency comparison. The motivation of helping small drones see better with less
+power is unchanged; only the level at which the work is tested has changed.
 
 \begin{table}[htbp]
 \centering
@@ -1443,11 +1536,45 @@ readout this cost nearly disappears with full training, and the possible energy 
 
 \section{Limitations}
 \label{sec:limitations}
-% TODO-Limitations
+The results have the following limitations.
+\begin{itemize}
+  \item \textbf{Single training runs.} Each model was trained only once, so it is not known how much its
+        result would change with another run. Differences below about one point are therefore not treated
+        as real, and the larger effects also rest on single runs.
+  \item \textbf{One dataset.} All results are on Gen1, which has a low resolution, a car's viewpoint, only
+        two classes and incomplete labels. Whether the findings hold for other cameras, scenes or lighting
+        has not been tested. Every model also uses the same input format, so the format is not part of the
+        study.
+  \item \textbf{Different starting points and settings.} EventSSM's spatial mixer starts from pre-trained
+        weights, while PureSSM's is trained from scratch. The new models used a smaller batch and lower
+        numerical precision than the baseline, and the ConvLSTM is RVT's published model rather than one
+        retrained with these settings. These differences affect only the comparisons with the published
+        models.
+  \item \textbf{Spiking model.} Its energy saving is an estimate from operation counts, not a measurement on
+        a neuromorphic chip, and memory costs are not included. The ladder was trained on the short
+        schedule, and the firing threshold was not varied during training.
+\end{itemize}
 
 \section{Future Research Opportunities}
 \label{sec:future_work}
-% TODO-Future Research Opportunities
+Four directions follow most directly from the results.
+\begin{itemize}
+  \item \textbf{Higher resolution.} Training on the 1Mpx dataset~\cite{perot2020learning}, which has about
+        12.6 times as many pixels as Gen1, would show whether the advantage on large objects grows with
+        resolution. Higher-resolution event cameras also produce more noise~\cite{gehrig2022high}, so the
+        models should be trained on the new data rather than reused without retraining.
+  \item \textbf{Testing on a drone.} Once a detector has been trained on data recorded from a drone, it can
+        be connected to an avoidance controller and judged by how often it avoids collisions. This would
+        also show whether the most robust model copes best as flight speed changes.
+  \item \textbf{Neuromorphic hardware.} The spiking model could be run on Loihi~2 through the Intel
+        Neuromorphic Research Community. This needs a fixed step size for the memory and a decision on where
+        the non-spiking spatial mixer should run.
+  \item \textbf{Fully spiking and event-driven designs.} Neurons whose state works like a state space
+        memory, such as SiLIF~\cite{fabre2025silif}, could make the whole time direction spike. Processing
+        only the parts of the image where events occur~\cite{yang2025smamba} could turn the sparsity of
+        events into real savings. Shorter windows, with retraining, would show how far the reaction time can
+        be reduced (Section~\ref{sec:latency_window}).
+\end{itemize}
 
 \chapter{Conclusion}
 \label{ch:conclusion}
