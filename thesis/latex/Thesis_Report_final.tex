@@ -649,7 +649,7 @@ The software path is in transition. Intel archived its Lava framework on 13 May 
 no longer maintain it, and announced a successor SDK without a public timeline~\cite{intel2026lava}. The
 Neuromorphic Intermediate Representation (NIR) defines a common set of computational primitives through
 which models can be exchanged between simulators and neuromorphic hardware~\cite{pedersen2024neuromorphic},
-and is used in this thesis as the export boundary for that reason.
+and is the export format chosen in this thesis for that reason (Section~\ref{sec:neuro_case}).
 
 \section{Research Gaps Revisited}
 \label{sec:gaps_revisited}
@@ -1379,8 +1379,8 @@ readout this cost nearly disappears with full training, and the possible energy 
 \label{ch:discussion}
 Chapter~\ref{ch:results} reported what was measured. This chapter asks what it means. It first answers the
 research question and the four hypotheses. It then looks at each result in turn: what the state space mixer
-contributes, why the models cope with faster events, what efficiency really depends on, and what spiking can
-and cannot offer. It ends with the change of scope, the limitations of the work and the directions it opens.
+contributes, why the models cope with faster events, what efficiency really depends on, and how far the
+path to neuromorphic hardware has come. It ends with the change of scope, the limitations of the work and the directions it opens.
 
 \section{Answering the Research Question}
 \label{sec:answer_rq}
@@ -1597,25 +1597,104 @@ Even at 50~ms, the camera keeps its other strengths: a very wide brightness rang
 sparse output. Speed is the one it gives up, and Section~\ref{sec:future_work} returns to how it could be
 won back.
 
-\section{The Neuromorphic Case}
+\section{The Neuromorphic Deployment Path}
 \label{sec:neuro_case}
-Neuromorphic chips promise what a graphics card cannot deliver. They only do work when a spike arrives, so
-their energy use follows activity rather than the size of the input~\cite{davies2021advancing}.
+The second research question asked what spiking costs and what neuromorphic hardware gives back.
+Chapter~\ref{ch:results} answered the first half. This section takes up the second: what has been done
+towards running the detector on a neuromorphic chip, and what the results mean for that path.
 
-The memory of the models in this thesis suits such chips well. It breaks down into many small, independent
-parts, and each can run as a neuron. Meyer et al.~\cite{meyer2024diagonal} ran a similar model on Intel's
-Loihi~2 chip. When inputs arrived one at a time, as they do from a streaming event camera, it used about
-1000 times less energy than on a small NVIDIA Jetson board. Loihi~2 also supports graded
-spikes~\cite{orchard2021efficient}, which match the graded readout of this thesis.
+\subsection{Why Neuromorphic Hardware}
+Neuromorphic chips such as Intel's Loihi~2 only do work when a spike arrives, so their energy use follows
+activity rather than the size of the input (Section~\ref{sec:neuromorphic_hw}). The memory of the models in
+this thesis suits them well. It breaks down into many small, independent parts, and each part can run as a
+neuron.
 
-Three obstacles stand in the way. Mamba changes its step size at every input, which such chips cannot easily
-do. The spatial mixer does not spike at all. And Intel discontinued its Lava software in
-2026~\cite{intel2026lava}, so the model is exported in a vendor-neutral format~\cite{pedersen2024neuromorphic}
-that other chips can also read.
+The potential gain is large. Meyer et al.~\cite{meyer2024diagonal} ran a similar memory on Loihi~2. When
+inputs arrived one at a time, as they do from a streaming event camera, it used about 1000 times less energy
+than on an NVIDIA Jetson board. If even part of that gain carried over to an event detector, it would matter
+more to a small drone than any difference measured on a graphics card.
 
-There is also a ceiling, and it is low. In this hybrid, the spikes only reach the first layers of the neck,
-which carry about 1\,\% of the detector's operations (Figure~\ref{fig:spike_fed_ops}). Neurons that never
-fired at all could not save more than that.
+\subsection{What Has Been Done}
+This thesis deliberately separated the model from the chip. Hardware access depends on an agreement between
+the university and Intel, and its timing was outside the project's control. The spiking model was
+therefore built, trained and measured entirely in simulation, in a form chosen so that it can move to a chip
+later. Table~\ref{tab:deploy} lists each part of the path, what was done and what is still missing.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption[The neuromorphic deployment path: done and still needed]{Each part of the path from the simulated
+    spiking model to a neuromorphic chip: what this thesis has done and what is still needed.}
+\label{tab:deploy}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{2.9cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+\textbf{Part} & \textbf{Done in this thesis} & \textbf{Still needed} \\
+\midrule
+Spiking readout & Built, trained and measured; the graded mode matches Loihi~2's graded spikes
+  & Export; lower-precision weights and states \\
+Temporal memory & Trained; its step size changes with every input & A fixed-step version, retrained and compared \\
+Memory size & Measured: 144~MB, about 37 million numbers per stream & A much smaller memory \\
+Reference version & NumPy version of one spiking temporal block that loads the trained weights; its own tests pass
+  & Comparison with the trained model; checking an export against it \\
+Spatial mixer, neck and head & Non-spiking; run on the graphics card
+  & A conventional processor next to the chip, or a spiking redesign \\
+Energy & Estimated from operation counts: at most 1.04\,\% saved & Measurement on the chip \\
+Hardware access & Two-page INRC proposal prepared with the supervisor (virtual lab first)
+  & An agreement between UNSW and Intel, then hardware \\
+Software & Lava discontinued; NIR chosen as the export format & The export itself; a supported Loihi software stack \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Four pieces of work stand out. First, the readout was designed around the hardware. Its graded mode
+carries a value with each spike, as Loihi~2's graded spikes do~\cite{orchard2021efficient}, so it can be
+mapped to the chip without changing what the model computes.
+
+Second, the activity of the readouts and the operations it drives were measured. This turns the energy
+question into a number that a measurement on a chip can later confirm or refute.
+
+Third, a reference version of one spiking temporal block was written in NumPy, without any deep-learning
+library. It runs one time step at a time, as a chip would, and it loads the trained weights. Its own tests
+pass, but the comparison with the trained model has not yet been run.
+
+Fourth, a two-page proposal to the Intel Neuromorphic Research Community was prepared with the supervisor.
+It asks for access to Intel's virtual lab first, and to hardware later.
+
+The software ground also moved during the project. Intel discontinued its Lava framework in May
+2026~\cite{intel2026lava}, so the export format was changed to NIR, a vendor-neutral format that several
+simulators and chips can read~\cite{pedersen2024neuromorphic}. No export has been done yet.
+
+\subsection{What the Results Mean for the Path}
+The results do more than estimate a saving. They also show which parts of the path are easy and which are
+hard.
+
+\textbf{Silence is affordable.} On a chip, energy follows activity. The graded readout is active for only
+10 to 28\,\% of its outputs, so the temporal part of a chip version would do a fraction of the work of a
+dense one. The ladder showed that staying silent is the most expensive step on the short schedule. With full
+training, however, the graded readout lost almost nothing. The property a chip rewards is one the model can
+afford.
+
+\textbf{Graded spikes are the natural target.} After full training, the graded readout matches PureSSM's
+accuracy, and Loihi~2 supports graded spikes directly. The binary spike readout is a backup with an
+unexpected strength: it was the most rate-robust state space model tested.
+
+\textbf{A fixed leak is enough.} The neurons' leak stayed within 0.044 of its starting value in every
+channel. A chip can therefore use one fixed leak, which is the simplest case to implement.
+
+\textbf{The changing step size is the main obstacle, but it may cost little.} Mamba recomputes its step
+size from every input, and a neuron with a fixed decay cannot do that. The results suggest that giving it up
+may not hurt much. Mamba's robustness edge over S5 was under one percentage point, the robustness came from
+the memory itself, and the most accurate model of this study, S5-RVT, uses a memory with a fixed step.
+Whether a fixed-step memory works as well in this backbone has not been tested.
+
+\textbf{The memory must shrink first.} Each video stream carries about 37 million stored numbers. Even if
+every number could live in one neuron, that would fill many chips. The smaller memory proposed in
+Section~\ref{sec:future_work} is therefore more than a saving on a graphics card. It is a precondition for a
+chip.
+
+\textbf{The real prize lies in the spatial mixer.} In this hybrid, a chip would hold only the temporal memory
+and the readout. The spikes reach about 1\,\% of the detector's operations (Figure~\ref{fig:spike_fed_ops}),
+so even perfect silence saves at most about 1\,\%.
 
 \begin{figure}[htbp]
     \centering
@@ -1626,10 +1705,12 @@ fired at all could not save more than that.
     \label{fig:spike_fed_ops}
 \end{figure}
 
-Could the neurons simply be made quieter? Figure~\ref{fig:threshold_sweep} gives the answer. Raising the
-firing threshold after training does reduce activity, but accuracy falls quickly, and faster for the spike
-readout. The quietest setting tested would lift the estimated saving only from 0.86 to about 0.99\,\%, at a
-cost of 12.9 points. Quieter neurons are not the way forward for this design.
+Making the neurons quieter after training does not help either. Raising the firing threshold reduces
+activity, but accuracy falls quickly (Figure~\ref{fig:threshold_sweep}): the quietest setting tested would
+lift the estimated saving only from 0.86 to about 0.99\,\%, at a cost of 12.9 points. Worse, in a hybrid,
+features must travel between a conventional processor and the chip at every frame, and moving data often
+costs more energy than computing with it~\cite{horowitz2014computing}. Real savings need the spatial mixer
+on the chip as well.
 
 \begin{figure}[htbp]
 \centering
@@ -1640,9 +1721,23 @@ cost of 12.9 points. Quieter neurons are not the way forward for this design.
 \label{fig:threshold_sweep}
 \end{figure}
 
-The value of the spiking model lies elsewhere. It shows that the expensive part of spiking is silence, not
-the single bit. That tells the designers of fully spiking detectors where to look. Real energy savings would
-need the spatial mixer to spike as well (Section~\ref{sec:future_work}).
+\subsection{A Route to the Chip}
+\label{subsec:route}
+These findings suggest an order for the remaining work, from the cheapest and most informative step to the
+most expensive:
+\begin{enumerate}
+  \item Replace Mamba's changing step size with a fixed one, retrain, and measure what is lost in accuracy
+        and robustness. This needs only the desktop card.
+  \item Shrink the memory until one stream fits on a few chips, and measure the cost again.
+  \item Export the temporal block and the readout through NIR, and check the export frame by frame against
+        the NumPy reference.
+  \item Run the exported block in Intel's virtual lab, then on Loihi~2 hardware, and measure its energy and
+        delay instead of estimating them.
+  \item Only then redesign the spatial mixer to spike, or to process only the parts of the image where
+        events occur. That is where most of the energy is.
+\end{enumerate}
+Each step can fail on its own. Each failure would still be a result, because it would show which property of
+the model a chip cannot carry.
 
 \section{Scope Change: the Obstacle-Avoidance Aim}
 \label{sec:scope_change}
@@ -1831,9 +1926,10 @@ judged by how often it avoids a collision. This is where the original aim of The
 sound footing.
 
 \subsection{Long Term: New Hardware or Designs}
-\textbf{Neuromorphic hardware.} The spiking model could run on Loihi~2 through the Intel Neuromorphic
-Research Community. This needs a fixed step size for the memory and a decision on where the non-spiking
-spatial mixer should run. It would replace the estimate of this thesis with a measured saving.
+\textbf{Neuromorphic hardware.} Section~\ref{subsec:route} sets out the route from the simulated model to
+Loihi~2. Its first steps, a fixed step size and a smaller memory, can start on the desktop card. Its last, a
+measured saving in place of the estimate of this thesis, needs hardware access through the Intel Neuromorphic
+Research Community.
 
 \textbf{A fully spiking design.} Neurons whose state works like a state space memory, such as
 SiLIF~\cite{fabre2025silif}, could make the whole time direction spike. Processing only the parts of the
@@ -1843,32 +1939,30 @@ neurons stay silent.
 
 \chapter{Conclusion}
 \label{ch:conclusion}
-This thesis asked what a state space model contributes to object detection with an event camera when every
-other part of the detector stays the same. To answer this, it first reproduced the published S5-RVT
-detector exactly, at 47.72~mAP. It then built two new detectors that differ only in their spatial mixer and
-trained them in the same way. The convolutional EventSSM scored 46.22 and the state space PureSSM
-46.43~mAP, which is effectively equal. PureSSM detected large objects about three points better, a gain that
-is likely but not certain. A receptive-field probe showed that it learns to draw on an area of the image up
-to twice as wide. When frames arrived ten times faster, PureSSM kept 69.7\,\% of its accuracy, the most of
-the state space models, but RVT's ConvLSTM kept 80.3\,\%. The correction proposed in the literature for this
-case made the models less accurate, and its published results could not be reproduced with the released
-code and model.
+This thesis set out to isolate what a state space model contributes to object detection with an event
+camera. It held a verified detection pipeline fixed and changed one part at a time. That turned a question
+that earlier comparisons could not answer into one that could be measured.
 
-No model was the most efficient on every measure. PureSSM needs the least computation and EventSSM is the
-fastest, but RVT's ConvLSTM uses the least energy, and both Mamba models need 31 times more memory than the
-two published models. The spiking version split the cost of spiking into three parts, 0.28, 1.52 and 0.54
-points, and showed that staying silent is the largest of them. After full training, the graded version came
-within 0.2 points of PureSSM. Its possible energy saving, however, is limited to about 1\,\%, because its
-spikes only reach the first layers of the neck.
+The answer is clear in direction, if modest in size. A state space model can serve as the spatial backbone of
+an event-camera detector. It matches a convolutional one in accuracy, needs less computation, and probably
+sees large objects better because it learns a wider view of the image. Its robustness to faster events is
+real, but it comes from having a memory, not from the state space model itself, and not from the published
+correction. Its costs, in speed on a graphics card and in memory, are just as real as its gains.
 
-The main limitation is that every result comes from a single training run on one low-resolution dataset
-recorded from a car. The most important next steps are therefore to repeat the training and to train on
-higher-resolution data. Real energy savings on neuromorphic hardware would also require a spatial mixer
-that works with events or spikes. Within these limits, this thesis shows three things.
-A state space model can process space as well as time in an event-camera detector, and its advantage
-appears where its wider view of the image predicts. Robustness to the event rate comes from having a
-memory, not from the state space model or the published correction. And the efficiency of each design must
-be judged against the main limit of the platform it will run on.
+The spiking strand answered the second question. The cost of spiking lies in silence rather than in the
+single bit, and with full training a graded readout pays almost nothing for it. That makes the model a sound
+starting point for neuromorphic hardware, but not yet a saving: in its present hybrid form, spiking can
+reduce the energy by about 1\,\% at most. The path to a chip is now mapped, and its first steps need no
+special hardware at all.
+
+These conclusions rest on single training runs on one driving dataset. Repeating the runs, moving to higher
+resolution and to data recorded from drones, and testing on embedded and neuromorphic hardware are the
+natural next steps.
+
+The broader lesson is about method. Changing one part of a detector at a time is slower than proposing a new
+detector, but it shows what each part actually does. Here, it also showed that two published results could
+not be reproduced with the released code and models. For small drones that must see quickly on little power,
+that kind of evidence is what a design decision needs.
 
 % ===================================================================== BACK MATTER (roman, continuing)
 \clearpage
