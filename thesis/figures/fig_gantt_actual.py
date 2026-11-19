@@ -16,6 +16,11 @@ Evidence, not recollection:
 * Milestones: dated results recorded in CLAUDE.md and the stage notes.
 * Terms (UNSW 2026, "About UNSW 3+" trimester page and the 2026 timetable): T1 16 Feb - 14 May (Thesis A),
   T2 1 Jun - 27 Aug (Thesis B), T3 14 Sep - 10 Dec (Thesis C; teaching ends 20 Nov).
+Drawn in the style of fig_gantt so the two charts read as a pair: square bars split at the term boundaries and
+coloured with the same term ramp (Thesis A light -> C dark blue, imported from fig_gantt), dashed term boundaries,
+a light weekly grid, and diamond milestones. As in the plan, the terms are contiguous: the break before a term
+counts with that term (it was spent preparing it, e.g. the Thesis-C plan of 7 Sep). The single inferred period (the
+literature review before the first commit) is drawn as a normal Thesis A bar.
 Not captured: work outside the repository (reading, meetings).
 
   python thesis/figures/fig_gantt_actual.py
@@ -30,23 +35,24 @@ from datetime import date, datetime, timedelta
 
 import matplotlib.dates as mdates
 from matplotlib.lines import Line2D
+from matplotlib.patches import Patch
 
 import report_style as rs
+from fig_gantt import BAR_H, TERMS as PLAN_TERMS   # same bar height and term colours as the plan chart
 from report_style import plt
 
-NEUTRAL = "#4a4945"                      # cross-cutting work (not one model): dark neutral, distinct from S5-RVT grey
-STREAMS = [  # key, label, colour
-    ("litreview", "Literature review, Thesis-A report", NEUTRAL),
-    ("mvp", "S5-RVT reproduction", rs.colour("s5rvt")),
-    ("eventssm", "EventSSM: build, train, test", rs.colour("eventssm")),
-    ("temporal", "Event-rate study", NEUTRAL),
-    ("efficiency", "Efficiency benchmark", NEUTRAL),
-    ("puressm", "PureSSM: build, cloud training, test", rs.colour("puressm")),
-    ("spike_build", "SpikingSSM: build, first tests", rs.colour("graded")),
-    ("spike_train", "SpikingSSM: training, analysis", rs.colour("graded")),
-    ("research", "Research and planning", NEUTRAL),
-    ("inrc", "Neuromorphic-chip proposal (Intel)", NEUTRAL),
-    ("writing", "Report writing, supervisor reports", NEUTRAL),
+STREAMS = [  # key, label
+    ("litreview", "Literature review, Thesis-A report"),
+    ("mvp", "S5-RVT reproduction"),
+    ("eventssm", "EventSSM: build, train, test"),
+    ("temporal", "Event-rate study"),
+    ("efficiency", "Efficiency benchmark"),
+    ("puressm", "PureSSM: build, cloud training, test"),
+    ("spike_build", "SpikingSSM: build, first tests"),
+    ("spike_train", "SpikingSSM: training, analysis"),
+    ("research", "Research and planning"),
+    ("inrc", "Neuromorphic-chip proposal (Intel)"),
+    ("writing", "Report writing, supervisor reports"),
 ]
 STREAM_RULES = [  # (stream, regex on the commit subject), first match wins; "stage[- ]?N" covers stage9/Stage-9/Stage 9
     (None, r"^chore|^refactor\(repo\)"),                       # housekeeping: dropped
@@ -63,44 +69,43 @@ STREAM_RULES = [  # (stream, regex on the commit subject), first match wins; "st
     ("research", r"\(research\)|\(plan\)|\(spec\)|roadmap|Thesis C timeline|SNN target"),
 ]
 INFERRED = [("litreview", date(2026, 2, 16), date(2026, 4, 15))]   # Term-1 start .. first commit (no git record)
-GPU_RUNS = [  # (start, end, colour key, what) — W&B offline folders unless marked (cloud, day-level)
-    ("2026-06-16 15:36", "2026-06-16 22:09", "eventssm", "Stage 6 short runs"),
-    ("2026-06-17 11:34", "2026-06-18 04:45", "eventssm", "Stage 7 mid-run"),
-    ("2026-06-18 07:46", "2026-06-19 12:26", "eventssm", "EventSSM 400k"),
-    ("2026-07-13 00:00", "2026-07-15 23:59", "puressm", "PureSSM 25k + 400k (cloud RTX 5090, day-level)"),
-    ("2026-10-06 21:53", "2026-10-07 21:48", "graded", "Stage 19 25k pilots"),
-    ("2026-10-08 22:41", "2026-10-09 19:02", "graded", "spike 100k, graded 100k (stopped)"),
-    ("2026-10-10 14:30", "2026-10-10 20:36", "graded", "graded 100k (resumed, stopped)"),
-    ("2026-10-11 11:14", "2026-10-12 07:05", "graded", "graded 100k, analog 100k"),
-    ("2026-10-12 07:05", "2026-10-12 20:31", "puressm", "PureSSM 100k anchor"),
-    ("2026-10-12 20:31", "2026-10-13 23:52", "graded", "graded 400k (stopped)"),
-    ("2026-10-14 17:45", "2026-10-15 16:48", "graded", "graded 400k (resumed, stopped)"),
-    ("2026-10-15 19:02", "2026-10-15 20:15", "graded", "graded 400k (resumed, stopped)"),
-    ("2026-10-16 01:52", "2026-10-16 10:06", "graded", "graded 400k (finished)"),
+GPU_RUNS = [  # (start, end, what) — W&B offline folders unless marked (cloud, day-level)
+    ("2026-06-16 15:36", "2026-06-16 22:09", "Stage 6 short runs"),
+    ("2026-06-17 11:34", "2026-06-18 04:45", "Stage 7 mid-run"),
+    ("2026-06-18 07:46", "2026-06-19 12:26", "EventSSM 400k"),
+    ("2026-07-13 00:00", "2026-07-15 23:59", "PureSSM 25k + 400k (cloud RTX 5090, day-level)"),
+    ("2026-10-06 21:53", "2026-10-07 21:48", "Stage 19 25k pilots"),
+    ("2026-10-08 22:41", "2026-10-09 19:02", "spike 100k, graded 100k (stopped)"),
+    ("2026-10-10 14:30", "2026-10-10 20:36", "graded 100k (resumed, stopped)"),
+    ("2026-10-11 11:14", "2026-10-12 07:05", "graded 100k, analog 100k"),
+    ("2026-10-12 07:05", "2026-10-12 20:31", "PureSSM 100k anchor"),
+    ("2026-10-12 20:31", "2026-10-13 23:52", "graded 400k (stopped)"),
+    ("2026-10-14 17:45", "2026-10-15 16:48", "graded 400k (resumed, stopped)"),
+    ("2026-10-15 19:02", "2026-10-15 20:15", "graded 400k (resumed, stopped)"),
+    ("2026-10-16 01:52", "2026-10-16 10:06", "graded 400k (finished)"),
 ]
 MILESTONES = [  # (date, stream, label, side l/r): the label sits beyond the end of the bar that holds the milestone
     ("2026-06-05", "mvp", "reproduced, 47.7", "r"),
     ("2026-06-19", "eventssm", "test 46.2", "r"),
     ("2026-07-11", "temporal", "correction not reproduced", "r"),
     ("2026-07-11", "efficiency", "first efficiency results", "r"),
-    ("2026-07-15", "puressm", "46.4, large objects +3.0", "r"),
+    ("2026-07-15", "puressm", "46.4, large objects +2.95", "r"),
     ("2026-09-07", "research", "Thesis-C plan", "l"),
-    ("2026-10-07", "spike_build", "go/no-go check passed", "r"),
+    ("2026-10-07", "spike_build", "go/no-go check passed", "l"),
     ("2026-10-12", "spike_train", "", "l"),
     ("2026-10-16", "spike_train", "100k runs (12 Oct), 400k run (16 Oct)", "l"),
     ("2026-07-16", "inrc", "proposal drafted", "r"),
     ("2026-10-11", "inrc", "finalised", "r"),
     ("2026-10-13", "writing", "restructured", "r"),
 ]
-TERMS = [("Thesis A (T1)", date(2026, 2, 16), date(2026, 5, 14)),
-         ("Thesis B (T2)", date(2026, 6, 1), date(2026, 8, 27)),
-         ("Thesis C (T3)", date(2026, 9, 14), date(2026, 12, 10))]
-START, END = date(2026, 2, 1), date(2026, 11, 30)
+START, END = date(2026, 2, 9), date(2026, 11, 30)
 TODAY = date(2026, 10, 16)
+TERM_STARTS = [START, date(2026, 5, 15), date(2026, 8, 28)]  # the day after T1 and T2 end: a break counts with the next term
+TERMS = [(name, a, b, c) for (name, _, _, c), a, b in            # (name, first day, day after the last, colour)
+         zip(PLAN_TERMS, TERM_STARTS, TERM_STARTS[1:] + [END])]
 BRIDGE_DAYS = 28                                  # a work period continues through up to four quiet weeks
 MIN_DAYS = 10                                     # a short burst of work is drawn at least ten days long
-BAND = "#f1f0eb"                                  # term shading
-BAR_PT = 9.0                                      # bar thickness (points); the round caps add BAR_PT / 2 at each end
+HATCH = "//////"                                  # the inferred (estimated) period
 
 
 def commits() -> list[tuple[date, str]]:
@@ -130,9 +135,10 @@ def periods(days: set[date]) -> list[tuple[date, date]]:
 
 def main() -> None:
     rs.apply()
-    row = {k: i for i, (k, _, _) in enumerate(STREAMS)}
+    plt.rcParams["hatch.linewidth"] = 0.6
+    row = {k: i for i, (k, _) in enumerate(STREAMS)}
     gpu_y = len(STREAMS) + 0.15
-    days: dict[str, set[date]] = {k: set() for k, _, _ in STREAMS}
+    days: dict[str, set[date]] = {k: set() for k, _ in STREAMS}
     audit = []
     for d, subject in commits():
         if d > TODAY:                                  # the figure shows the project as of TODAY
@@ -143,73 +149,75 @@ def main() -> None:
             days[stream].add(d)
 
     fig, ax = plt.subplots(figsize=(rs.TEXT_WIDTH, 3.9))
-    fig.canvas.draw()                                  # axes size is needed to turn the round caps into days
-    bbox = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
-    cap_days = (BAR_PT / 2 / 72) * (END - START).days / bbox.width
+    ax.xaxis_date()
+    num = mdates.date2num
 
-    def bar(y, a, b, colour, alpha=1.0, lw=BAR_PT, cap="round"):
-        """A rounded bar whose visible extent is exactly [a, b] (the round caps are drawn inside the span)."""
-        x0, x1 = mdates.date2num(a), mdates.date2num(b)
-        inset = min(cap_days, (x1 - x0 - 1.5) / 2) if cap == "round" else 0  # keep >= 1.5 d of straight line:
-        # a near-zero segment is dropped by the renderer, which made short bars vanish
-        x0, x1 = x0 + inset, x1 - inset
-        ax.plot([x0, x1], [y, y], color=colour, alpha=alpha, linewidth=lw, solid_capstyle=cap, zorder=2)
+    def bar(y, a, b, estimated=False, edge=0.8):
+        """A square bar over [a, b), one segment per term it overlaps, coloured by term (as in fig_gantt)."""
+        for _, t0, t1, c in TERMS:
+            lo, hi = max(num(a), num(t0)), min(num(b), num(t1))   # numbers: a, b may be dates or datetimes
+            if lo < hi:
+                style = ({"facecolor": "white", "edgecolor": c, "hatch": HATCH, "linewidth": edge} if estimated
+                         else {"color": c, "edgecolor": "white", "linewidth": edge})
+                ax.barh(y, hi - lo, left=lo, height=BAR_H, zorder=2, **style)
 
-    for name, a, b in TERMS:
-        ax.axvspan(a, min(b, END), color=BAND, zorder=0)
-        ax.text(a + (min(b, END) - a) / 2, -0.95, name, ha="center", va="bottom", fontsize=8, color=rs.INK_2)
+    for _, t0, _, _ in TERMS[1:]:                         # term boundaries
+        ax.axvline(num(t0), color=rs.AXIS, linewidth=0.9, linestyle=(0, (3, 2)), zorder=1)
+    for name, t0, t1, _ in TERMS:
+        ax.text(num(t0) + (num(t1) - num(t0)) / 2, -0.95, name, ha="center", va="bottom", fontsize=8,
+                color=rs.INK_2)
 
-    rows, spans = [], {k: [] for k, _, _ in STREAMS}
+    rows, spans = [], {k: [] for k, _ in STREAMS}
     for key, a, b in INFERRED:
-        bar(row[key], a, b, dict((k, c) for k, _, c in STREAMS)[key], alpha=0.3)
+        bar(row[key], a, b)                            # drawn as a normal Thesis A bar (user, 2026-11-19)
         rows.append({"row": key, "start": a.isoformat(), "end": b.isoformat(), "kind": "inferred (no git record)"})
-    for key, _, colour in STREAMS:
+    for key, _ in STREAMS:
         for a, b in periods(days[key]):
-            bar(row[key], a, b, colour)
+            bar(row[key], a, b)
             spans[key].append((a, b))
             n = sum(1 for d in days[key] if a <= d < b)
             rows.append({"row": key, "start": a.isoformat(), "end": b.isoformat(), "kind": f"{n} commit days"})
-    for s, e, ck, what in GPU_RUNS:
+    for s, e, what in GPU_RUNS:
         s, e = datetime.fromisoformat(s), datetime.fromisoformat(e)
-        ax.plot([mdates.date2num(s), mdates.date2num(e)], [gpu_y, gpu_y], color=rs.colour(ck), linewidth=6,
-                solid_capstyle="butt", zorder=2)
+        bar(gpu_y, s, e, edge=0)                       # runs last hours: a white edge would hide them
         rows.append({"row": "gpu", "start": s.isoformat(timespec="minutes"), "end": e.isoformat(timespec="minutes"),
                      "kind": what})
 
     for d, key, text, side in MILESTONES:
         day = date.fromisoformat(d)
-        ax.plot(mdates.date2num(day), row[key], "D", color=rs.INK, markersize=4.6, markeredgecolor="white",
-                markeredgewidth=0.7, zorder=4)
+        ax.plot(num(day), row[key], "D", color=rs.INK, markersize=5.5, markeredgecolor="white",
+                markeredgewidth=0.8, zorder=4)
         rows.append({"row": key, "start": d, "end": d, "kind": f"milestone: {text or 'see next'}"})
         if not text:
             continue
         a, b = next(((a, b) for a, b in spans[key] if a <= day < b), (day, day))
-        x = mdates.date2num(b if side == "r" else a)
+        x = num(b if side == "r" else a)
         crosses = side == "r" and TERMS[2][1] <= b < TODAY      # a label running across the today line hides it
-        ax.annotate(text, (x, row[key]), xytext=(4 if side == "r" else -4, 0), textcoords="offset points",
-                    va="center", ha="left" if side == "r" else "right", fontsize=6.8, color=rs.INK, zorder=5,
-                    bbox={"boxstyle": "square,pad=0.08", "facecolor": BAND, "edgecolor": "none"} if crosses
+        ax.annotate(text, (x, row[key]), xytext=(5 if side == "r" else -5, 0), textcoords="offset points",
+                    va="center", ha="left" if side == "r" else "right", fontsize=7, color=rs.INK, zorder=5,
+                    bbox={"boxstyle": "square,pad=0.08", "facecolor": "white", "edgecolor": "none"} if crosses
                     else None)
 
-    ax.axvline(TODAY, color=rs.INK, linewidth=0.8, linestyle=(0, (3, 2)), zorder=3)
-    ax.text(TODAY, len(STREAMS) + 0.75, " today", ha="left", va="center", fontsize=7, color=rs.INK)
-    ax.set_yticks(list(range(len(STREAMS))) + [gpu_y], [lab for _, lab, _ in STREAMS] + ["GPU training runs"])
+    ax.axvline(num(TODAY), color=rs.INK, linewidth=0.8, linestyle=(0, (1, 1.5)), zorder=3)
+    ax.text(num(TODAY), len(STREAMS) + 0.75, " today", ha="left", va="center", fontsize=7, color=rs.INK)
+    ax.set_yticks(list(range(len(STREAMS))) + [gpu_y], [lab for _, lab in STREAMS] + ["GPU training runs"])
     ax.set_ylim(len(STREAMS) + 0.95, -1.05)
-    ax.set_xlim(START, END)
+    ax.set_xlim(num(START), num(END))
     ax.xaxis.set_major_locator(mdates.MonthLocator())
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%b"))
-    ax.tick_params(axis="x", which="major", labelsize=8)
-    ax.tick_params(axis="y", labelsize=7.5, colors=rs.INK)
+    ax.xaxis.set_minor_locator(mdates.WeekdayLocator(byweekday=mdates.MO))   # weekly grid, as in fig_gantt
+    ax.tick_params(axis="x", which="major", labelsize=7)
+    ax.tick_params(axis="x", which="minor", length=0)
+    ax.tick_params(axis="y", labelsize=8, colors=rs.INK)
     ax.grid(axis="y", visible=False)
-    ax.grid(axis="x", which="major", color=rs.GRID, linewidth=0.6)
+    ax.grid(axis="x", which="major", visible=False)
+    ax.grid(axis="x", which="minor", color=rs.GRID, linewidth=0.4)
     ax.spines["left"].set_visible(False)
     ax.set_xlabel("2026")
-    key = [Line2D([], [], color=NEUTRAL, linewidth=BAR_PT, solid_capstyle="round", label="active work (from code history)"),
-           Line2D([], [], color=NEUTRAL, alpha=0.3, linewidth=BAR_PT, solid_capstyle="round",
-                  label="estimated (before code history)"),
-           Line2D([], [], marker="D", color=rs.INK, linestyle="none", markersize=4.6, label="result")]
-    ax.legend(handles=key, loc="upper center", bbox_to_anchor=(0.5, -0.13), ncol=3, fontsize=7.5,
-              handlelength=1.6, columnspacing=1.6)
+    key = [Patch(color=c, label=t) for t, _, _, c in TERMS]
+    key.append(Line2D([], [], marker="D", color=rs.INK, linestyle="none", markersize=5, label="result"))
+    ax.legend(handles=key, loc="upper center", bbox_to_anchor=(0.5, -0.13), ncol=5, fontsize=7.5,
+              handlelength=1.2, columnspacing=1.6)
     rs.save(fig, "fig_gantt_actual", rows)
     with open(rs.DATA / "fig_gantt_actual_commits.csv", "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=["date", "stream", "subject"])

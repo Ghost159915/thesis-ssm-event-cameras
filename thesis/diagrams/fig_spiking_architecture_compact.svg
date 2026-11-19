@@ -30,11 +30,11 @@
 <line x1="854" y1="210" x2="1126" y2="210" stroke="#475569" stroke-width="1.4"/>
 <line x1="854" y1="210" x2="854" y2="202" stroke="#475569" stroke-width="1.4"/>
 <line x1="1126" y1="210" x2="1126" y2="202" stroke="#475569" stroke-width="1.4"/>
-<text x="990" y="228" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" font-style="normal" fill="#475569" text-anchor="middle">the same in all four models</text>
+<text x="990" y="228" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" font-style="normal" fill="#475569" text-anchor="middle">the same in all models</text>
 <line x1="430" y1="212" x2="320" y2="262" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="4 3"/>
 <line x1="744" y1="212" x2="1000" y2="262" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="4 3"/>
 <rect x="290" y="266" width="840" height="250" rx="10" fill="#fcfcfd" stroke="#94a3b8" stroke-width="1.6" stroke-dasharray="6 4"/>
-<text x="710" y="290" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="middle">Inside one backbone stage: two mixers</text>
+<text x="710" y="290" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="14" font-weight="bold" font-style="normal" fill="#0f172a" text-anchor="middle">Inside one backbone stage of the new models: two mixers</text>
 <rect x="320" y="308" width="350" height="86" rx="8" fill="#dbeafe" stroke="#1d4ed8" stroke-width="2.0"/>
 <text x="495" y="336" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="15" font-weight="bold" font-style="normal" fill="#1d4ed8" text-anchor="middle">Spatial mixer</text>
 <text x="495" y="360" font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="12.5" font-weight="normal" font-style="normal" fill="#0f172a" text-anchor="middle">looks across the image, one frame at a time</text>

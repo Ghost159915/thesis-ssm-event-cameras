@@ -34,7 +34,7 @@ mvp,2026-06-05,2026-06-05,"milestone: reproduced, 47.7"
 eventssm,2026-06-19,2026-06-19,milestone: test 46.2
 temporal,2026-07-11,2026-07-11,milestone: correction not reproduced
 efficiency,2026-07-11,2026-07-11,milestone: first efficiency results
-puressm,2026-07-15,2026-07-15,"milestone: 46.4, large objects +3.0"
+puressm,2026-07-15,2026-07-15,"milestone: 46.4, large objects +2.95"
 research,2026-09-07,2026-09-07,milestone: Thesis-C plan
 spike_build,2026-10-07,2026-10-07,milestone: go/no-go check passed
 spike_train,2026-10-12,2026-10-12,milestone: see next

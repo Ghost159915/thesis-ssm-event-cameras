@@ -1,5 +1,5 @@
 """Generates the Thesis-C architecture figure: the two orthogonal mixing axes of the
-backbone, where each of the four models intervenes, and the LIF readout mechanism.
+backbone, where each model intervenes, and the LIF readout mechanism.
 
 Truthfulness: the membrane trace in panel (c) is NOT drawn by hand -- it is produced by
 running the real `LIFReadout` from code/event_ssm/models/spikingssm/lif.py on a fixed
@@ -107,13 +107,13 @@ chip(1162, 98, "detections", "cars, people", "#fff", LINE)
 
 line(854, Y + 70, 1126, Y + 70, FRZ, 1.4)
 line(854, Y + 70, 854, Y + 62, FRZ, 1.4); line(1126, Y + 70, 1126, Y + 62, FRZ, 1.4)
-txt(990, Y + 88, "the same in all four models", 12, "middle", "bold", FRZ)
+txt(990, Y + 88, "the same in all models", 12, "middle", "bold", FRZ)
 
 # ---- zoom into one stage
 line(430, Y + 72, 320, ZY - 8, LINE, 1.2, "4 3")
 line(744, Y + 72, 1000 if COMPACT else 1100, ZY - 8, LINE, 1.2, "4 3")   # compact: clear of the label
 rect(290, ZY - 4, 840, 250, "#fcfcfd", LINE, 10, 1.6, "6 4")
-txt(710, ZY + 20, "Inside one backbone stage: two mixers", 14, "middle", "bold", INK)
+txt(710, ZY + 20, "Inside one backbone stage of the new models: two mixers", 14, "middle", "bold", INK)
 
 rect(320, ZY + 38, 350, 86, SPA_BG, SPA, 8, 2.0)
 txt(495, ZY + 66, "Spatial mixer", 15, "middle", "bold", SPA)
